@@ -1,0 +1,48 @@
+{
+  "id": "ff0cca48-5c90-4de2-bd16-d24d5f7623cf",
+  "title": "New Conversation",
+  "model": "llama2",
+  "messages": [
+    {
+      "id": "7e21a280-8ca8-4843-8dd5-3a46d09f9a10",
+      "role": "user",
+      "content": "hello",
+      "timestamp": "2026-07-29T21:41:31.617Z"
+    },
+    {
+      "id": "b343d21f-4c38-4a70-a99c-53fffe741216",
+      "role": "assistant",
+      "content": "Hello! How can I help you today?",
+      "timestamp": "2026-07-29T21:41:32.004Z",
+      "model": "qwen2.5:1.5b"
+    },
+    {
+      "id": "062c3835-328e-4333-9b7d-84193801cca4",
+      "role": "user",
+      "content": "hi",
+      "timestamp": "2026-07-29T21:41:33.148Z"
+    },
+    {
+      "id": "8734c9b2-5acb-4cbb-8b7c-5c8f05b0b6a1",
+      "role": "assistant",
+      "content": "Hello! It's nice to see you. Is there anything specific you would like to talk about or any questions you have?",
+      "timestamp": "2026-07-29T21:41:33.647Z",
+      "model": "qwen2.5:1.5b"
+    },
+    {
+      "id": "b73295e7-93cf-443b-93cd-f50cf6aa6f1c",
+      "role": "user",
+      "content": "how r youdoing",
+      "timestamp": "2026-07-29T21:41:36.557Z"
+    },
+    {
+      "id": "493128ee-0e23-406d-801c-18a2fd903b50",
+      "role": "assistant",
+      "content": "I'm just a computer program, so I don't really \"do\" things in the way that humans do. However, I am here to help and provide information to the best of my ability. If you have any questions or need assistance, feel free to ask!",
+      "timestamp": "2026-07-29T21:41:37.456Z",
+      "model": "qwen2.5:1.5b"
+    }
+  ],
+  "createdAt": "2026-07-29T21:41:29.749Z",
+  "updatedAt": "2026-07-29T21:41:37.456Z"
+}

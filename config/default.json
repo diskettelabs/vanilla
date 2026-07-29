@@ -1,0 +1,10 @@
+{
+  "port": 3000,
+  "ollama": {
+    "host": "http://localhost:11434",
+    "requestTimeout": 30000
+  },
+  "storage": {
+    "dir": "./data/conversations"
+  }
+}
