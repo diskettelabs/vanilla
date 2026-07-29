@@ -1,82 +1,54 @@
-# Vanilla Chat TUI
+# Vanilla Chat
 
-A minimalist terminal-based chat interface for interacting with local AI models via Ollama.
+A simple web chat interface for local AI models via [Ollama](https://ollama.ai), with 14 ice cream-themed color schemes.
+
+## Quick Start
+
+```bash
+npm start
+```
+
+Open `http://localhost:3000` in your browser. Make sure Ollama is running (`ollama serve`).
 
 ## Features
 
-- 🍦 14 ice cream-themed color schemes
-- 🌳 Conversation tree with branching support
-- ⚡ Real-time streaming responses
-- 📊 System resource monitoring (CPU/RAM)
-- 🎨 ASCII art ice cream logo
-- 💾 Automatic conversation persistence
-- 🔒 Local-only, privacy-focused
+- **Real-time streaming** — responses appear token-by-token via SSE
+- **Conversation management** — create, switch, and delete chat sessions
+- **Model selection** — pick any model available in your local Ollama
+- **14 ice cream themes** — vanilla, chocolate, strawberry, mint, lemon, lime, peach, plum, raspberry, lavender, dragonfruit, dreamsicle, blue-moon, monochrome
+- **Privacy** — all data stays local, nothing leaves your machine
 
 ## Requirements
 
-- Bash 4.0+
-- jq (JSON processor)
-- curl
-- Ollama (running locally)
-
-## Installation
-
-```bash
-# Clone the repository
-git clone <repository-url>
-cd vanilla-chat-tui
-
-# Make scripts executable
-chmod +x src/**/*.sh
-
-# Check dependencies
-./src/lib/logger.sh
-```
+- [Node.js](https://nodejs.org) 18+
+- [Ollama](https://ollama.ai) running locally
 
 ## Project Structure
 
 ```
-vanilla-chat-tui/
+vanilla-sh/
+├── server.js             Express server entry point
 ├── src/
-│   ├── lib/              # Core libraries
-│   │   ├── json_utils.sh # JSON manipulation utilities
-│   │   └── logger.sh     # Logging and error handling
-│   ├── tree/             # Conversation tree operations
-│   ├── ollama/           # Ollama API client
-│   ├── tui/              # Terminal UI components
-│   ├── theme/            # Theme engine
-│   └── monitor/          # System monitoring
+│   ├── ollama.js         Ollama API client
+│   ├── storage.js        File-based conversation persistence
+│   └── routes.js         API route definitions
+├── public/
+│   └── index.html        Single-page web UI
+├── themes/               14 ice cream color themes
 ├── data/
-│   ├── models/           # JSON data models
-│   └── conversations/    # Saved conversations
-├── themes/               # Ice cream flavor themes
-└── README.md
+│   └── conversations/    Saved conversations (JSON)
+└── config/
+    └── default.json      Server configuration
 ```
 
-## Usage
+## API
 
-```bash
-# Start the chat interface
-./vanilla-chat
-
-# With specific theme
-./vanilla-chat --theme chocolate
-
-# With specific model
-./vanilla-chat --model llama2
-```
-
-## Themes
-
-Available ice cream flavors:
-- vanilla, chocolate, strawberry, lavender, plum
-- mint, dreamsicle, lemon, lime, blue moon
-- dragonfruit, peach, raspberry, monochrome
-
-## Development
-
-See `.kiro/specs/vanilla-chat-tui/` for detailed requirements, design, and implementation tasks.
-
-## License
-
-MIT
+| Endpoint | Description |
+|---|---|
+| `GET /api/health` | Health check |
+| `GET /api/models` | List available Ollama models |
+| `GET /api/conversations` | List saved conversations |
+| `POST /api/conversations` | Create a new conversation |
+| `GET /api/conversations/:id` | Get conversation messages |
+| `DELETE /api/conversations/:id` | Delete a conversation |
+| `POST /api/chat/stream` | Send message and stream response (SSE) |
