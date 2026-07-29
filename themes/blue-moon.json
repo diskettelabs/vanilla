@@ -1,0 +1,15 @@
+{
+  "name": "blue-moon",
+  "displayName": "Blue Moon",
+  "description": "Cool blue and cyan tones",
+  "colors": {
+    "primary": "#87CEEB",
+    "secondary": "#ADD8E6",
+    "background": "#F0F8FF",
+    "text": "#00008B",
+    "userMessage": "#B0E0E6",
+    "assistantMessage": "#E0F6FF",
+    "border": "#4682B4",
+    "statusBar": "#ADD8E6"
+  }
+}

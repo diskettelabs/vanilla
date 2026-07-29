@@ -1,0 +1,35 @@
+{
+  "title": "Node",
+  "description": "A node in the conversation tree containing a message",
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Unique identifier for the node"
+    },
+    "message": {
+      "type": "object",
+      "description": "The message contained in this node"
+    },
+    "parentId": {
+      "type": ["string", "null"],
+      "format": "uuid",
+      "description": "ID of the parent node, null for root"
+    },
+    "children": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "format": "uuid"
+      },
+      "description": "Array of child node IDs"
+    },
+    "isActive": {
+      "type": "boolean",
+      "description": "Whether this node is on the current active path"
+    }
+  },
+  "required": ["id", "message", "parentId", "children", "isActive"],
+  "additionalProperties": false
+}

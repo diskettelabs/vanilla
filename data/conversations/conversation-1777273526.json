@@ -1,0 +1,70 @@
+{
+  "nodes": {
+    "db855179-0b21-4717-8f63-19e197e09366": {
+      "id": "db855179-0b21-4717-8f63-19e197e09366",
+      "message": {
+        "id": "f3f67c06-2fad-4118-895c-2ac7dca49272",
+        "role": "user",
+        "content": "hi",
+        "timestamp": "2026-04-27T07:05:28Z",
+        "model": ""
+      },
+      "parentId": "null",
+      "children": [
+        "b32c27f6-22cd-4831-9a69-a5db4525f834"
+      ],
+      "isActive": true
+    },
+    "b32c27f6-22cd-4831-9a69-a5db4525f834": {
+      "id": "b32c27f6-22cd-4831-9a69-a5db4525f834",
+      "message": {
+        "id": "befd7bca-36fe-4548-a8c4-52a74bc498af",
+        "role": "assistant",
+        "content": "",
+        "timestamp": "2026-04-27T07:05:29Z",
+        "model": "gemma3n:latest"
+      },
+      "parentId": "db855179-0b21-4717-8f63-19e197e09366",
+      "children": [
+        "9b947c79-a8d0-4a81-8188-2a97b4bfa961"
+      ],
+      "isActive": true
+    },
+    "9b947c79-a8d0-4a81-8188-2a97b4bfa961": {
+      "id": "9b947c79-a8d0-4a81-8188-2a97b4bfa961",
+      "message": {
+        "id": "d38c5e56-17ed-4910-99b2-b5809a68c6d5",
+        "role": "user",
+        "content": "helloooo",
+        "timestamp": "2026-04-27T07:05:37Z",
+        "model": ""
+      },
+      "parentId": "b32c27f6-22cd-4831-9a69-a5db4525f834",
+      "children": [
+        "afd9d7a7-25cb-46e8-b6f9-8332f4325ea5"
+      ],
+      "isActive": true
+    },
+    "afd9d7a7-25cb-46e8-b6f9-8332f4325ea5": {
+      "id": "afd9d7a7-25cb-46e8-b6f9-8332f4325ea5",
+      "message": {
+        "id": "a6e8db37-775c-4a10-b2c9-862f9349b7e0",
+        "role": "assistant",
+        "content": "",
+        "timestamp": "2026-04-27T07:05:38Z",
+        "model": "gemma3n:latest"
+      },
+      "parentId": "9b947c79-a8d0-4a81-8188-2a97b4bfa961",
+      "children": [],
+      "isActive": true
+    }
+  },
+  "rootId": "db855179-0b21-4717-8f63-19e197e09366",
+  "currentNodeId": "afd9d7a7-25cb-46e8-b6f9-8332f4325ea5",
+  "metadata": {
+    "createdAt": "2026-04-27T07:05:26Z",
+    "lastModified": "2026-04-27T07:05:38Z",
+    "title": "Untitled Conversation",
+    "model": "llama2"
+  }
+}

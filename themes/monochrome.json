@@ -1,0 +1,15 @@
+{
+  "name": "monochrome",
+  "displayName": "Monochrome",
+  "description": "Classic black, white, and gray",
+  "colors": {
+    "primary": "#FFFFFF",
+    "secondary": "#D3D3D3",
+    "background": "#000000",
+    "text": "#FFFFFF",
+    "userMessage": "#2F2F2F",
+    "assistantMessage": "#1A1A1A",
+    "border": "#808080",
+    "statusBar": "#404040"
+  }
+}

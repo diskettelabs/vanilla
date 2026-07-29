@@ -1,0 +1,15 @@
+{
+  "name": "vanilla",
+  "displayName": "Vanilla",
+  "description": "Classic cream and beige tones",
+  "colors": {
+    "primary": "#FFF8DC",
+    "secondary": "#F5DEB3",
+    "background": "#FFFAF0",
+    "text": "#4A4A4A",
+    "userMessage": "#FFE4B5",
+    "assistantMessage": "#FAEBD7",
+    "border": "#DEB887",
+    "statusBar": "#F5DEB3"
+  }
+}

@@ -1,0 +1,50 @@
+{
+  "title": "ConversationTree",
+  "description": "A tree structure storing conversation messages with branching support",
+  "type": "object",
+  "properties": {
+    "nodes": {
+      "type": "object",
+      "description": "Map of node IDs to node objects",
+      "additionalProperties": {
+        "type": "object"
+      }
+    },
+    "rootId": {
+      "type": ["string", "null"],
+      "format": "uuid",
+      "description": "ID of the root node"
+    },
+    "currentNodeId": {
+      "type": ["string", "null"],
+      "format": "uuid",
+      "description": "ID of the current active node"
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the conversation was created"
+        },
+        "lastModified": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the conversation was last modified"
+        },
+        "title": {
+          "type": "string",
+          "description": "Title of the conversation"
+        },
+        "model": {
+          "type": "string",
+          "description": "Default AI model for this conversation"
+        }
+      },
+      "required": ["createdAt", "lastModified", "title", "model"]
+    }
+  },
+  "required": ["nodes", "rootId", "currentNodeId", "metadata"],
+  "additionalProperties": false
+}

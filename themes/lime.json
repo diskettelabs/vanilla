@@ -1,0 +1,15 @@
+{
+  "name": "lime",
+  "displayName": "Lime",
+  "description": "Bright lime green tones",
+  "colors": {
+    "primary": "#00FF00",
+    "secondary": "#ADFF2F",
+    "background": "#F0FFF0",
+    "text": "#006400",
+    "userMessage": "#CCFF99",
+    "assistantMessage": "#E6FFE6",
+    "border": "#32CD32",
+    "statusBar": "#ADFF2F"
+  }
+}

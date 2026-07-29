@@ -1,0 +1,15 @@
+{
+  "name": "raspberry",
+  "displayName": "Raspberry",
+  "description": "Rich raspberry red and pink tones",
+  "colors": {
+    "primary": "#E30B5C",
+    "secondary": "#FF69B4",
+    "background": "#FFF0F5",
+    "text": "#8B0A50",
+    "userMessage": "#FF1493",
+    "assistantMessage": "#FFE4E8",
+    "border": "#C71585",
+    "statusBar": "#FF69B4"
+  }
+}

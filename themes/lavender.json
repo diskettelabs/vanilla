@@ -1,0 +1,15 @@
+{
+  "name": "lavender",
+  "displayName": "Lavender",
+  "description": "Soft purple and lavender tones",
+  "colors": {
+    "primary": "#E6E6FA",
+    "secondary": "#D8BFD8",
+    "background": "#F8F8FF",
+    "text": "#4B0082",
+    "userMessage": "#DDA0DD",
+    "assistantMessage": "#F0E6FF",
+    "border": "#9370DB",
+    "statusBar": "#D8BFD8"
+  }
+}

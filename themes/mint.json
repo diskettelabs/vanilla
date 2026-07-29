@@ -1,0 +1,15 @@
+{
+  "name": "mint",
+  "displayName": "Mint",
+  "description": "Fresh mint green tones",
+  "colors": {
+    "primary": "#98FF98",
+    "secondary": "#90EE90",
+    "background": "#F0FFF0",
+    "text": "#2F4F2F",
+    "userMessage": "#AFEEEE",
+    "assistantMessage": "#E0FFE0",
+    "border": "#3CB371",
+    "statusBar": "#90EE90"
+  }
+}

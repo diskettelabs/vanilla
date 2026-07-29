@@ -1,0 +1,15 @@
+{
+  "name": "chocolate",
+  "displayName": "Chocolate",
+  "description": "Rich brown and tan tones",
+  "colors": {
+    "primary": "#8B4513",
+    "secondary": "#A0522D",
+    "background": "#3E2723",
+    "text": "#F5DEB3",
+    "userMessage": "#6F4E37",
+    "assistantMessage": "#5D4037",
+    "border": "#A0522D",
+    "statusBar": "#6D4C41"
+  }
+}

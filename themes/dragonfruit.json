@@ -1,0 +1,15 @@
+{
+  "name": "dragonfruit",
+  "displayName": "Dragonfruit",
+  "description": "Vibrant magenta and pink tones",
+  "colors": {
+    "primary": "#FF00FF",
+    "secondary": "#FF69B4",
+    "background": "#FFF0F5",
+    "text": "#8B008B",
+    "userMessage": "#FF1493",
+    "assistantMessage": "#FFE4F0",
+    "border": "#C71585",
+    "statusBar": "#FF69B4"
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "name": "plum",
+  "displayName": "Plum",
+  "description": "Deep purple and plum tones",
+  "colors": {
+    "primary": "#8E4585",
+    "secondary": "#9B59B6",
+    "background": "#2C1B2E",
+    "text": "#E6D5E8",
+    "userMessage": "#6A4C6E",
+    "assistantMessage": "#4A2F4D",
+    "border": "#9B59B6",
+    "statusBar": "#6A4C6E"
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "name": "lemon",
+  "displayName": "Lemon",
+  "description": "Bright yellow and gold tones",
+  "colors": {
+    "primary": "#FFFF00",
+    "secondary": "#FFFACD",
+    "background": "#FFFFF0",
+    "text": "#8B8000",
+    "userMessage": "#FFFFE0",
+    "assistantMessage": "#FAFAD2",
+    "border": "#FFD700",
+    "statusBar": "#FFFACD"
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "name": "peach",
+  "displayName": "Peach",
+  "description": "Soft peach and coral tones",
+  "colors": {
+    "primary": "#FFDAB9",
+    "secondary": "#FFE5B4",
+    "background": "#FFF5EE",
+    "text": "#8B4513",
+    "userMessage": "#FFDAB9",
+    "assistantMessage": "#FFEFD5",
+    "border": "#FF7F50",
+    "statusBar": "#FFE5B4"
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "name": "dreamsicle",
+  "displayName": "Dreamsicle",
+  "description": "Orange cream and peach tones",
+  "colors": {
+    "primary": "#FFB347",
+    "secondary": "#FFDAB9",
+    "background": "#FFF5EE",
+    "text": "#8B4000",
+    "userMessage": "#FFDAB9",
+    "assistantMessage": "#FFE4C4",
+    "border": "#FF8C00",
+    "statusBar": "#FFDAB9"
+  }
+}

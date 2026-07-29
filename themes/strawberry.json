@@ -1,0 +1,15 @@
+{
+  "name": "strawberry",
+  "displayName": "Strawberry",
+  "description": "Sweet pink and red tones",
+  "colors": {
+    "primary": "#FFB6C1",
+    "secondary": "#FFC0CB",
+    "background": "#FFF0F5",
+    "text": "#8B0000",
+    "userMessage": "#FFB6D9",
+    "assistantMessage": "#FFE4E1",
+    "border": "#FF69B4",
+    "statusBar": "#FFC0CB"
+  }
+}
