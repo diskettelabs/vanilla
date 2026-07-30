@@ -238,4 +238,156 @@ function replaceLastUserMessage(id, content) {
   return conv;
 }
 
-module.exports = { init, list, create, get, update, remove, addMessage, eraseLastAssistant, replaceLastUserMessage };
+const WORD_RADIUS = 8;
+
+function fuzzyCharMatch(query, text) {
+  const q = query.toLowerCase();
+  const t = text.toLowerCase();
+  let qi = 0;
+  for (let ti = 0; ti < t.length && qi < q.length; ti++) {
+    if (t[ti] === q[qi]) qi++;
+  }
+  return qi === q.length;
+}
+
+function findExactMatch(query, text) {
+  const idx = text.toLowerCase().indexOf(query.toLowerCase());
+  if (idx === -1) return null;
+  return { start: idx, end: idx + query.length, exact: true };
+}
+
+function findTightFuzzySpan(query, text) {
+  const q = query.toLowerCase();
+  const t = text.toLowerCase();
+  let bestStart = -1;
+  let bestLen = Infinity;
+
+  for (let start = 0; start < t.length; start++) {
+    if (t[start] !== q[0]) continue;
+    let qi = 1;
+    let end = start + 1;
+    while (qi < q.length && end < t.length) {
+      if (t[end] === q[qi]) qi++;
+      end++;
+    }
+    if (qi === q.length && (end - start) < bestLen) {
+      bestStart = start;
+      bestLen = end - start;
+    }
+  }
+
+  if (bestStart === -1) return null;
+  return { start: bestStart, end: bestStart + bestLen, exact: false };
+}
+
+function extractFuzzyTerm(text, spanStart, spanEnd) {
+  const slice = text.slice(spanStart, spanEnd);
+  const words = slice.split(/\s+/).filter(Boolean);
+  if (words.length === 1) return words[0];
+
+  const before = text.slice(0, spanStart);
+  const beforeWord = before.match(/(\w+)\s*$/);
+  const after = text.slice(spanEnd);
+  const afterWord = after.match(/^\s*(\w+)/);
+
+  const parts = [];
+  if (beforeWord && /^[a-zA-Z]/.test(slice[0])) parts.push(beforeWord[1]);
+  parts.push(words[0]);
+  if (afterWord) parts.push(afterWord[1]);
+  return parts.join(' ');
+}
+
+function buildSnippet(text, matchStart, matchEnd) {
+  const wordRegex = /\S+\s*/g;
+  const wordPositions = [];
+  let m;
+  while ((m = wordRegex.exec(text)) !== null) {
+    wordPositions.push({ text: m[0], start: m.index, end: m.index + m[0].length });
+  }
+  if (!wordPositions.length) return text.slice(Math.max(0, matchStart - 40), matchEnd + 40);
+
+  let matchIdx = -1;
+  for (let i = 0; i < wordPositions.length; i++) {
+    const w = wordPositions[i];
+    if (matchStart >= w.start && matchEnd <= w.end) { matchIdx = i; break; }
+  }
+  if (matchIdx === -1) {
+    for (let i = 0; i < wordPositions.length; i++) {
+      if (matchStart >= wordPositions[i].start && matchStart < wordPositions[i].end) { matchIdx = i; break; }
+    }
+  }
+
+  let start = 0;
+  let end = wordPositions.length;
+  if (matchIdx !== -1) {
+    start = Math.max(0, matchIdx - WORD_RADIUS);
+    end = Math.min(wordPositions.length, matchIdx + 1 + WORD_RADIUS);
+  }
+
+  const before = wordPositions.slice(0, start).map((w) => w.text).join('');
+  const center = wordPositions.slice(start, end).map((w) => w.text).join('');
+  const after = wordPositions.slice(end).map((w) => w.text).join('');
+
+  let snippet = center;
+  if (before.trim()) snippet = '…' + snippet;
+  if (after.trim()) snippet = snippet + '…';
+  return snippet;
+}
+
+function search(query) {
+  if (!query || !query.trim()) return [];
+  const q = query.trim();
+  const files = fs.readdirSync(DATA_DIR);
+  const results = [];
+
+  for (const f of files) {
+    const fp = path.join(DATA_DIR, f);
+    try {
+      let conv;
+      if (isJsonFile(f)) conv = convFromJson(fp);
+      else if (isMdFile(f)) conv = convFromMarkdown(fp);
+      else continue;
+
+      const matches = [];
+
+      // Check title
+      if (fuzzyCharMatch(q, conv.title)) {
+        matches.push({ type: 'title' });
+      }
+
+      // Check messages
+      for (const msg of conv.messages) {
+        if (!msg.content) continue;
+
+        let matchPos = findExactMatch(q, msg.content);
+        let hasExactMatch = !!matchPos;
+
+        if (!matchPos) {
+          matchPos = findTightFuzzySpan(q, msg.content);
+        }
+
+        if (matchPos && matches.length < 4) {
+          const snippet = buildSnippet(msg.content, matchPos.start, matchPos.end);
+          const entry = {
+            type: 'content',
+            messageId: msg.id,
+            role: msg.role,
+            snippet,
+          };
+          if (hasExactMatch) entry.term = q;
+          matches.push(entry);
+        }
+      }
+
+      if (matches.length) {
+        results.push({ id: conv.id, title: conv.title, matches });
+      }
+    } catch {
+      // skip corrupt files
+    }
+  }
+
+  return results;
+}
+
+module.exports = { init, list, create, get, update, remove, addMessage, eraseLastAssistant, replaceLastUserMessage, search };

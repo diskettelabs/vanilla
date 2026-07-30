@@ -78,6 +78,7 @@ The server maintains a `Map<conversationId, AbortController>` (`activeStreams`) 
 | `/api/conversations/:id/erase-last-response` | POST | Removes the most recent assistant message |
 | `/api/conversations/:id/regenerate` | POST | Replaces last user message and removes last assistant |
 | `/api/chat/stream` | POST | SSE streaming chat completion |
+| `/api/search` | GET | Full-text search across all conversations (`?q=term`) |
 | `/api/chat/stop/:conversationId` | POST | Aborts an active streaming response |
 
 **SSE Stream Request Body (`POST /api/chat/stream`):**
@@ -110,6 +111,34 @@ Each line is a complete JSON object prefixed with `data: ` and terminated by `\n
 **`POST /api/conversations/:id/erase-last-response`** — Scans messages from the end backward and removes the first `assistant` message found. Returns the updated conversation.
 
 **`POST /api/conversations/:id/regenerate`** — Accepts `{"message":"..."}` in the body. Replaces the last user message content with the new text and removes the most recent assistant message. The frontend can then resend using the standard stream endpoint.
+
+**`GET /api/search?q=<term>`** — Full-text search across all conversations. Supports both exact substring matching and fuzzy character-order matching (e.g., `banna` matches `bananas`).
+
+Response format:
+```json
+[
+  {
+    "id": "uuid-v4",
+    "title": "Conversation Title",
+    "matches": [
+      { "type": "title" },
+      {
+        "type": "content",
+        "messageId": "uuid-v4",
+        "role": "user",
+        "term": "bananas",
+        "snippet": "…another good source of potassium is bananas, which contain around 422mg of…"
+      }
+    ]
+  }
+]
+```
+
+- `type: "title"` — the conversation title matched the query (no snippet needed)
+- `type: "content"` — a message body matched
+- `term` — only present for **exact matches**; omitted for fuzzy matches so the client can do its own highlighting
+- `snippet` — ~8 words of context on each side of the match, with `…` indicating truncation
+- Maximum 4 content matches per conversation (title match counts separately)
 
 ### 3.3 Storage (`src/storage.js`)
 
@@ -144,6 +173,13 @@ I'm doing well, thank you!
 
 **Backward compatibility:** Existing `.json` files are automatically migrated to `.md` on first read via `get()`. The `list()` function reads both `.json` and `.md` files simultaneously.
 
+**Search algorithm (`search(query)`):**
+- For each conversation, checks title and all message bodies
+- **Exact match:** case-insensitive substring search (`indexOf`)
+- **Fuzzy match:** character-order matching — all query characters must appear in order in the target text (e.g., `banna` → `bananas` because b,a,n,n,a all appear in order). Finds the tightest span containing all matching characters.
+- **Snippet extraction:** locates the matching word, then takes ~8 words of context on each side. Truncated edges are prefixed/suffixed with `…`.
+- Returns up to 4 content matches per conversation; title matches are always included.
+
 **Methods:**
 - `init()` — ensure directory exists
 - `list()` — return sorted conversation summaries (reads both `.json` and `.md`)
@@ -154,6 +190,7 @@ I'm doing well, thank you!
 - `addMessage(id, role, content, model?)` — append message
 - `eraseLastAssistant(id)` — remove the most recent assistant message from conversation
 - `replaceLastUserMessage(id, content)` — replace the most recent user message's content
+- `search(query)` — full-text search with fuzzy matching; returns `[{id, title, matches}]`
 
 ### 3.4 Provider Abstraction (`src/providers/`)
 
@@ -222,6 +259,16 @@ Single-page web application with the following interactive elements:
 | **Stop button** | Visible only during streaming; calls `POST /api/chat/stop/:id` |
 | **Erase button** | Appears on hover over the last assistant message; calls `POST /api/conversations/:id/erase-last-response` |
 | **Edit & Resend button** | Appears on hover over the last user message; fills the input with that message's content for editing |
+| **Search input** | Sidebar search bar with 200ms debounce; calls `GET /api/search?q=...` |
+| **Search results** | Replaces conversation list while searching; shows title + up to 4 snippets per result with matched terms highlighted |
+
+**Search UI behavior:**
+- Typing in the search bar triggers `GET /api/search?q=<term>` after a 200ms debounce
+- Results replace the conversation list; clicking a result navigates to that conversation
+- Snippets with a `term` field use exact substring highlighting (`<mark>`)
+- Snippets without a `term` (fuzzy matches) are highlighted client-side using the same character-order fuzzy matching algorithm as the server
+- Escape key or the ✕ button clears the search and restores the conversation list
+- `loadConversations()` is suppressed while a search query is active to avoid flickering
 
 **Streaming lifecycle on the frontend:**
 1. User clicks Send → `streaming = true`, send/input disabled, stop button shown

@@ -65,6 +65,13 @@ function register(app) {
     res.json(storage.get(req.params.id));
   });
 
+  // Search conversations
+  app.get('/api/search', (req, res) => {
+    const q = req.query.q;
+    if (!q) return res.json([]);
+    res.json(storage.search(q));
+  });
+
   // Stop an active stream
   app.post('/api/chat/stop/:conversationId', (req, res) => {
     const controller = activeStreams.get(req.params.conversationId);
