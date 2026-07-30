@@ -651,6 +651,9 @@ function handleSsePart(part) {
       const event = JSON.parse(trimmed.slice(5).trim());
       if (event.type === "token") {
         state.tokenQueue += event.content || "";
+      } else if (event.type === "done") {
+        // Mark stream as complete so finishStream can flush remaining tokens
+        state.streamComplete = true;
       } else if (event.type === "error") {
         showAssistantError(event.error || "Stream failed", state.activeAssistant?.closest(".assistant-message"));
       }
@@ -679,15 +682,26 @@ function pumpTokens() {
 }
 
 function finishStream() {
+  // Wait for all queued tokens to be rendered
+  const flushTokens = () => {
+    if (state.tokenQueue && state.activeAssistant) {
+      // Render all remaining tokens immediately
+      state.tokenText += state.tokenQueue;
+      state.tokenQueue = "";
+      state.activeAssistant.innerHTML = renderMarkdown(state.tokenText);
+      attachCodeCopy(state.activeAssistant);
+      scrollToBottom();
+    }
+  };
+  
+  flushTokens();
+  
   if (state.tokenPump) cancelAnimationFrame(state.tokenPump);
-  if (state.activeAssistant) {
-    state.activeAssistant.innerHTML = state.tokenText ? renderMarkdown(state.tokenText) : loaderHtml();
-    attachCodeCopy(state.activeAssistant);
-  }
   state.activeAssistant = null;
   state.tokenPump = null;
   state.tokenQueue = "";
   state.tokenText = "";
+  state.streamComplete = false;
 }
 
 async function stopStream() {

@@ -22,7 +22,16 @@ class OllamaProvider extends Provider {
 
   async chatStream(messages, model, onToken, onDone, onError, { signal } = {}) {
     const url = new URL('/api/chat', this.host);
-    const body = JSON.stringify({ model, messages, stream: true });
+    const body = JSON.stringify({ 
+      model, 
+      messages, 
+      stream: true,
+      options: {
+        num_predict: 2048,  // Allow longer responses
+        temperature: 0.7,
+        top_p: 0.9
+      }
+    });
 
     return new Promise((resolve, reject) => {
       const req = request(
