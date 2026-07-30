@@ -13,9 +13,24 @@ const TYPE_LIMITS = {
 
 const IMAGE_MIME = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/avif'];
 
+const TEXT_TYPES = ['text/plain', 'text/markdown', 'text/csv', 'application/json'];
+const EXT_MAP = {
+  '.txt': 'text/plain',
+  '.md': 'text/markdown',
+  '.csv': 'text/csv',
+  '.json': 'application/json',
+  '.pdf': 'application/pdf',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.png': 'image/png',
+  '.gif': 'image/gif',
+  '.webp': 'image/webp',
+  '.avif': 'image/avif',
+};
+
 function typeCategory(mimeType) {
   if (mimeType.startsWith('image/')) return 'image';
-  if (mimeType.startsWith('text/')) return 'text';
+  if (TEXT_TYPES.includes(mimeType)) return 'text';
   if (mimeType === 'application/pdf') return 'pdf';
   return null;
 }
@@ -24,8 +39,14 @@ const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 10 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
-    const cat = typeCategory(file.mimetype);
+    let mime = file.mimetype;
+    if (mime === 'application/octet-stream') {
+      const ext = path.extname(file.originalname).toLowerCase();
+      mime = EXT_MAP[ext] || mime;
+    }
+    const cat = typeCategory(mime);
     if (!cat) return cb(new Error(`Unsupported file type: ${file.mimetype}`));
+    file.mimetype = mime;
     cb(null, true);
   },
 });
@@ -39,23 +60,24 @@ async function processUpload(file) {
     throw err;
   }
 
-  const ext = path.extname(file.originalname) || '.bin';
-  const safeBase = path.basename(file.originalname, ext).replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 64);
-  const uniqueName = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${safeBase}${ext}`;
-  const destPath = path.join(UPLOAD_DIR, uniqueName);
-
+  let safeExt = path.extname(file.originalname) || '.bin';
+  const safeBase = path.basename(file.originalname, safeExt).replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 64);
   let buf = file.buffer;
 
-  if (IMAGE_MIME.includes(file.mimetype)) {
+  if (IMAGE_MIME.includes(file.mimetype) && file.mimetype !== 'image/gif') {
     try {
       buf = await sharp(buf)
         .resize(1920, 1920, { fit: 'inside', withoutEnlargement: true })
         .jpeg({ quality: 80 })
         .toBuffer();
+      safeExt = '.jpg';
     } catch {
       // fall through with original
     }
   }
+
+  const uniqueName = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${safeBase}${safeExt}`;
+  const destPath = path.join(UPLOAD_DIR, uniqueName);
 
   await fs.promises.writeFile(destPath, buf);
 

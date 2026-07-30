@@ -44,6 +44,7 @@ const els = {
   searchInput: document.querySelector("#searchInput"),
   searchResults: document.querySelector("#searchResults"),
   settingsButton: document.querySelector("#settingsButton"),
+  fileInput: document.querySelector("#fileInput"),
 };
 
 const state = {
@@ -56,6 +57,7 @@ const state = {
   runningConversationId: null,
   streamAbort: null,
   activeAssistant: null,
+  uploading: false,
   tokenQueue: "",
   tokenText: "",
   tokenPump: null,
@@ -1024,6 +1026,9 @@ function bindEvents() {
       els.modelPicker.dataset.open = "false";
     }
   });
+
+  document.querySelector('[data-tool="add"]').addEventListener("click", () => els.fileInput.click());
+  els.fileInput.addEventListener("change", uploadFile);
 }
 
 function debounce(fn, wait) {
@@ -1032,6 +1037,91 @@ function debounce(fn, wait) {
     clearTimeout(timeout);
     timeout = setTimeout(() => fn(...args), wait);
   };
+}
+
+function formatFileSize(bytes) {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+async function uploadFile(event) {
+  const file = event.target.files[0];
+  event.target.value = "";
+  if (!file || state.uploading) return;
+
+  state.uploading = true;
+  const progress = createUploadProgress();
+
+  try {
+    const result = await new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open("POST", "/api/upload");
+
+      xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable) {
+          const pct = Math.round((e.loaded / e.total) * 100);
+          progress.querySelector(".upload-fill").style.width = `${pct}%`;
+          progress.querySelector(".upload-label").textContent = `Uploading ${file.name} — ${pct}%`;
+        }
+      };
+
+      xhr.onload = () => {
+        if (xhr.status === 201) return resolve(JSON.parse(xhr.responseText));
+        try {
+          const err = JSON.parse(xhr.responseText);
+          reject(new Error(err.error || `Upload failed (${xhr.status})`));
+        } catch {
+          reject(new Error(`Upload failed (${xhr.status})`));
+        }
+      };
+
+      xhr.onerror = () => reject(new Error("Upload failed"));
+      const fd = new FormData();
+      fd.append("file", file);
+      xhr.send(fd);
+    });
+
+    progress.querySelector(".upload-fill").style.width = "100%";
+    progress.querySelector(".upload-label").textContent = `Uploaded ${file.name}`;
+
+    const ext = result.name.split(".").pop()?.toLowerCase();
+    const isImage = /^(jpg|jpeg|png|gif|webp|avif)$/.test(ext);
+
+    const fileHtml = `<a href="${result.url}" target="_blank" class="file-attachment"><span class="file-icon">${isImage ? "IMG" : "FILE"}</span><span class="file-info"><span class="file-name">${escapeHtml(result.name)}</span><span class="file-meta">${result.type} — ${formatFileSize(result.size)}</span></span></a>`;
+    const msgText = `[Uploaded: ${result.url}]\n\n${fileHtml}`;
+
+    const conv = await ensureConversation(msgText);
+    addUploadedMessage(msgText);
+    await streamChat(conv.id, msgText);
+  } catch (error) {
+    progress.querySelector(".upload-fill").classList.add("upload-error");
+    progress.querySelector(".upload-label").textContent = error.message;
+    setTimeout(() => progress.remove(), 2500);
+    showAssistantError(error.message);
+  } finally {
+    state.uploading = false;
+  }
+}
+
+function createUploadProgress() {
+  const el = document.createElement("div");
+  el.className = "upload-progress";
+  el.innerHTML = '<div class="upload-track"><div class="upload-fill"></div></div><span class="upload-label">Preparing…</span>';
+  els.messages.append(el);
+  els.emptyState.hidden = true;
+  scrollToBottom();
+  return el;
+}
+
+function addUploadedMessage(content) {
+  const wrap = document.createElement("article");
+  wrap.className = "message user-message";
+  wrap.dataset.messageId = crypto.randomUUID();
+  wrap.innerHTML = `<div class="user-bubble"><div class="message-content">${content}</div></div>`;
+  els.messages.append(wrap);
+  els.emptyState.hidden = true;
+  scrollToBottom();
 }
 
 async function boot() {

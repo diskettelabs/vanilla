@@ -1,12 +1,34 @@
 const providers = require('./providers');
 const storage = require('./storage');
 const system = require('./system');
+const uploads = require('./upload');
 
 const CONFIG = require('../config/default.json');
 
 const activeStreams = new Map();
 
 function register(app) {
+  // File upload
+  app.post('/api/upload', (req, res, next) => {
+    uploads.upload.single('file')(req, res, (err) => {
+      if (err) {
+        if (err.code === 'LIMIT_FILE_SIZE') return res.status(413).json({ error: 'File too large (max 10MB)' });
+        if (err.message?.startsWith('Unsupported file type')) return res.status(415).json({ error: err.message });
+        return res.status(400).json({ error: err.message });
+      }
+      next();
+    });
+  }, async (req, res) => {
+    if (!req.file) return res.status(400).json({ error: 'No file provided' });
+    try {
+      const result = await uploads.processUpload(req.file);
+      res.status(201).json(result);
+    } catch (e) {
+      const status = e.statusCode || 500;
+      res.status(status).json({ error: e.message });
+    }
+  });
+
   // Health
   app.get('/api/health', (_req, res) => res.json({ status: 'ok' }));
 

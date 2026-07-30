@@ -1172,6 +1172,94 @@ body[data-reduce-motion="true"] *::after {
   }
 }
 
+.upload-progress {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: var(--panel);
+  font-size: 14px;
+}
+
+.upload-track {
+  flex: 1;
+  height: 6px;
+  border-radius: 99px;
+  background: var(--line);
+  overflow: hidden;
+}
+
+.upload-fill {
+  height: 100%;
+  width: 0%;
+  border-radius: 99px;
+  background: #4a9eff;
+  transition: width 200ms ease;
+}
+
+.upload-fill.upload-error {
+  background: #e74c3c;
+}
+
+.upload-label {
+  flex-shrink: 0;
+  color: var(--muted);
+  min-width: 120px;
+}
+
+.file-attachment {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 6px;
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  text-decoration: none;
+  color: inherit;
+  font-size: 15px;
+  line-height: 1.2;
+}
+
+.file-attachment:hover {
+  background: var(--panel-strong);
+}
+
+.file-icon {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 6px;
+  background: var(--panel-strong);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  flex-shrink: 0;
+}
+
+.file-info {
+  display: grid;
+  gap: 1px;
+}
+
+.file-name {
+  font-weight: 600;
+  word-break: break-all;
+}
+
+.file-meta {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.message-content .file-attachment {
+  margin-top: 10px;
+}
+
 @media (max-width: 840px) {
   .app-shell {
     grid-template-columns: 1fr;
