@@ -59,6 +59,7 @@ const state = {
   tokenQueue: "",
   tokenText: "",
   tokenPump: null,
+  streamComplete: false,
   themes: [],
   settings: {
     theme: localStorage.getItem("vanilla-theme") || "default",
@@ -574,7 +575,6 @@ async function streamChat(conversationId, message) {
   state.tokenQueue = "";
   state.tokenText = "";
   
-  // Show loading message for first model load
   state.activeAssistant.textContent = "Loading model...";
   pumpTokens();
 
@@ -615,8 +615,8 @@ async function streamChat(conversationId, message) {
       buffer = parts.pop() || "";
       for (const part of parts) {
         if (!hasReceivedTokens) {
-          // Clear loading message on first token
-          state.activeAssistant.textContent = "";
+          const loader = state.activeAssistant.querySelector(".typing-loader");
+          if (loader) loader.remove();
           state.tokenQueue = "";
           state.tokenText = "";
           hasReceivedTokens = true;
@@ -652,7 +652,6 @@ function handleSsePart(part) {
       if (event.type === "token") {
         state.tokenQueue += event.content || "";
       } else if (event.type === "done") {
-        // Mark stream as complete so finishStream can flush remaining tokens
         state.streamComplete = true;
       } else if (event.type === "error") {
         showAssistantError(event.error || "Stream failed", state.activeAssistant?.closest(".assistant-message"));
@@ -682,10 +681,8 @@ function pumpTokens() {
 }
 
 function finishStream() {
-  // Wait for all queued tokens to be rendered
   const flushTokens = () => {
     if (state.tokenQueue && state.activeAssistant) {
-      // Render all remaining tokens immediately
       state.tokenText += state.tokenQueue;
       state.tokenQueue = "";
       state.activeAssistant.innerHTML = renderMarkdown(state.tokenText);
@@ -817,7 +814,6 @@ async function refreshStats() {
     const gpuPressure = Array.isArray(stats.gpu) ? stats.gpu[0]?.pressure : null;
     els.cpuStat.textContent = `CPU: ${formatPercent(cpu)}`;
     els.ramStat.textContent = `RAM: ${formatPercent(ram)}`;
-    // The backend documents GPU usage as null on macOS unless privileged metrics are available.
     els.gpuStat.textContent = gpuUsage == null ? `GPU: ${gpuPressure || "--"}` : `GPU: ${formatPercent(gpuUsage)}`;
   } catch (error) {
     els.cpuStat.textContent = "CPU: --";
