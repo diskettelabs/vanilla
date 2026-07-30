@@ -97,7 +97,7 @@ img {
 .brand {
   display: flex;
   align-items: center;
-  min-width: 0;
+  flex-shrink: 0;
   text-decoration: none;
 }
 
@@ -451,6 +451,7 @@ img {
   padding: 26px;
   pointer-events: none;
 }
+.empty-state[hidden] { display: none !important; }
 
 .empty-state p {
   margin: 0 0 78px;
