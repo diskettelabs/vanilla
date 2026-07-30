@@ -19,7 +19,11 @@ app.use('/uploads', express.static(uploads.UPLOAD_DIR));
 
 routes.register(app);
 
-app.listen(CONFIG.port, () => {
-  console.log(`Vanilla Chat running at http://localhost:${CONFIG.port}`);
-  console.log(`Available providers: ${providers.listProviders().join(', ')}`);
-});
+if (require.main === module) {
+  app.listen(CONFIG.port, () => {
+    console.log(`Vanilla Chat running at http://localhost:${CONFIG.port}`);
+    console.log(`Available providers: ${providers.listProviders().join(', ')}`);
+  });
+}
+
+module.exports = app;
