@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "express": "^4.21.0",
+    "gelectron-ollama": "file:../gelectron-ollama",
     "multer": "^2.2.0",
     "sharp": "^0.35.3",
     "uuid": "^11.1.1"

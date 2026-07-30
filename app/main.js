@@ -1,10 +1,32 @@
 const { app, BrowserWindow, Menu, shell } = require('electron');
 const path = require('node:path');
 const http = require('node:http');
+const { GelectronOllama } = require('gelectron-ollama');
 const CONFIG = require('../config/default.json');
 
 let mainWindow = null;
 let server = null;
+let ollamaServer = null;
+
+async function startOllama() {
+  const go = new GelectronOllama({
+    basePath: app.getPath('userData'),
+  });
+
+  if (await go.isRunning()) {
+    console.log('Ollama is already running');
+    return;
+  }
+
+  console.log('Ollama not detected — downloading and starting...');
+  const metadata = await go.getMetadata('latest');
+  await go.serve(metadata.version, {
+    serverLog: (msg) => console.log('[Ollama]', msg),
+    downloadLog: (pct, msg) => console.log('[Ollama]', `${pct}%`, msg),
+  });
+  ollamaServer = go.getServer();
+  console.log(`Ollama ${metadata.version} is now running`);
+}
 
 async function startServer() {
   const expressApp = require('../server');
@@ -123,6 +145,7 @@ async function createWindow() {
 
 app.whenReady().then(async () => {
   buildMenu();
+  await startOllama();
   await startServer();
   await createWindow();
 
@@ -139,8 +162,11 @@ app.on('window-all-closed', () => {
   }
 });
 
-app.on('will-quit', () => {
+app.on('will-quit', async () => {
   if (server) {
     server.close();
+  }
+  if (ollamaServer) {
+    await ollamaServer.stop();
   }
 });
