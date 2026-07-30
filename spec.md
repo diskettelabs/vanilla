@@ -81,6 +81,9 @@ The server maintains a `Map<conversationId, AbortController>` (`activeStreams`) 
 | `/api/system/stats` | GET | CPU/GPU/NPU/RAM usage and pressure stats |
 | `/api/search` | GET | Full-text search across all conversations (`?q=term`) |
 | `/api/chat/stop/:conversationId` | POST | Aborts an active streaming response |
+| `/api/upload` | POST | Upload a file (multipart/form-data, field `file`); returns `{url,name,size,type}` |
+| `/api/tools` | GET | List available tool definitions (name, description, input_schema) |
+| `/api/tools/execute` | POST | Execute a tool call `{name, arguments}`; returns `{result, name}` |
 
 **SSE Stream Request Body (`POST /api/chat/stream`):**
 
@@ -157,6 +160,57 @@ Response format:
 - **GPU:** Detected via `system_profiler SPDisplaysDataType` (macOS). `usagePercent` is `null` because GPU utilization requires privileged access (`powermetrics`).
 - **NPU:** Apple Neural Engine detected via CPU model string check. `usagePercent` is `null` without root.
 - **Implementation:** `src/system.js` — platform-specific commands via `execSync` with fallbacks to pure `os` module calculations.
+
+**`GET /api/tools`** — Returns an array of tool definitions:
+```json
+[
+  {
+    "name": "web_search",
+    "description": "Search the web for current information...",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "query": { "type": "string", "description": "The search query" }
+      },
+      "required": ["query"]
+    }
+  }
+]
+```
+
+**`POST /api/tools/execute`** — Execute a tool call. Accepts `{"name":"web_search","arguments":{"query":"..."}}`. Returns `{"result":"...","name":"web_search"}`. The server handles execution (DuckDuckGo HTML scraping for web_search, URL fetch for web_fetch).
+
+**Tool calling in chat stream:** The streaming endpoint (`POST /api/chat/stream`) automatically injects tool definitions as a system message before the conversation history. The model can request tool use by emitting a `<TOOL_CALL>{"name":"...","arguments":{...}}</TOOL_CALL>` block in its response. The server detects this, executes the tool, sends the result back to the model, and continues the conversation loop (max 5 iterations). SSE events:
+
+| Event | Fields | Description |
+|---|---|---|
+| `tool_call` | `name`, `arguments` | Model requested a tool execution |
+| `tool_result` | `name`, `result` | Tool execution completed |
+| `tool_error` | `name`, `error` | Tool execution failed |
+
+The frontend renders tool calls as collapsible cards showing the tool name, arguments, and result with a spinner during execution.
+
+**`POST /api/upload`** — Upload a file (multipart/form-data, field name `file`).
+
+File type restrictions and size limits enforced server-side:
+
+| Category | MIME Types | Size Limit | Post-Processing |
+|---|---|---|---|
+| Image | `image/jpeg`, `image/png`, `image/gif`, `image/webp`, `image/avif` | 5 MB | Compressed via `sharp` (resize to max 1920px, JPEG quality 80) |
+| Text/doc | `text/*`, `.md`, `.csv`, `.yaml`, `.yml`, `.json`, `.log`, `.xml`, source code extensions | 2 MB | Stored as-is |
+| PDF | `application/pdf` | 10 MB | Stored as-is |
+
+Files outside these types are rejected with HTTP 415. Size overages return HTTP 413. Files are stored in `data/uploads/` with unique filenames (`<timestamp>-<random>-<safename>`). The `/uploads/` path is served statically.
+
+Response (HTTP 201):
+```json
+{
+  "url": "/uploads/1712345678-a1b2c3-myimage.jpg",
+  "name": "myimage.jpg",
+  "size": 123456,
+  "type": "image/jpeg"
+}
+```
 
 **`GET /api/search?q=<term>`** — Full-text search across all conversations. Supports both exact substring matching and fuzzy character-order matching (e.g., `banna` matches `bananas`).
 
@@ -307,6 +361,23 @@ Single-page web application with the following interactive elements:
 | **Edit & Resend button** | Appears on hover over the last user message; fills the input with that message's content for editing |
 | **Search input** | Sidebar search bar with 200ms debounce; calls `GET /api/search?q=...` |
 | **Search results** | Replaces conversation list while searching; shows title + up to 4 snippets per result with matched terms highlighted |
+
+**Tool calls:**
+- The model is prompted with tool definitions at the start of each message exchange
+- When the model emits `<TOOL_CALL>{"name":"...","arguments":{...}}</TOOL_CALL>`, the server executes the tool
+- The frontend renders collapsible cards with tool name, arguments (expandable), and result
+- A spinner shows during execution; errors are displayed in red
+- Text before and after tool calls is rendered as normal message content
+- Tool calls are serialized in the conversation history as intermediate messages
+
+**File upload:**
+- 📎 button in the input area opens a file picker (accepts images, PDFs, text/docs, source code)
+- Drag-and-drop onto the messages area to upload
+- Multiple files can be uploaded simultaneously
+- Progress bar appears above the stats bar during upload
+- Upload progress tracks per-file via `XMLHttpRequest.upload.onprogress`
+- Images are inserted as `![name](url)` markdown into the input; other files as `[name](url)` links
+- Server enforces size limits (5MB images, 2MB text, 10MB PDFs) and auto-compresses images via sharp
 
 **System stats bar:**
 - A thin bar between messages and the input area showing live CPU, RAM, GPU, and NPU metrics
