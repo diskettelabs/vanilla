@@ -4,7 +4,7 @@
   "providers": {
     "ollama": {
       "host": "http://localhost:11434",
-      "requestTimeout": 30000
+      "requestTimeout": 120000
     },
     "openai": {
       "apiKey": "",

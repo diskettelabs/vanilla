@@ -602,15 +602,24 @@ async function streamChat(conversationId, message) {
     const decoder = new TextDecoder();
     let buffer = "";
     let done = false;
+    let hasReceivedTokens = false;
+    
     while (!done) {
       const chunk = await reader.read();
       done = chunk.done;
       buffer += decoder.decode(chunk.value || new Uint8Array(), { stream: !done });
       const parts = buffer.split("\n\n");
       buffer = parts.pop() || "";
-      for (const part of parts) handleSsePart(part);
+      for (const part of parts) {
+        hasReceivedTokens = true;
+        handleSsePart(part);
+      }
     }
     if (buffer.trim()) handleSsePart(buffer);
+    
+    if (!hasReceivedTokens) {
+      throw new Error("No response received from model");
+    }
   } catch (error) {
     if (error.name !== "AbortError") showAssistantError(error.message, assistant);
   } finally {
@@ -708,7 +717,7 @@ async function loadProvidersAndModels() {
   els.activeModel.textContent = "Finding models";
   const optionGroups = await Promise.all(state.providers.map(async (provider) => {
     try {
-      const models = await api(`/api/models?provider=${encodeURIComponent(provider.id)}`, { timeoutMs: 4500 });
+      const models = await api(`/api/models?provider=${encodeURIComponent(provider.id)}`, { timeoutMs: 10000 });
       return models.map((model) => ({ provider: provider.id, providerLabel: provider.label, model }));
     } catch (error) {
       return [{
