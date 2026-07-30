@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Vanilla Chat</title>
+    <link rel="stylesheet" href="./styles.css">
+  </head>
+  <body>
+    <div class="app-shell" data-sidebar="open">
+      <aside class="sidebar" aria-label="Conversation sidebar">
+        <div class="sidebar-top">
+          <a class="brand" href="/" aria-label="Vanilla home">
+            <img src="./assets/vanilla%20logomark.svg" alt="vanilla.">
+          </a>
+          <button class="icon-button sidebar-toggle" type="button" aria-label="Collapse sidebar" title="Collapse sidebar">
+            <img src="./assets/sidebar.svg" alt="">
+          </button>
+        </div>
+
+        <div class="quick-actions">
+          <button class="side-command" type="button" data-action="new-chat">
+            <span class="command-main">
+              <img src="./assets/new%20chat.svg" alt="">
+              <span>New Chat</span>
+            </span>
+            <kbd data-shortcut="new-chat">⌘+⇧+O</kbd>
+          </button>
+          <button class="side-command" type="button" data-action="search">
+            <span class="command-main">
+              <img src="./assets/search.svg" alt="">
+              <span>Search</span>
+            </span>
+            <kbd data-shortcut="search">⌘+K</kbd>
+          </button>
+        </div>
+
+        <nav class="chat-nav" aria-label="Recent chats">
+          <h2>Recent Chats</h2>
+          <div id="conversationList" class="conversation-list" role="list"></div>
+        </nav>
+      </aside>
+
+      <main class="main-panel">
+        <header class="top-bar">
+          <div class="top-left">
+            <button class="icon-button main-sidebar-toggle" type="button" aria-label="Expand sidebar" title="Expand sidebar">
+              <img src="./assets/sidebar.svg" alt="">
+            </button>
+            <div class="model-picker" data-open="false">
+              <button id="modelButton" class="model-button" type="button" aria-haspopup="listbox" aria-expanded="false">
+                <span id="activeModel">Loading models</span>
+                <span class="chevron">›</span>
+              </button>
+              <div class="model-menu" role="listbox" aria-label="Available models">
+                <label class="model-search-wrap">
+                  <span class="sr-only">Search models</span>
+                  <input id="modelSearch" type="search" autocomplete="off" placeholder="Search models">
+                </label>
+                <div id="modelOptions" class="model-options"></div>
+              </div>
+            </div>
+            <div class="system-stats" aria-label="System stats">
+              <span id="cpuStat">CPU: --</span>
+              <span id="gpuStat">GPU: --</span>
+              <span id="ramStat">RAM: --</span>
+            </div>
+          </div>
+
+          <button id="settingsButton" class="icon-button settings-button" type="button" aria-label="Open settings" title="Settings">
+            <img src="./assets/settings.svg" alt="">
+          </button>
+        </header>
+
+        <section class="chat-stage" aria-live="polite">
+          <div id="emptyState" class="empty-state">
+            <p id="greeting">Ready when you are, Owen.</p>
+          </div>
+          <div id="messages" class="messages" aria-label="Messages"></div>
+        </section>
+
+        <form id="composer" class="composer" autocomplete="off">
+          <div class="omnibar" data-expanded="false">
+            <button id="plusButton" class="plus-button" type="button" aria-label="Add context" title="Add context">
+              <img src="./assets/add.svg" alt="">
+            </button>
+            <textarea id="promptInput" rows="1" placeholder="what's up?" aria-label="Message"></textarea>
+            <div class="expanded-tools" aria-hidden="true">
+              <button class="pill-tool" type="button" data-tool="add">
+                <img src="./assets/add.svg" alt="">
+                <span>add</span>
+              </button>
+              <button class="pill-tool" type="button" data-tool="tools">
+                <img src="./assets/tools.svg" alt="">
+                <span>tools</span>
+              </button>
+            </div>
+            <button id="submitButton" class="submit-button" type="submit" aria-label="Submit message" title="Submit">
+              <img id="submitIcon" src="./assets/submit.svg" alt="">
+            </button>
+          </div>
+        </form>
+      </main>
+    </div>
+
+    <div id="searchModal" class="modal-backdrop" hidden>
+      <section class="modal" role="dialog" aria-modal="true" aria-labelledby="searchTitle">
+        <div class="modal-head">
+          <h2 id="searchTitle">Search chats</h2>
+          <button class="text-button" type="button" data-close-modal>Close</button>
+        </div>
+        <input id="searchInput" class="modal-input" type="search" placeholder="Search previous conversations" autocomplete="off">
+        <div id="searchResults" class="search-results"></div>
+      </section>
+    </div>
+
+    <div id="settingsModal" class="modal-backdrop" hidden>
+      <section class="modal settings-modal" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+        <div class="modal-head">
+          <h2 id="settingsTitle">Settings</h2>
+          <button class="text-button" type="button" data-close-modal>Close</button>
+        </div>
+        <div class="settings-grid">
+          <label>
+            <span>Provider</span>
+            <select id="providerSelect"></select>
+          </label>
+          <label>
+            <span>Model</span>
+            <select id="modelSelect"></select>
+          </label>
+        </div>
+        <div class="settings-divider" aria-hidden="true"></div>
+        <div class="settings-section">
+          <h3>Appearance</h3>
+          <div class="settings-grid">
+            <label>
+              <span>Theme</span>
+              <select id="themeSelect"></select>
+            </label>
+            <label>
+              <span>Density</span>
+              <select id="densitySelect">
+                <option value="comfortable">Comfortable</option>
+                <option value="compact">Compact</option>
+              </select>
+            </label>
+            <label>
+              <span>Text size</span>
+              <select id="textSizeSelect">
+                <option value="small">Small</option>
+                <option value="regular">Regular</option>
+                <option value="large">Large</option>
+              </select>
+            </label>
+            <label>
+              <span>Message accent</span>
+              <select id="accentSelect">
+                <option value="sky">Sky</option>
+                <option value="mint">Mint</option>
+                <option value="peach">Peach</option>
+                <option value="rose">Rose</option>
+                <option value="lavender">Lavender</option>
+              </select>
+            </label>
+            <label>
+              <span>Sidebar</span>
+              <select id="sidebarSelect">
+                <option value="open">Open by default</option>
+                <option value="closed">Collapsed by default</option>
+              </select>
+            </label>
+          </div>
+        </div>
+        <div class="settings-section settings-options">
+          <label class="check-row"><input id="reduceMotionToggle" type="checkbox"><span>Reduce motion</span></label>
+          <label class="check-row"><input id="enterToSendToggle" type="checkbox"><span>Press Enter to send</span></label>
+          <label class="check-row"><input id="showStatsToggle" type="checkbox"><span>Show system stats</span></label>
+        </div>
+        <p class="muted-note">Themes are loaded from the palettes in <code>themes/</code>. Provider and model options come from the configured server.</p>
+      </section>
+    </div>
+
+    <script src="./app.js" defer></script>
+  </body>
+</html>
