@@ -573,6 +573,9 @@ async function streamChat(conversationId, message) {
   state.activeAssistant = assistant.querySelector(".assistant-body");
   state.tokenQueue = "";
   state.tokenText = "";
+  
+  // Show loading message for first model load
+  state.activeAssistant.textContent = "Loading model...";
   pumpTokens();
 
   const controller = new AbortController();
@@ -611,7 +614,13 @@ async function streamChat(conversationId, message) {
       const parts = buffer.split("\n\n");
       buffer = parts.pop() || "";
       for (const part of parts) {
-        hasReceivedTokens = true;
+        if (!hasReceivedTokens) {
+          // Clear loading message on first token
+          state.activeAssistant.textContent = "";
+          state.tokenQueue = "";
+          state.tokenText = "";
+          hasReceivedTokens = true;
+        }
         handleSsePart(part);
       }
     }

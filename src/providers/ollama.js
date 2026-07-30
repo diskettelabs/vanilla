@@ -27,7 +27,11 @@ class OllamaProvider extends Provider {
     return new Promise((resolve, reject) => {
       const req = request(
         url,
-        { method: 'POST', headers: { 'Content-Type': 'application/json' } },
+        { 
+          method: 'POST', 
+          headers: { 'Content-Type': 'application/json' },
+          timeout: 0  // No timeout - streaming can take a long time
+        },
         (res) => {
           let buffer = '';
           const onAbort = () => {
@@ -72,12 +76,6 @@ class OllamaProvider extends Provider {
         }
       );
       req.on('error', (e) => { onError(e); reject(e); });
-      req.on('timeout', () => {
-        req.destroy();
-        const e = new Error('Stream timed out');
-        onError(e);
-        reject(e);
-      });
       req.write(body);
       req.end();
     });
