@@ -1,8 +1,35 @@
 {
   "port": 3000,
-  "ollama": {
-    "host": "http://localhost:11434",
-    "requestTimeout": 30000
+  "defaultProvider": "ollama",
+  "providers": {
+    "ollama": {
+      "host": "http://localhost:11434",
+      "requestTimeout": 30000
+    },
+    "openai": {
+      "apiKey": "",
+      "baseUrl": "https://api.openai.com/v1",
+      "requestTimeout": 60000,
+      "defaultModel": "gpt-4o-mini"
+    },
+    "anthropic": {
+      "apiKey": "",
+      "baseUrl": "https://api.anthropic.com/v1",
+      "requestTimeout": 60000,
+      "defaultModel": "claude-3-5-haiku-latest"
+    },
+    "opencode": {
+      "command": "opencode",
+      "defaultModel": "default"
+    },
+    "aider": {
+      "command": "aider",
+      "defaultModel": "claude-3-5-sonnet-20241022"
+    },
+    "goose": {
+      "command": "goose",
+      "defaultModel": "default"
+    }
   },
   "storage": {
     "dir": "./data/conversations"

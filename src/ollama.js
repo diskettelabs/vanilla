@@ -47,7 +47,7 @@ async function listModels() {
   return (data.models || []).map((m) => ({ name: m.name, size: m.size }));
 }
 
-async function chatStream(messages, model, onToken, onDone, onError) {
+async function chatStream(messages, model, onToken, onDone, onError, { signal } = {}) {
   const url = new URL('/api/chat', CONFIG.ollama.host);
   const body = JSON.stringify({ model, messages, stream: true });
 
@@ -57,6 +57,16 @@ async function chatStream(messages, model, onToken, onDone, onError) {
       { method: 'POST', headers: { 'Content-Type': 'application/json' } },
       (res) => {
         let buffer = '';
+        const onAbort = () => {
+          req.destroy();
+          const e = new Error('Stream aborted by user');
+          onError(e);
+          reject(e);
+        };
+        if (signal) {
+          if (signal.aborted) { onAbort(); return; }
+          signal.addEventListener('abort', onAbort, { once: true });
+        }
         res.on('data', (chunk) => {
           buffer += chunk.toString();
           const lines = buffer.split('\n');
