@@ -1,5 +1,6 @@
 const providers = require('./providers');
 const storage = require('./storage');
+const system = require('./system');
 
 const CONFIG = require('../config/default.json');
 
@@ -8,6 +9,15 @@ const activeStreams = new Map();
 function register(app) {
   // Health
   app.get('/api/health', (_req, res) => res.json({ status: 'ok' }));
+
+  // System stats
+  app.get('/api/system/stats', (_req, res) => {
+    try {
+      res.json(system.getStats());
+    } catch (e) {
+      res.status(500).json({ error: e.message });
+    }
+  });
 
   // Providers
   app.get('/api/providers', (_req, res) => {

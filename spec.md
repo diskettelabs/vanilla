@@ -78,6 +78,7 @@ The server maintains a `Map<conversationId, AbortController>` (`activeStreams`) 
 | `/api/conversations/:id/erase-last-response` | POST | Removes the most recent assistant message |
 | `/api/conversations/:id/regenerate` | POST | Replaces last user message and removes last assistant |
 | `/api/chat/stream` | POST | SSE streaming chat completion |
+| `/api/system/stats` | GET | CPU/GPU/NPU/RAM usage and pressure stats |
 | `/api/search` | GET | Full-text search across all conversations (`?q=term`) |
 | `/api/chat/stop/:conversationId` | POST | Aborts an active streaming response |
 
@@ -111,6 +112,51 @@ Each line is a complete JSON object prefixed with `data: ` and terminated by `\n
 **`POST /api/conversations/:id/erase-last-response`** — Scans messages from the end backward and removes the first `assistant` message found. Returns the updated conversation.
 
 **`POST /api/conversations/:id/regenerate`** — Accepts `{"message":"..."}` in the body. Replaces the last user message content with the new text and removes the most recent assistant message. The frontend can then resend using the standard stream endpoint.
+
+**`GET /api/system/stats`** — System resource usage and pressure metrics.
+
+Response format:
+```json
+{
+  "cpu": {
+    "model": "Apple M4",
+    "cores": 10,
+    "architecture": "arm64",
+    "usagePercent": 21.5,
+    "pressure": "low",
+    "loadAverage": [2.45, 2.32, 2.45]
+  },
+  "memory": {
+    "physical": { "usedGB": 15.9, "totalGB": 16.0 },
+    "pressurePercent": 44,
+    "pressure": "low"
+  },
+  "gpu": [
+    {
+      "name": "Apple M4",
+      "chipset": "Apple",
+      "vramTotalGB": 0,
+      "metalFamily": "Metal 3",
+      "usagePercent": null,
+      "pressure": "low"
+    }
+  ],
+  "npu": {
+    "available": true,
+    "name": "Apple Neural Engine",
+    "usagePercent": null,
+    "pressure": "low"
+  }
+}
+```
+
+- **Pressure levels:** `low` (< 60%), `normal` (60-80%), `high` (80-90%), `extreme` (> 90%)
+- **CPU:** Usage calculated by sampling idle/total ticks. Fallback uses `top` (macOS) or `/proc/stat` (Linux).
+- **Memory `physical`:** Raw OS memory from `os.totalmem()` / `os.freemem()`. On macOS, cached file pages appear as "used" here.
+- **Memory `pressurePercent`:** On macOS, derived from `memory_pressure` tool (active memory under pressure). On other platforms, mirrors physical usage.
+- **GPU:** Detected via `system_profiler SPDisplaysDataType` (macOS). `usagePercent` is `null` because GPU utilization requires privileged access (`powermetrics`).
+- **NPU:** Apple Neural Engine detected via CPU model string check. `usagePercent` is `null` without root.
+- **Implementation:** `src/system.js` — platform-specific commands via `execSync` with fallbacks to pure `os` module calculations.
 
 **`GET /api/search?q=<term>`** — Full-text search across all conversations. Supports both exact substring matching and fuzzy character-order matching (e.g., `banna` matches `bananas`).
 
@@ -261,6 +307,13 @@ Single-page web application with the following interactive elements:
 | **Edit & Resend button** | Appears on hover over the last user message; fills the input with that message's content for editing |
 | **Search input** | Sidebar search bar with 200ms debounce; calls `GET /api/search?q=...` |
 | **Search results** | Replaces conversation list while searching; shows title + up to 4 snippets per result with matched terms highlighted |
+
+**System stats bar:**
+- A thin bar between messages and the input area showing live CPU, RAM, GPU, and NPU metrics
+- Polls `GET /api/system/stats` every 5 seconds
+- Each stat has a colored dot indicating pressure level (green=low, yellow=normal, orange=high, red=extreme)
+- Hovering shows a tooltip with detailed info (model, cores, load average, VRAM, etc.)
+- GPU/NPU usagePercent shows `—` when unavailable (requires root); GPU shows model name instead
 
 **Search UI behavior:**
 - Typing in the search bar triggers `GET /api/search?q=<term>` after a 200ms debounce
