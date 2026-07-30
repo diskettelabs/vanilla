@@ -10,6 +10,7 @@ storage.init();
 const app = express();
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
+app.use('/ui', express.static(path.join(__dirname, 'ui')));
 app.use('/themes', express.static(path.join(__dirname, 'themes')));
 
 routes.register(app);
