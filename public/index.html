@@ -76,7 +76,7 @@
 
         <section class="chat-stage" aria-live="polite">
           <div id="emptyState" class="empty-state">
-            <p id="greeting">Ready when you are, Owen.</p>
+            <p id="greeting">Ready when you are.</p>
           </div>
           <div id="messages" class="messages" aria-label="Messages"></div>
         </section>
@@ -125,6 +125,16 @@
           <h2 id="settingsTitle">Settings</h2>
           <button class="text-button" type="button" data-close-modal>Close</button>
         </div>
+        <div class="settings-section">
+          <h3>Account</h3>
+          <div class="settings-grid">
+            <label>
+              <span>Your name</span>
+              <input id="displayNameInput" class="settings-text-input" type="text" placeholder="Enter your name" autocomplete="off" spellcheck="false">
+            </label>
+          </div>
+        </div>
+        <div class="settings-divider" aria-hidden="true"></div>
         <div class="settings-grid">
           <label>
             <span>Provider</span>
@@ -183,6 +193,86 @@
           <label class="check-row"><input id="showStatsToggle" type="checkbox"><span>Show system stats</span></label>
         </div>
         <p class="muted-note">Themes are loaded from the palettes in <code>themes/</code>. Provider and model options come from the configured server.</p>
+        <p class="muted-note"><button id="redoSetupButton" class="inline-text-button" type="button">Redo first-time setup</button></p>
+      </section>
+    </div>
+
+    <!-- First-run setup flow -->
+    <div id="setupModal" class="modal-backdrop setup-backdrop" hidden>
+      <section class="modal setup-modal" role="dialog" aria-modal="true" aria-labelledby="setupTitle">
+
+        <!-- Step 1: Name -->
+        <div class="setup-step" data-step="1">
+          <div class="setup-hero">
+            <img src="./assets/vanilla%20logomark.svg" alt="vanilla." class="setup-logo">
+          </div>
+          <h2 id="setupTitle" class="setup-title">Welcome to Vanilla.</h2>
+          <p class="setup-subtitle">Let's get you set up. First — what should I call you?</p>
+          <div class="setup-field">
+            <input id="setupNameInput" class="setup-input" type="text" placeholder="Your name" autocomplete="given-name" spellcheck="false">
+          </div>
+          <div class="setup-actions">
+            <button id="setupNameNext" class="setup-primary" type="button">Continue</button>
+          </div>
+        </div>
+
+        <!-- Step 2: AI type -->
+        <div class="setup-step" data-step="2" hidden>
+          <h2 class="setup-title">How are you running AI?</h2>
+          <p class="setup-subtitle">Vanilla works with local models or cloud providers.</p>
+          <div class="setup-choice-grid">
+            <button class="setup-choice" type="button" data-choice="local" aria-pressed="false">
+              <span class="setup-choice-icon">⚡</span>
+              <strong>Local AI</strong>
+              <span>Ollama, running on your machine. Private and offline.</span>
+            </button>
+            <button class="setup-choice" type="button" data-choice="cloud" aria-pressed="false">
+              <span class="setup-choice-icon">☁</span>
+              <strong>Cloud provider</strong>
+              <span>OpenAI, Anthropic, or another API-based service.</span>
+            </button>
+          </div>
+          <div class="setup-actions setup-actions-split">
+            <button class="setup-back" type="button" data-setup-back>Back</button>
+            <button id="setupAiNext" class="setup-primary" type="button" disabled>Continue</button>
+          </div>
+        </div>
+
+        <!-- Step 3a: Local AI config -->
+        <div class="setup-step" data-step="3a" hidden>
+          <h2 class="setup-title">Local AI setup</h2>
+          <p class="setup-subtitle">Vanilla connects to Ollama at <code>localhost:11434</code> by default. No changes needed unless you're using a custom port.</p>
+          <div class="setup-field">
+            <label class="setup-label" for="setupOllamaHost">Ollama host</label>
+            <input id="setupOllamaHost" class="setup-input" type="text" value="http://localhost:11434" spellcheck="false">
+          </div>
+          <div class="setup-actions setup-actions-split">
+            <button class="setup-back" type="button" data-setup-back>Back</button>
+            <button id="setupLocalDone" class="setup-primary" type="button">Let's go</button>
+          </div>
+        </div>
+
+        <!-- Step 3b: Cloud provider config -->
+        <div class="setup-step" data-step="3b" hidden>
+          <h2 class="setup-title">Cloud provider</h2>
+          <p class="setup-subtitle">Pick a provider and paste your API key. You can change this any time in Settings.</p>
+          <div class="setup-field">
+            <label class="setup-label" for="setupProviderSelect">Provider</label>
+            <select id="setupProviderSelect" class="setup-select">
+              <option value="openai">OpenAI</option>
+              <option value="anthropic">Anthropic</option>
+            </select>
+          </div>
+          <div class="setup-field">
+            <label class="setup-label" for="setupApiKey">API key</label>
+            <input id="setupApiKey" class="setup-input" type="password" placeholder="sk-…" autocomplete="off" spellcheck="false">
+          </div>
+          <div class="setup-actions setup-actions-split">
+            <button class="setup-back" type="button" data-setup-back>Back</button>
+            <button id="setupCloudDone" class="setup-primary" type="button">Let's go</button>
+          </div>
+        </div>
+
       </section>
     </div>
 

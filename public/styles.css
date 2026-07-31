@@ -1554,3 +1554,244 @@ body[data-reduce-motion="true"] *::after {
     height: 30px;
   }
 }
+
+/* ─── Settings: text input (name field) ─────────────────────────────────── */
+
+.settings-text-input {
+  min-height: 38px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  padding: 6px 10px;
+  outline: none;
+  width: 100%;
+}
+
+.settings-text-input:focus {
+  border-color: rgba(48, 122, 177, 0.45);
+  box-shadow: 0 0 0 3px rgba(48, 122, 177, 0.1);
+}
+
+/* ─── First-run setup flow ───────────────────────────────────────────────── */
+
+.setup-backdrop {
+  padding-top: 9vh;
+}
+
+.setup-modal {
+  width: min(480px, calc(100vw - 28px));
+  max-height: 88vh;
+  overflow: auto;
+  padding: 28px 28px 24px;
+}
+
+/* Step transition */
+.setup-step {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.setup-step[hidden] {
+  display: none;
+}
+
+/* Branding hero at top of step 1 */
+.setup-hero {
+  display: flex;
+  justify-content: flex-start;
+  margin-bottom: 4px;
+}
+
+.setup-logo {
+  height: 22px;
+  width: auto;
+  opacity: 0.9;
+}
+
+/* Typography */
+.setup-title {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+}
+
+.setup-subtitle {
+  margin: 0;
+  color: var(--muted);
+  font-size: 15px;
+  line-height: 1.45;
+}
+
+.setup-subtitle code {
+  border-radius: 4px;
+  background: var(--panel);
+  padding: 1px 5px;
+  font-family: "Iosevka Extended", ui-monospace, "SF Mono", Monaco, monospace;
+  font-size: 0.9em;
+  color: var(--text);
+}
+
+/* Form fields */
+.setup-field {
+  display: grid;
+  gap: 7px;
+}
+
+.setup-label {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.setup-input {
+  width: 100%;
+  min-height: 42px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  padding: 8px 12px;
+  font-size: 16px;
+  outline: none;
+  transition: border-color 140ms ease, box-shadow 140ms ease;
+}
+
+.setup-input:focus {
+  border-color: rgba(48, 122, 177, 0.5);
+  box-shadow: 0 0 0 3px rgba(48, 122, 177, 0.12);
+}
+
+.setup-select {
+  width: 100%;
+  min-height: 42px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  padding: 6px 10px;
+  font-size: 16px;
+  outline: none;
+  cursor: pointer;
+  transition: border-color 140ms ease, box-shadow 140ms ease;
+}
+
+.setup-select:focus {
+  border-color: rgba(48, 122, 177, 0.5);
+  box-shadow: 0 0 0 3px rgba(48, 122, 177, 0.12);
+}
+
+/* AI type choice cards */
+.setup-choice-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.setup-choice {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 5px;
+  padding: 16px 16px 14px;
+  border: 1.5px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 140ms ease, background 140ms ease, box-shadow 140ms ease;
+}
+
+.setup-choice:hover {
+  border-color: rgba(48, 122, 177, 0.35);
+  background: var(--soft);
+}
+
+.setup-choice[aria-pressed="true"] {
+  border-color: rgba(48, 122, 177, 0.7);
+  background: rgba(199, 226, 251, 0.25);
+  box-shadow: 0 0 0 3px rgba(48, 122, 177, 0.1);
+}
+
+.setup-choice-icon {
+  font-size: 22px;
+  line-height: 1;
+  margin-bottom: 2px;
+}
+
+.setup-choice strong {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--text);
+}
+
+.setup-choice span:last-child {
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.35;
+}
+
+/* Action rows */
+.setup-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 6px;
+}
+
+.setup-actions-split {
+  justify-content: space-between;
+  align-items: center;
+}
+
+.setup-primary {
+  min-width: 110px;
+  min-height: 40px;
+  padding: 9px 20px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--text);
+  color: var(--bg);
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: 700;
+  transition: opacity 140ms ease;
+}
+
+.setup-primary:hover:not(:disabled) {
+  opacity: 0.82;
+}
+
+.setup-primary:disabled {
+  opacity: 0.32;
+  cursor: not-allowed;
+}
+
+.setup-back {
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 15px;
+  padding: 9px 4px;
+  transition: color 140ms ease;
+}
+
+.setup-back:hover {
+  color: var(--text);
+}
+
+.inline-text-button {
+  border: 0;
+  background: none;
+  padding: 0;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.inline-text-button:hover {
+  color: var(--text);
+}

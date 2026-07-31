@@ -46,6 +46,8 @@ const els = {
   settingsButton: document.querySelector("#settingsButton"),
   fileInput: document.querySelector("#fileInput"),
   attachmentPreview: document.querySelector("#attachmentPreview"),
+  displayNameInput: document.querySelector("#displayNameInput"),
+  setupModal: document.querySelector("#setupModal"),
 };
 
 const state = {
@@ -74,6 +76,7 @@ const state = {
     reduceMotion: localStorage.getItem("vanilla-reduce-motion") === "true",
     enterToSend: localStorage.getItem("vanilla-enter-to-send") !== "false",
     showStats: localStorage.getItem("vanilla-show-stats") !== "false",
+    userName: localStorage.getItem("vanilla-user-name") || "",
   },
 };
 
@@ -86,11 +89,11 @@ const greetings = [
   "What's up?", "Let's get started.", "Ready when you are.", "What are we making today?",
   "Bring me a problem.", "I saved you a clean slate.", "What needs untangling?",
   "Let's make it useful.", "What are we thinking through?", "Tell me where to aim.",
-  "Ready to dive in, Owen?", "What's the move, Owen?", "Give me the weird version, Owen.",
-  "Owen, I've got the page warmed up.", "Let's turn the idea into something real, Owen.",
-  "What are we shipping today, Owen?", "Owen, your cursor has the floor.",
-  "Ready for the next thread, Owen?", "I am listening, Owen.", "Start anywhere, Owen.",
-  "I'm here for the 2AM grind.", "Light mode at 2AM is crazy, Owen.",
+  "Ready to dive in, {name}?", "What's the move, {name}?", "Give me the weird version, {name}.",
+  "{name}, I've got the page warmed up.", "Let's turn the idea into something real, {name}.",
+  "What are we shipping today, {name}?", "{name}, your cursor has the floor.",
+  "Ready for the next thread, {name}?", "I am listening, {name}.", "Start anywhere, {name}.",
+  "I'm here for the 2AM grind.", "Light mode at 2AM is crazy, {name}.",
   "Quiet hours, loud ideas.", "Too late to be vague. What's the mission?",
   "The 2AM committee is now in session.", "Moonlit debugging has entered the chat.",
   "Ready or not, here I come!", "Let's do the satisfying version.",
@@ -159,18 +162,29 @@ function setShortcuts() {
   document.querySelector('[data-shortcut="search"]').textContent = isMacLike() ? "⌘+K" : "Ctrl+K";
 }
 
+function getUserName() {
+  return state.settings.userName || "";
+}
+
+function applyName(text) {
+  const name = getUserName();
+  if (!name) return text.replace(/,?\s*\{name\}|\{name\},?\s*/g, "").trim();
+  return text.replace(/\{name\}/g, name);
+}
+
 function chooseGreeting() {
   const hour = new Date().getHours();
+  const name = getUserName();
   const timeSpecific = [];
   if (hour >= 0 && hour < 4) {
-    timeSpecific.push("I'm here for the 2AM grind.", "Light mode at 2AM is crazy, Owen.", "Quiet hours, loud ideas.");
+    timeSpecific.push("I'm here for the 2AM grind.", `Light mode at 2AM is crazy${name ? `, ${name}` : ""}.`, "Quiet hours, loud ideas.");
   } else if (hour >= 5 && hour < 10) {
-    timeSpecific.push("Morning, Owen. What's first?", "Fresh day, fresh thread.");
+    timeSpecific.push(`Morning${name ? `, ${name}` : ""}. What's first?`, "Fresh day, fresh thread.");
   } else if (hour >= 17 && hour < 22) {
-    timeSpecific.push("Evening mode, Owen. What are we making?", "Let's close the loop on something.");
+    timeSpecific.push(`Evening mode${name ? `, ${name}` : ""}. What are we making?`, "Let's close the loop on something.");
   }
   const pool = timeSpecific.length ? timeSpecific : greetings;
-  els.greeting.textContent = pool[Math.floor(Math.random() * pool.length)];
+  els.greeting.textContent = applyName(pool[Math.floor(Math.random() * pool.length)]);
 }
 
 function escapeHtml(value) {
@@ -1029,6 +1043,9 @@ function applySettings() {
   els.reduceMotionToggle.checked = settings.reduceMotion;
   els.enterToSendToggle.checked = settings.enterToSend;
   els.showStatsToggle.checked = settings.showStats;
+  if (els.displayNameInput && document.activeElement !== els.displayNameInput) {
+    els.displayNameInput.value = settings.userName || "";
+  }
   const theme = state.themes.find((item) => item.name === settings.theme);
   if (theme?.colors) {
     const colors = theme.colors;
@@ -1052,6 +1069,7 @@ function applySettings() {
   localStorage.setItem("vanilla-reduce-motion", String(settings.reduceMotion));
   localStorage.setItem("vanilla-enter-to-send", String(settings.enterToSend));
   localStorage.setItem("vanilla-show-stats", String(settings.showStats));
+  localStorage.setItem("vanilla-user-name", settings.userName || "");
 }
 
 async function loadThemes() {
@@ -1193,6 +1211,29 @@ function bindEvents() {
     applySettings();
   });
 
+  if (els.displayNameInput) {
+    els.displayNameInput.addEventListener("input", () => {
+      state.settings.userName = els.displayNameInput.value.trim();
+      applySettings();
+      chooseGreeting();
+    });
+  }
+
+  const redoSetupBtn = document.querySelector("#redoSetupButton");
+  if (redoSetupBtn) {
+    redoSetupBtn.addEventListener("click", () => {
+      closeModals();
+      localStorage.removeItem("vanilla-setup-done");
+      // Reset choice state in the modal so it's fresh
+      const aiNext = els.setupModal?.querySelector("#setupAiNext");
+      if (aiNext) { aiNext.disabled = true; delete aiNext.dataset.choice; }
+      els.setupModal?.querySelectorAll(".setup-choice").forEach((b) => b.setAttribute("aria-pressed", "false"));
+      showSetupStep("1");
+      els.setupModal.hidden = false;
+      requestAnimationFrame(() => els.setupModal.querySelector("#setupNameInput")?.focus());
+    });
+  }
+
   document.addEventListener("keydown", (event) => {
     const command = isMacLike() ? event.metaKey : event.ctrlKey;
     if (command && event.key.toLowerCase() === "k") {
@@ -1327,10 +1368,126 @@ async function boot() {
   setShortcuts();
   chooseGreeting();
   bindEvents();
+  bindSetupFlow();
   await Promise.all([loadProvidersAndModels(), refreshConversations(), refreshStats(), loadThemes()]);
   setInterval(refreshStats, 3000);
   attachCodeCopy();
+  maybeShowSetup();
+}
+
+// ─── First-run setup flow ────────────────────────────────────────────────────
+
+function maybeShowSetup() {
+  const done = localStorage.getItem("vanilla-setup-done");
+  if (!done) {
+    els.setupModal.hidden = false;
+    requestAnimationFrame(() => {
+      const nameInput = els.setupModal.querySelector("#setupNameInput");
+      if (nameInput) nameInput.focus();
+    });
+  }
+}
+
+function finishSetup() {
+  localStorage.setItem("vanilla-setup-done", "1");
+  els.setupModal.hidden = true;
+  chooseGreeting();
   els.promptInput.focus();
+}
+
+function showSetupStep(stepAttr) {
+  els.setupModal.querySelectorAll(".setup-step").forEach((step) => {
+    step.hidden = step.dataset.step !== stepAttr;
+  });
+  // Focus first focusable element in the revealed step
+  requestAnimationFrame(() => {
+    const step = els.setupModal.querySelector(`.setup-step[data-step="${stepAttr}"]`);
+    step?.querySelector("input, select, button:not(.setup-back)")?.focus();
+  });
+}
+
+function bindSetupFlow() {
+  if (!els.setupModal) return;
+
+  const nameInput = els.setupModal.querySelector("#setupNameInput");
+  const nameNext = els.setupModal.querySelector("#setupNameNext");
+  const choiceButtons = els.setupModal.querySelectorAll(".setup-choice");
+  const aiNext = els.setupModal.querySelector("#setupAiNext");
+  const ollamaHost = els.setupModal.querySelector("#setupOllamaHost");
+  const localDone = els.setupModal.querySelector("#setupLocalDone");
+  const providerSelect = els.setupModal.querySelector("#setupProviderSelect");
+  const apiKeyInput = els.setupModal.querySelector("#setupApiKey");
+  const cloudDone = els.setupModal.querySelector("#setupCloudDone");
+
+  // Pre-fill name if already set
+  if (state.settings.userName) nameInput.value = state.settings.userName;
+
+  // Step 1 → 2: name
+  nameNext.addEventListener("click", () => {
+    const name = nameInput.value.trim();
+    if (!name) {
+      nameInput.focus();
+      return;
+    }
+    state.settings.userName = name;
+    applySettings();
+    showSetupStep("2");
+  });
+
+  nameInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") nameNext.click();
+  });
+
+  // Step 2: AI type selection
+  choiceButtons.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      choiceButtons.forEach((b) => b.setAttribute("aria-pressed", "false"));
+      btn.setAttribute("aria-pressed", "true");
+      aiNext.disabled = false;
+      aiNext.dataset.choice = btn.dataset.choice;
+    });
+  });
+
+  aiNext.addEventListener("click", () => {
+    const choice = aiNext.dataset.choice;
+    if (choice === "local") {
+      showSetupStep("3a");
+    } else if (choice === "cloud") {
+      showSetupStep("3b");
+    }
+  });
+
+  // Step 3a: local AI done
+  localDone.addEventListener("click", () => {
+    const host = ollamaHost.value.trim();
+    if (host) localStorage.setItem("vanilla-ollama-host", host);
+    state.currentProvider = "ollama";
+    finishSetup();
+  });
+
+  // Step 3b: cloud provider done
+  cloudDone.addEventListener("click", () => {
+    const provider = providerSelect.value;
+    const key = apiKeyInput.value.trim();
+    if (key) localStorage.setItem(`vanilla-api-key-${provider}`, key);
+    state.currentProvider = provider;
+    // Switch to the chosen cloud provider in the model picker too
+    const firstModel = state.modelOptions.find((o) => o.provider === provider && !o.disabled);
+    if (firstModel) {
+      state.currentModel = firstModel.model;
+      updateModelLabel();
+    }
+    finishSetup();
+  });
+
+  // Back buttons
+  els.setupModal.querySelectorAll("[data-setup-back]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const currentStep = els.setupModal.querySelector(".setup-step:not([hidden])")?.dataset.step;
+      if (currentStep === "2") showSetupStep("1");
+      if (currentStep === "3a" || currentStep === "3b") showSetupStep("2");
+    });
+  });
 }
 
 boot();
