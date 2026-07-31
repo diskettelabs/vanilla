@@ -21,12 +21,40 @@ const SPLASH_FILE = path.join(__dirname, 'splash.html');
 let mainWindow = null;
 let server = null;
 let ollamaServer = null;
+let retryTimer = null;
 
 function updateSplash(percent, message) {
   if (!mainWindow || mainWindow.isDestroyed()) return;
   mainWindow.webContents.executeJavaScript(
     `updateSplash(${Number.isFinite(percent) ? percent : 0}, ${JSON.stringify(message || '')});`
   ).catch(() => {});
+}
+
+function showSplashError(message) {
+  if (!mainWindow || mainWindow.isDestroyed()) return;
+  mainWindow.webContents.executeJavaScript(
+    `showError(${JSON.stringify(message || '')});`
+  ).catch(() => {});
+}
+
+function probePort(port) {
+  return new Promise((resolve) => {
+    const req = http.get(
+      { host: 'localhost', port, path: '/', timeout: 3000 },
+      (res) => {
+        let body = '';
+        res.setEncoding('utf8');
+        res.on('data', (chunk) => {
+          body += chunk;
+          if (body.length > 65536) req.destroy();
+        });
+        res.on('end', () => resolve(body.includes('vanilla-chat')));
+        res.on('error', () => resolve(false));
+      }
+    );
+    req.on('error', () => resolve(false));
+    req.on('timeout', () => { req.destroy(); resolve(false); });
+  });
 }
 
 async function startServer() {
@@ -170,6 +198,15 @@ app.whenReady().then(async () => {
   buildMenu();
   await createWindow(SPLASH_FILE, true);
 
+  mainWindow.webContents.on('will-navigate', (event, url) => {
+    if (!url.startsWith('file:')) return;
+    const action = new URL(url).searchParams.get('action');
+    if (!action) return;
+    event.preventDefault();
+    if (action === 'quit') app.quit();
+    if (action === 'retry') retryStartup();
+  });
+
   try {
     await ensureOllama();
   } catch (error) {
@@ -180,12 +217,24 @@ app.whenReady().then(async () => {
     await startServer();
   } catch (error) {
     if (error && error.code === 'EADDRINUSE') {
-      console.error(`Port ${CONFIG.port} is already in use. Another Vanilla Chat instance may be running.`);
+      const isOurs = await probePort(CONFIG.port);
+      if (isOurs) {
+        console.log(`Port ${CONFIG.port} is already serving Vanilla Chat — opening the running instance.`);
+      } else {
+        console.error(`Port ${CONFIG.port} is in use by another application.`);
+        showSplashError(
+          `Port ${CONFIG.port} is already in use by another application (not Vanilla Chat). ` +
+          `Close the other app or free the port, then press Retry.`
+        );
+        startRetryLoop();
+        return;
+      }
     } else {
       console.error('Could not start web server:', error && error.message);
+      showSplashError(`Could not start the web server: ${(error && error.message) || error}`);
+      startRetryLoop();
+      return;
     }
-    app.quit();
-    return;
   }
 
   mainWindow.loadURL(`http://localhost:${CONFIG.port}`);
@@ -196,6 +245,31 @@ app.whenReady().then(async () => {
     }
   });
 });
+
+function startRetryLoop() {
+  if (retryTimer) return;
+  retryTimer = setInterval(async () => {
+    try {
+      await startServer();
+      clearInterval(retryTimer);
+      retryTimer = null;
+      console.log('Web server started after retry.');
+      mainWindow.loadURL(`http://localhost:${CONFIG.port}`);
+    } catch (error) {
+      if (error && error.code !== 'EADDRINUSE') {
+        clearInterval(retryTimer);
+        retryTimer = null;
+        console.error('Could not start web server on retry:', error && error.message);
+        showSplashError(`Could not start the web server: ${(error && error.message) || error}`);
+      }
+    }
+  }, 4000);
+}
+
+function retryStartup() {
+  if (retryTimer) return;
+  startRetryLoop();
+}
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {

@@ -2,11 +2,19 @@ const providers = require('./providers');
 const storage = require('./storage');
 const system = require('./system');
 const uploads = require('./upload');
+const hf = require('./huggingface');
 const https = require('https');
 
 const CONFIG = require('../config/default.json');
 
 const activeStreams = new Map();
+
+function mergeConfig(providerName, apiKey) {
+  return {
+    ...(CONFIG.providers?.[providerName] || {}),
+    ...(typeof apiKey === 'string' && apiKey.trim() ? { apiKey: apiKey.trim() } : {}),
+  };
+}
 
 function register(app) {
   // File upload
@@ -44,19 +52,65 @@ function register(app) {
 
   // Providers
   app.get('/api/providers', (_req, res) => {
-    res.json(providers.getProviderNamesWithLabels());
+    res.json(providers.getProviderNamesWithLabels(CONFIG.providers));
   });
 
   // Models
   app.get('/api/models', async (_req, res) => {
     const providerName = _req.query.provider || CONFIG.defaultProvider || 'ollama';
     try {
-      const provider = providers.create(providerName, CONFIG.providers?.[providerName]);
+      const provider = providers.create(providerName, mergeConfig(providerName, _req.query.apiKey));
       const models = await provider.listChatModels();
       res.json(models);
     } catch (e) {
       res.status(503).json({ error: e.message });
     }
+  });
+
+  // HuggingFace: search GGUF models
+  app.get('/api/hf/search', async (req, res) => {
+    const q = (req.query.q || '').trim();
+    if (!q) return res.json({ results: [] });
+    try {
+      const results = await hf.searchModels(q);
+      res.json({ results });
+    } catch (e) {
+      res.status(502).json({ error: e.message });
+    }
+  });
+
+  // HuggingFace: list GGUF files in a repo
+  app.get('/api/hf/repo', async (req, res) => {
+    const repo = (req.query.repo || '').trim();
+    if (!repo) return res.status(400).json({ error: 'repo is required' });
+    try {
+      const files = await hf.listModelFiles(repo);
+      res.json({ files });
+    } catch (e) {
+      res.status(502).json({ error: e.message });
+    }
+  });
+
+  // HuggingFace: download a GGUF and import into local Ollama (SSE progress)
+  app.post('/api/hf/install', async (req, res) => {
+    const { repo, file } = req.body || {};
+    if (!repo || !file) return res.status(400).json({ error: 'repo and file are required' });
+
+    res.writeHead(200, {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      Connection: 'keep-alive',
+      'X-Accel-Buffering': 'no',
+    });
+
+    try {
+      for await (const event of hf.installModel(repo, file)) {
+        res.write(`data: ${JSON.stringify(event)}\n\n`);
+      }
+    } catch (e) {
+      res.write(`data: ${JSON.stringify({ type: 'error', error: e.message })}\n\n`);
+    }
+    res.end();
   });
 
   // Conversations
@@ -140,7 +194,7 @@ function register(app) {
 
   // Streaming chat
   app.post('/api/chat/stream', async (req, res) => {
-    const { conversationId, message, model, provider: providerName, customPrompt } = req.body || {};
+    const { conversationId, message, model, provider: providerName, customPrompt, apiKey } = req.body || {};
     if (!conversationId || !message) {
       return res.status(400).json({ error: 'conversationId and message are required' });
     }
@@ -153,7 +207,7 @@ function register(app) {
 
     let provider;
     try {
-      provider = providers.create(effectiveProvider, CONFIG.providers?.[effectiveProvider]);
+      provider = providers.create(effectiveProvider, mergeConfig(effectiveProvider, apiKey));
     } catch (e) {
       return res.status(400).json({ error: `Unknown provider: ${effectiveProvider}` });
     }

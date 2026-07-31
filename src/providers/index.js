@@ -1,6 +1,8 @@
 const { OllamaProvider } = require('./ollama');
 const { OpenAIProvider } = require('./openai');
 const { AnthropicProvider } = require('./anthropic');
+const { HuggingFaceProvider } = require('./huggingface');
+const { GeminiProvider } = require('./gemini');
 const { OpenCodeProvider } = require('./opencode');
 const { AiderProvider } = require('./aider');
 const { GooseProvider } = require('./goose');
@@ -21,16 +23,23 @@ function listProviders() {
   return Object.keys(providers);
 }
 
-function getProviderNamesWithLabels() {
-  return Object.entries(providers).map(([key, Cls]) => ({
-    id: key,
-    label: Cls.label || key,
-  }));
+function getProviderNamesWithLabels(providerConfigs = {}) {
+  return Object.entries(providers).map(([key, Cls]) => {
+    const instance = new Cls(providerConfigs[key] || {});
+    return {
+      id: key,
+      label: Cls.label || key,
+      requiresKey: Boolean(Cls.requiresKey),
+      hasKey: instance.hasConfiguredKey(),
+    };
+  });
 }
 
 register('ollama', OllamaProvider);
 register('openai', OpenAIProvider);
 register('anthropic', AnthropicProvider);
+register('huggingface', HuggingFaceProvider);
+register('gemini', GeminiProvider);
 register('opencode', OpenCodeProvider);
 register('aider', AiderProvider);
 register('goose', GooseProvider);

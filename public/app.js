@@ -47,9 +47,16 @@ const els = {
   searchInput: document.querySelector("#searchInput"),
   searchResults: document.querySelector("#searchResults"),
   settingsButton: document.querySelector("#settingsButton"),
+  installModal: document.querySelector("#installModal"),
+  hfInstallButton: document.querySelector("#hfInstallButton"),
+  hfSearchInput: document.querySelector("#hfSearchInput"),
+  hfResults: document.querySelector("#hfResults"),
+  hfFiles: document.querySelector("#hfFiles"),
+  hfProgress: document.querySelector("#hfProgress"),
   fileInput: document.querySelector("#fileInput"),
   attachmentPreview: document.querySelector("#attachmentPreview"),
   displayNameInput: document.querySelector("#displayNameInput"),
+  apiKeysList: document.querySelector("#apiKeysList"),
   setupModal: document.querySelector("#setupModal"),
 };
 
@@ -163,6 +170,25 @@ function api(path, options = {}) {
 
 function isMacLike() {
   return /Mac|iPhone|iPad|iPod/.test(navigator.platform);
+}
+
+function getApiKey(provider) {
+  return localStorage.getItem(`vanilla-api-key-${provider}`) || "";
+}
+
+function setApiKey(provider, key) {
+  const stored = key.trim();
+  if (stored) localStorage.setItem(`vanilla-api-key-${provider}`, stored);
+  else localStorage.removeItem(`vanilla-api-key-${provider}`);
+}
+
+function isProviderUsable(provider) {
+  if (!provider.requiresKey) return true;
+  return Boolean(provider.hasKey || getApiKey(provider.id));
+}
+
+function usableProviders() {
+  return (state.providers || []).filter(isProviderUsable);
 }
 
 function setShortcuts() {
@@ -952,6 +978,7 @@ async function streamChat(conversationId, message) {
         message,
         model: state.currentModel,
         provider: state.currentProvider,
+        apiKey: getApiKey(state.currentProvider) || undefined,
         customPrompt: state.settings.customPrompt || undefined,
       }),
       signal: controller.signal,
@@ -1094,13 +1121,19 @@ async function loadProvidersAndModels() {
   try {
     state.providers = await api("/api/providers");
   } catch (error) {
-    state.providers = [{ id: "ollama", label: "Ollama (Local)" }];
+    state.providers = [{ id: "ollama", label: "Ollama (Local)", requiresKey: false, hasKey: false }];
   }
 
   els.activeModel.textContent = "Finding models";
-  const optionGroups = await Promise.all(state.providers.map(async (provider) => {
+  const usable = usableProviders();
+  const optionGroups = await Promise.all(usable.map(async (provider) => {
     try {
-      const models = await api(`/api/models?provider=${encodeURIComponent(provider.id)}`, { timeoutMs: 10000 });
+      const params = new URLSearchParams({ provider: provider.id });
+      if (provider.requiresKey) {
+        const key = getApiKey(provider.id);
+        if (key) params.set("apiKey", key);
+      }
+      const models = await api(`/api/models?${params.toString()}`, { timeoutMs: 10000 });
       return models.map((model) => ({ provider: provider.id, providerLabel: provider.label, model }));
     } catch (error) {
       return [{
@@ -1121,6 +1154,60 @@ async function loadProvidersAndModels() {
   }
   renderModelOptions();
   updateModelLabel();
+}
+
+function renderApiKeys() {
+  if (!els.apiKeysList) return;
+  const keyed = state.providers.filter((provider) => provider.requiresKey);
+  if (!keyed.length) {
+    els.apiKeysList.innerHTML = '<p class="muted-note">No cloud providers available.</p>';
+    return;
+  }
+  els.apiKeysList.innerHTML = keyed.map((provider) => {
+    const stored = getApiKey(provider.id);
+    const configured = Boolean(provider.hasKey || stored);
+    return `
+      <div class="api-key-row" data-provider="${escapeHtml(provider.id)}">
+        <span class="api-key-label">${escapeHtml(provider.label)}${configured ? ' <span class="api-key-badge">configured</span>' : ""}</span>
+        <span class="api-key-input-wrap">
+          <input class="settings-input api-key-input" type="password" placeholder="Paste your ${escapeHtml(provider.label)} API key" autocomplete="off" spellcheck="false" value="${escapeHtml(stored)}">
+          <button class="api-key-toggle" type="button" aria-label="Show/hide key" title="Show/hide">
+            <svg class="api-eye-show" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M1 8s2.5-5 7-5 7 5 7 5-2.5 5-7 5-7-5-7-5Z" stroke="currentColor" stroke-width="1.5"/><circle cx="8" cy="8" r="2" stroke="currentColor" stroke-width="1.5"/></svg>
+            <svg class="api-eye-hide" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true" hidden><path d="M2 2l12 12M6.5 6.5A2 2 0 0 0 9.5 9.5M4 4.3C2.4 5.4 1 8 1 8s2.5 5 7 5c1.4 0 2.6-.4 3.7-1M7 3.1C7.3 3 7.7 3 8 3c4.5 0 7 5 7 5s-.7 1.4-1.9 2.7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+          </button>
+        </span>
+        <span class="api-key-save-wrap">
+          <button class="api-key-save" type="button">Save</button>
+          <span class="api-key-status" hidden></span>
+        </span>
+      </div>`;
+  }).join("");
+
+  els.apiKeysList.querySelectorAll(".api-key-row").forEach((row) => {
+    const providerId = row.dataset.provider;
+    const input = row.querySelector(".api-key-input");
+    const status = row.querySelector(".api-key-status");
+
+    row.querySelector(".api-key-toggle").addEventListener("click", () => {
+      const isPassword = input.type === "password";
+      input.type = isPassword ? "text" : "password";
+      row.querySelector(".api-eye-show").hidden = !isPassword;
+      row.querySelector(".api-eye-hide").hidden = isPassword;
+    });
+
+    row.querySelector(".api-key-save").addEventListener("click", async () => {
+      setApiKey(providerId, input.value);
+      status.textContent = input.value.trim() ? "Saved" : "Removed";
+      status.hidden = false;
+      setTimeout(() => { status.hidden = true; }, 2000);
+      await refreshProviders();
+    });
+  });
+}
+
+async function refreshProviders() {
+  await loadProvidersAndModels();
+  renderApiKeys();
 }
 
 function renderModelOptions() {
@@ -1161,7 +1248,8 @@ function renderModelOptions() {
 }
 
 function syncSettingsSelects() {
-  els.providerSelect.innerHTML = state.providers.map((provider) => `<option value="${escapeHtml(provider.id)}">${escapeHtml(provider.label)}</option>`).join("");
+  const usable = usableProviders();
+  els.providerSelect.innerHTML = usable.map((provider) => `<option value="${escapeHtml(provider.id)}">${escapeHtml(provider.label)}</option>`).join("");
   els.providerSelect.value = state.currentProvider;
   const models = state.modelOptions.filter((option) => option.provider === state.currentProvider && !option.disabled);
   els.modelSelect.innerHTML = models.map((option) => `<option value="${escapeHtml(option.model)}">${escapeHtml(option.model)}</option>`).join("");
@@ -1268,6 +1356,7 @@ function openModal(modal) {
 function closeModals() {
   els.searchModal.hidden = true;
   els.settingsModal.hidden = true;
+  els.installModal.hidden = true;
 }
 
 async function runSearch() {
@@ -1291,6 +1380,170 @@ async function runSearch() {
   } catch (error) {
     els.searchResults.innerHTML = `<p class="muted-note">${escapeHtml(error.message)}</p>`;
   }
+}
+
+function formatBytes(value) {
+  if (!Number.isFinite(value) || value <= 0) return "—";
+  const units = ["B", "KB", "MB", "GB", "TB"];
+  let n = value;
+  let i = 0;
+  while (n >= 1024 && i < units.length - 1) {
+    n /= 1024;
+    i++;
+  }
+  return `${n >= 100 ? Math.round(n) : n.toFixed(1)} ${units[i]}`;
+}
+
+async function searchHuggingFace(query) {
+  if (!query) {
+    els.hfResults.innerHTML = "";
+    return;
+  }
+  els.hfResults.innerHTML = '<p class="muted-note">Searching HuggingFace…</p>';
+  try {
+    const data = await api(`/api/hf/search?q=${encodeURIComponent(query)}`);
+    renderHfResults(data.results || []);
+  } catch (error) {
+    els.hfResults.innerHTML = `<p class="muted-note">${escapeHtml(error.message)}</p>`;
+  }
+}
+
+function renderHfResults(results) {
+  els.hfFiles.innerHTML = "";
+  if (!results.length) {
+    els.hfResults.innerHTML = '<p class="muted-note">No GGUF models found. Try another search.</p>';
+    return;
+  }
+  els.hfResults.innerHTML = results.map((repo) => `
+    <button class="hf-repo" type="button" data-repo="${escapeHtml(repo.id)}">
+      <span class="hf-repo-id">${escapeHtml(repo.id)}</span>
+      <span class="hf-repo-meta">${formatBytes(repo.downloads)} downloads${repo.gated ? " · gated" : ""}</span>
+    </button>
+  `).join("");
+  els.hfResults.querySelectorAll("[data-repo]").forEach((button) => {
+    button.addEventListener("click", () => loadHfFiles(button.dataset.repo));
+  });
+}
+
+async function loadHfFiles(repo) {
+  els.hfFiles.innerHTML = `<p class="muted-note">Loading files for ${escapeHtml(repo)}…</p>`;
+  try {
+    const data = await api(`/api/hf/repo?repo=${encodeURIComponent(repo)}`);
+    renderHfFiles(repo, data.files || []);
+  } catch (error) {
+    els.hfFiles.innerHTML = `<p class="muted-note">${escapeHtml(error.message)}</p>`;
+  }
+}
+
+function renderHfFiles(repo, files) {
+  if (!files.length) {
+    els.hfFiles.innerHTML = '<p class="muted-note">No GGUF files found in this repo.</p>';
+    return;
+  }
+  els.hfFiles.innerHTML = `<div class="hf-files-head"><span>${escapeHtml(repo)}</span></div>` +
+    files.map((file) => `
+      <div class="hf-file" data-file="${escapeHtml(file.filename)}">
+        <div class="hf-file-info">
+          <span class="hf-file-quant">${escapeHtml(file.quant)}</span>
+          <span class="hf-file-name">${escapeHtml(file.filename)}</span>
+          <span class="hf-file-size">${formatBytes(file.size)}</span>
+        </div>
+        <button class="hf-install-btn" type="button">Install</button>
+      </div>
+    `).join("");
+  els.hfFiles.querySelectorAll(".hf-install-btn").forEach((button) => {
+    button.addEventListener("click", () => installHfModel(repo, button.closest(".hf-file").dataset.file, button));
+  });
+}
+
+function installHfModel(repo, file, button) {
+  els.hfFiles.querySelectorAll(".hf-install-btn").forEach((btn) => { btn.disabled = true; });
+  button.textContent = "Installing…";
+  els.hfProgress.hidden = false;
+  els.hfProgress.innerHTML = `
+    <div class="hf-progress-status">Starting…</div>
+    <div class="hf-track"><div class="hf-bar" style="width:0%"></div></div>
+    <div class="hf-progress-pct">0%</div>
+  `;
+
+  fetch("/api/hf/install", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ repo, file }),
+  }).then(async (res) => {
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const events = buffer.split("\n\n");
+      buffer = events.pop() || "";
+      for (const raw of events) {
+        const line = raw.split("\n").find((l) => l.startsWith("data: "));
+        if (!line) continue;
+        let event;
+        try {
+          event = JSON.parse(line.slice(6));
+        } catch {
+          continue;
+        }
+        updateHfProgress(event);
+      }
+    }
+  }).catch((error) => {
+    updateHfProgress({ type: "error", error: error.message });
+  });
+}
+
+function updateHfProgress(event) {
+  const status = els.hfProgress.querySelector(".hf-progress-status");
+  const bar = els.hfProgress.querySelector(".hf-bar");
+  const pct = els.hfProgress.querySelector(".hf-progress-pct");
+  if (!status) return;
+  if (event.type === "progress" && event.total > 0) {
+    const p = Math.min(100, Math.round((event.downloaded / event.total) * 100));
+    bar.style.width = `${p}%`;
+    pct.textContent = `${p}%`;
+    status.textContent = `Downloading ${formatBytes(event.downloaded)} of ${formatBytes(event.total)}`;
+  } else if (event.type === "status") {
+    status.textContent = event.message;
+  } else if (event.type === "error") {
+    bar.style.width = "0%";
+    status.textContent = event.error;
+    pct.textContent = "Failed";
+    els.hfFiles.querySelectorAll(".hf-install-btn").forEach((btn) => {
+      btn.disabled = false;
+      btn.textContent = "Install";
+    });
+  } else if (event.type === "done") {
+    bar.style.width = "100%";
+    pct.textContent = "Done";
+    status.textContent = `Installed ${event.model}. Refreshing models…`;
+    refreshModelsAfterInstall(event.model);
+  }
+}
+
+async function refreshModelsAfterInstall(model) {
+  await loadProvidersAndModels();
+  state.currentProvider = "ollama";
+  state.currentModel = model;
+  syncSettingsSelects();
+  updateModelLabel();
+}
+
+function bindHuggingFace() {
+  els.hfInstallButton.addEventListener("click", () => {
+    closeModals();
+    els.hfResults.innerHTML = "";
+    els.hfFiles.innerHTML = "";
+    els.hfProgress.hidden = true;
+    openModal(els.installModal);
+  });
+  els.hfSearchInput.addEventListener("input", debounce(() => {
+    searchHuggingFace(els.hfSearchInput.value.trim());
+  }, 300));
 }
 
 function bindEvents() {
@@ -1561,8 +1814,10 @@ async function boot() {
   chooseGreeting();
   bindEvents();
   bindSetupFlow();
+  bindHuggingFace();
   initDictation();
   await Promise.all([loadProvidersAndModels(), refreshConversations(), refreshStats(), loadThemes()]);
+  renderApiKeys();
   setInterval(refreshStats, 3000);
   attachCodeCopy();
   maybeShowSetup();
@@ -1624,6 +1879,12 @@ function bindSetupFlow() {
   // Pre-fill name if already set
   if (state.settings.userName) nameInput.value = state.settings.userName;
 
+  // Populate cloud provider select with providers that need an API key
+  const keyedProviders = state.providers.filter((p) => p.requiresKey);
+  if (keyedProviders.length) {
+    providerSelect.innerHTML = keyedProviders.map((p) => `<option value="${escapeHtml(p.id)}">${escapeHtml(p.label)}</option>`).join("");
+  }
+
   // Initialise progress dots
   updateSetupDots("1");
 
@@ -1682,11 +1943,12 @@ function bindSetupFlow() {
   });
 
   // Step 3b: cloud provider done
-  cloudDone.addEventListener("click", () => {
+  cloudDone.addEventListener("click", async () => {
     const provider = providerSelect.value;
     const key = apiKeyInput.value.trim();
     if (key) localStorage.setItem(`vanilla-api-key-${provider}`, key);
     state.currentProvider = provider;
+    await loadProvidersAndModels();
     // Switch to the chosen cloud provider in the model picker too
     const firstModel = state.modelOptions.find((o) => o.provider === provider && !o.disabled);
     if (firstModel) {

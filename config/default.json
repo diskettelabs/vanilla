@@ -1,5 +1,5 @@
 {
-  "port": 3000,
+  "port": 2051,
   "defaultProvider": "ollama",
   "providers": {
     "ollama": {
@@ -17,6 +17,18 @@
       "baseUrl": "https://api.anthropic.com/v1",
       "requestTimeout": 60000,
       "defaultModel": "claude-3-5-haiku-latest"
+    },
+    "huggingface": {
+      "apiKey": "",
+      "baseUrl": "https://router.huggingface.co/v1",
+      "requestTimeout": 120000,
+      "defaultModel": "meta-llama/Llama-3.1-8B-Instruct"
+    },
+    "gemini": {
+      "apiKey": "",
+      "baseUrl": "https://generativelanguage.googleapis.com/v1beta/openai",
+      "requestTimeout": 120000,
+      "defaultModel": "gemini-2.5-flash"
     },
     "opencode": {
       "command": "opencode",

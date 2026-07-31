@@ -3,6 +3,7 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="application-name" content="vanilla-chat">
     <title>Vanilla Chat</title>
     <link rel="stylesheet" href="./styles.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css">
@@ -160,6 +161,16 @@
               <select id="modelSelect" class="settings-select"></select>
             </label>
           </div>
+          <button id="hfInstallButton" class="hf-open-button" type="button">
+            <svg class="hf-open-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4M4 19h16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span class="hf-open-text"><strong>Install a model from HuggingFace</strong><small>Search GGUF models, download, and import them into Ollama locally</small></span>
+          </button>
+        </div>
+        
+        <div class="settings-section">
+          <h3>Providers &amp; API keys</h3>
+          <p class="settings-note">Keys are stored in your browser. Providers without a key are hidden from the model picker.</p>
+          <div id="apiKeysList" class="api-keys-list"></div>
         </div>
         
         <div class="settings-section">
@@ -333,6 +344,7 @@
               <select id="setupProviderSelect" class="setup-select">
                 <option value="openai">OpenAI</option>
                 <option value="anthropic">Anthropic</option>
+                <option value="huggingface">HuggingFace</option>
               </select>
             </div>
             <div class="setup-field">
@@ -355,8 +367,25 @@
       </section>
     </div>
 
-    <input type="file" id="fileInput" hidden accept="image/*,text/plain,text/markdown,text/csv,application/json,application/pdf">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <div id="installModal" class="modal-backdrop" hidden>
+      <section class="modal install-modal" role="dialog" aria-modal="true" aria-labelledby="installTitle">
+        <div class="modal-head">
+          <h2 id="installTitle">Install a model</h2>
+          <button class="text-button" type="button" data-close-modal>Close</button>
+        </div>
+        <div class="install-body">
+          <div class="install-search-wrap">
+            <input id="hfSearchInput" class="modal-input" type="search" placeholder="Search HuggingFace — e.g. Llama, Qwen, Mistral…" autocomplete="off" spellcheck="false">
+          </div>
+          <div id="hfResults" class="hf-results"></div>
+          <div id="hfFiles" class="hf-files"></div>
+          <div id="hfProgress" class="hf-progress" hidden></div>
+          <p class="hf-empty-note">Search above to find GGUF models. Pick a repo, choose a quantization (Q4_K_M is a good default), and hit Install — it downloads and imports into your local Ollama.</p>
+        </div>
+      </section>
+    </div>
+
+    <input type="file" id="fileInput" hidden accept="image/*,text/plain,text/markdown,text/csv,application/json,application/pdf">    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/line-numbers/prism-line-numbers.min.js"></script>
     <script src="/node_modules/vosk-browser/dist/vosk.js"></script>

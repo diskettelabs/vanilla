@@ -3,6 +3,7 @@ const { Provider } = require('./base');
 
 class AnthropicProvider extends Provider {
   static label = 'Anthropic Claude';
+  static requiresKey = true;
 
   constructor(config) {
     super(config);
@@ -10,6 +11,10 @@ class AnthropicProvider extends Provider {
     this.baseUrl = (config.baseUrl || 'https://api.anthropic.com/v1').replace(/\/+$/, '');
     this.timeout = config.requestTimeout || 60000;
     this.defaultModel = config.defaultModel || 'claude-3-5-haiku-latest';
+  }
+
+  hasConfiguredKey() {
+    return Boolean(this.apiKey);
   }
 
   async listModels() {
