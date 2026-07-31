@@ -1,130 +1,110 @@
 #!/bin/bash
-# Builds distributable desktop apps for Electron and Gelectron.
+# Builds the Vanilla Chat desktop app (Gelectron) with bundled Ollama.
+#
+# Usage:
+#   npm run build           — build and sign (ad-hoc)
+#   npm run build -- --copy — also copy the finished .app into /Applications
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-BUILD="$ROOT/build"
 GELECTRON_REPO="$ROOT/../gelectron"
-GELECTRON_PACKAGER="$GELECTRON_REPO/packager/bin/gelectron-packager.js"
-GELECTRON_BIN="$GELECTRON_REPO/target/release/gelectron"
+OLLAMA_REPO="$ROOT/../gelectron-ollama"
+PACKAGER="$GELECTRON_REPO/packager/bin/gelectron-packager.js"
+BINARY="$GELECTRON_REPO/target/release/gelectron"
+STAGING="$ROOT/build/staging-gelectron"
+DIST="$ROOT/dist"
+APP_NAME="VanillaChat"
+APP_BUNDLE="$APP_NAME.app"
 WEB_FILES="server.js src public ui themes config"
+COPY_TO_APPS=0
 
-echo "── Vanilla Chat desktop build ──"
-rm -rf "$BUILD"
-mkdir -p "$BUILD/staging-web"
-mkdir -p "$BUILD/staging-gelectron"
-mkdir -p "$BUILD/staging-electron"
+for arg in "$@"; do
+  case "$arg" in
+    --copy) COPY_TO_APPS=1 ;;
+  esac
+done
+
+if [ ! -e "$PACKAGER" ]; then
+  echo "✗ Missing packager: $PACKAGER" >&2
+  echo "  Expected a 'gelectron' repo next to vanilla-sh (../gelectron)." >&2
+  exit 1
+fi
+if [ ! -e "$BINARY" ]; then
+  echo "✗ Missing gelectron binary: $BINARY" >&2
+  echo "  Build it first: (cd ../gelectron && cargo build --release)" >&2
+  exit 1
+fi
+if [ ! -d "$OLLAMA_REPO" ]; then
+  echo "✗ Missing gelectron-ollama repo: $OLLAMA_REPO" >&2
+  exit 1
+fi
+
+echo "── Vanilla Chat build (Gelectron) ──"
 
 echo
-echo "1/4 Assembling shared web app payload..."
+echo "1/4 Assembling app payload..."
+rm -rf "$STAGING"
+mkdir -p "$STAGING"
 for f in $WEB_FILES; do
   if [ -e "$ROOT/$f" ]; then
-    cp -R "$ROOT/$f" "$BUILD/staging-web/"
+    cp -R "$ROOT/$f" "$STAGING/"
   else
     echo "  (skipping missing: $f)"
   fi
 done
-
-echo
-echo "2/4 Assembling Gelectron staging dir..."
-cp -R "$BUILD/staging-web/." "$BUILD/staging-gelectron/"
-cp "$ROOT/gelectron/main.js" "$BUILD/staging-gelectron/main.js"
-cp "$ROOT/gelectron/splash.html" "$BUILD/staging-gelectron/splash.html"
-cp "$ROOT/logo.png" "$BUILD/staging-gelectron/icon.png"
-cat > "$BUILD/staging-gelectron/package.json" <<EOF
+cp "$ROOT/gelectron/main.js" "$STAGING/main.js"
+cp "$ROOT/gelectron/splash.html" "$STAGING/splash.html"
+cp "$ROOT/logo.png" "$STAGING/icon.png"
+cat > "$STAGING/package.json" <<EOF
 {
   "name": "vanilla-chat",
   "version": "2.0.0",
-  "description": "Vanilla Chat desktop app (Gelectron)",
+  "description": "Vanilla Chat desktop app",
   "main": "main.js"
 }
 EOF
 
-echo "Installing production node_modules for Gelectron..."
-mkdir -p "$BUILD/staging-gelectron/node_modules"
-cp -R "$ROOT/node_modules/." "$BUILD/staging-gelectron/node_modules/"
-rm -f "$BUILD/staging-gelectron/node_modules/gelectron-ollama"
-rm -rf "$BUILD/staging-gelectron/node_modules/.bin" "$BUILD/staging-gelectron/node_modules/.cache"
-echo "Copying real gelectron-ollama package (with dist + deps)..."
-cp -R "$ROOT/../gelectron-ollama" "$BUILD/staging-gelectron/node_modules/gelectron-ollama"
-rm -rf "$BUILD/staging-gelectron/node_modules/gelectron-ollama/.git"
-rm -rf "$BUILD/staging-gelectron/node_modules/gelectron-ollama/target"
-find "$BUILD/staging-gelectron/node_modules" -type d -name ".github" -exec rm -rf {} + 2>/dev/null
+echo
+echo "2/4 Installing runtime dependencies..."
+mkdir -p "$STAGING/node_modules"
+cp -R "$ROOT/node_modules/." "$STAGING/node_modules/"
+rm -f "$STAGING/node_modules/gelectron-ollama"
+rm -rf "$STAGING/node_modules/.bin" "$STAGING/node_modules/.cache"
+cp -R "$OLLAMA_REPO" "$STAGING/node_modules/gelectron-ollama"
+rm -rf "$STAGING/node_modules/gelectron-ollama/.git"
+rm -rf "$STAGING/node_modules/gelectron-ollama/target"
+find "$STAGING/node_modules" -type d -name ".github" -exec rm -rf {} + 2>/dev/null || true
 
 echo
-echo "3/4 Assembling Electron staging dir..."
-cp -R "$BUILD/staging-web/." "$BUILD/staging-electron/"
-cp "$ROOT/electron/main.js" "$BUILD/staging-electron/main.js"
-cp "$ROOT/electron/splash.html" "$BUILD/staging-electron/splash.html"
-cp "$ROOT/electron/preload.js" "$BUILD/staging-electron/preload.js"
-cp "$ROOT/logo.png" "$BUILD/staging-electron/icon.png"
-cat > "$BUILD/staging-electron/package.json" <<EOF
-{
-  "name": "vanilla-chat-electron",
-  "version": "2.0.0",
-  "description": "Vanilla Chat desktop app (Electron)",
-  "main": "main.js",
-  "scripts": {
-    "build": "electron-builder --mac"
-  },
-  "dependencies": {
-    "electron-ollama": "^0.1.25"
-  },
-  "devDependencies": {
-    "electron": "^43.2.0",
-    "electron-builder": "^26.0.12"
-  },
-  "build": {
-    "appId": "com.vanillachat.app",
-    "productName": "Vanilla Chat",
-    "asar": true,
-    "asarUnpack": [
-      "**/node_modules/@img/**",
-      "**/node_modules/sharp/**"
-    ],
-    "files": [
-      "**/*",
-      "!node_modules/.cache",
-      "!node_modules/.bin"
-    ],
-    "directories": {
-      "output": "dist"
-    },
-    "mac": {
-      "category": "public.app-category.chat",
-      "icon": "icon.png",
-      "target": [
-        "dmg"
-      ]
-    }
-  }
-}
-EOF
+echo "3/4 Packaging app bundle..."
+mkdir -p "$DIST"
+node "$PACKAGER" --dir "$STAGING" \
+  --name "$APP_NAME" \
+  --binary "$BINARY" \
+  --out "$DIST"
 
-echo
-echo "4/4 Packaging..."
-
-echo "  ── Gelectron ──"
-node "$GELECTRON_PACKAGER" --dir "$BUILD/staging-gelectron" \
-  --name "VanillaChat" \
-  --binary "$GELECTRON_BIN" \
-  --out "$BUILD/out"
-
-APP="$BUILD/out/VanillaChat.app"
+APP="$DIST/$APP_BUNDLE"
 rm -rf "$APP/Contents/MacOS/node_modules"
-cp -R "$BUILD/staging-gelectron/node_modules" "$APP/Contents/Resources/app/node_modules"
+cp -R "$STAGING/node_modules" "$APP/Contents/Resources/app/node_modules"
 rm -rf "$APP/Contents/Resources/app/data"
-codesign --force --deep --sign - "$APP" >/dev/null 2>&1 && echo "  Gelectron: signed (ad-hoc)" || echo "  Gelectron: codesign skipped"
 
-echo "  ── Electron ──"
-if [ -d "$BUILD/staging-electron/node_modules" ]; then
-  echo "  Electron: node_modules already installed"
+if codesign --force --deep --sign - "$APP" >/dev/null 2>&1; then
+  echo "  signed (ad-hoc)"
 else
-  (cd "$BUILD/staging-electron" && npm install --no-audit --no-fund >/dev/null)
+  echo "  (codesign skipped)"
 fi
-(cd "$BUILD/staging-electron" && npx electron-builder --mac 2>&1 | tail -5)
 
 echo
-echo "✓ Build complete:"
-echo "  Gelectron: $APP"
-echo "  Electron:  $BUILD/staging-electron/dist/Vanilla Chat.app"
+echo "4/4 Cleaning up staging..."
+rm -rf "$STAGING"
+
+echo
+echo "✓ Build complete: $APP"
+echo "  Run it:  open \"$APP\""
+
+if [ "$COPY_TO_APPS" = "1" ]; then
+  echo "  Copying to /Applications…"
+  rm -rf "/Applications/$APP_BUNDLE"
+  cp -R "$APP" "/Applications/"
+  echo "✓ Installed: /Applications/$APP_BUNDLE"
+fi

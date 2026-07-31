@@ -6,6 +6,8 @@
   "scripts": {
     "start": "node start.js",
     "dev": "node --watch server.js",
+    "build": "bash scripts/build-desktop.sh",
+    "build:install": "bash scripts/build-desktop.sh --copy",
     "electron": "npm --prefix electron start",
     "electron:install": "npm --prefix electron install",
     "gelectron": "npm --prefix gelectron start",

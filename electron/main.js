@@ -11,8 +11,33 @@ function appRoot() {
 }
 
 const APP_ROOT = appRoot();
+const lifecycle = require(path.join(APP_ROOT, 'src', 'lifecycle'));
 const IS_PACKAGED = APP_ROOT.includes('.app/Contents') || APP_ROOT.includes('app.asar');
 process.chdir(IS_PACKAGED ? app.getPath('userData') : APP_ROOT);
+
+process.env.VANILLA_PACKAGED = IS_PACKAGED ? '1' : '0';
+process.env.VANILLA_USER_DATA = app.getPath('userData');
+process.env.VANILLA_OLLAMA_DIR = path.join(app.getPath('userData'), 'ollama');
+if (IS_PACKAGED) {
+  process.env.VANILLA_APP_PATH = path.resolve(APP_ROOT, '..', '..', '..');
+}
+
+lifecycle.setUninstallHandler(async () => {
+  if (ollamaServer) {
+    try {
+      ollamaServer.stop();
+    } catch (e) {
+      console.warn('[Uninstall] Could not stop Ollama:', e.message);
+    }
+  }
+  if (server) {
+    try {
+      server.close();
+    } catch (e) {
+      console.warn('[Uninstall] Could not close server:', e.message);
+    }
+  }
+});
 
 const CONFIG = require(path.join(APP_ROOT, 'config', 'default.json'));
 

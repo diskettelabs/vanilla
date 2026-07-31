@@ -1802,6 +1802,35 @@ img {
   flex-shrink: 0;
 }
 
+.settings-danger-zone h3 {
+  color: #b0332c;
+}
+
+.uninstall-button {
+  margin-top: 10px;
+  padding: 10px 16px;
+  border: 1px solid rgba(176, 51, 44, 0.45);
+  border-radius: 8px;
+  background: rgba(176, 51, 44, 0.06);
+  color: #b0332c;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.uninstall-button:hover {
+  background: #b0332c;
+  color: #fff;
+}
+
+.uninstall-button:disabled {
+  opacity: 0.6;
+  cursor: default;
+  background: rgba(176, 51, 44, 0.06);
+  color: #b0332c;
+}
+
 .settings-footer {
   margin-top: 16px;
   padding-top: 24px;

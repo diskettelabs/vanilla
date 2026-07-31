@@ -4,6 +4,7 @@ const system = require('./system');
 const uploads = require('./upload');
 const hf = require('./huggingface');
 const titles = require('./titles');
+const uninstall = require('./uninstall');
 const https = require('https');
 const { formatErrorForClient, formatErrorForLog, parseError } = require('./errors');
 
@@ -269,6 +270,19 @@ function register(app) {
     const q = req.query.q;
     if (!q) return res.json([]);
     res.json(storage.search(q));
+  });
+
+  // Uninstall the app: clean up, remove data, and exit
+  app.post('/api/uninstall', (_req, res) => {
+    res.json({ ok: true });
+    res.on('finish', () => {
+      setTimeout(() => {
+        uninstall.runUninstall().catch((e) => {
+          console.error('[Uninstall Error]', formatErrorForLog(e));
+          process.exit(1);
+        });
+      }, 100);
+    });
   });
 
   // Stop an active stream
