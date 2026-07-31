@@ -12,8 +12,9 @@ process.chdir(path.join(__dirname, '..'));
 
 async function startServer() {
   const expressApp = require('../server');
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     server = http.createServer(expressApp);
+    server.once('error', reject);
     server.listen(CONFIG.port, () => resolve());
   });
 }
@@ -145,7 +146,19 @@ app.whenReady().then(async () => {
   } catch (error) {
     console.warn('Could not start bundled Ollama:', error.message);
   }
-  await startServer();
+
+  try {
+    await startServer();
+  } catch (error) {
+    if (error && error.code === 'EADDRINUSE') {
+      console.error(`Port ${CONFIG.port} is already in use. Another Vanilla Chat instance may be running.`);
+    } else {
+      console.error('Could not start web server:', error && error.message);
+    }
+    app.quit();
+    return;
+  }
+
   await createWindow();
 
   app.on('activate', () => {
