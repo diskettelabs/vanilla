@@ -539,19 +539,10 @@ function renderConversationList() {
     renameButton.className = "conversation-rename";
     renameButton.title = "Rename chat";
     renameButton.setAttribute("aria-label", "Rename chat");
-    renameButton.innerHTML = `<img src="${ASSET.autoname}" alt="">`;
-    renameButton.addEventListener("click", async (event) => {
+    renameButton.innerHTML = `<img src="${ASSET.edit}" alt="">`;
+    renameButton.addEventListener("click", (event) => {
       event.stopPropagation();
-      renameButton.disabled = true;
-      renameButton.innerHTML = '<span style="font-size: 10px;">...</span>';
-      const newTitle = await autoNameConversation(conv.id, true);
-      if (newTitle) {
-        showNotification("Chat renamed", "success");
-      } else {
-        showNotification("Failed to rename chat", "error");
-      }
-      renameButton.disabled = false;
-      renameButton.innerHTML = `<img src="${ASSET.autoname}" alt="">`;
+      showRenameInput(conv.id, conv.title, row, openButton);
     });
 
     const deleteButton = document.createElement("button");
@@ -596,6 +587,76 @@ async function deleteConversation(id) {
   } catch (error) {
     showNotification(error.action || error.message || "Failed to delete chat", "error");
   }
+}
+
+function showRenameInput(conversationId, currentTitle, rowElement, openButton) {
+  // Create input field
+  const input = document.createElement("input");
+  input.type = "text";
+  input.className = "conversation-rename-input";
+  input.value = currentTitle || "";
+  input.placeholder = "Enter chat name";
+  
+  // Store the original button for restoring later
+  const originalButton = openButton.cloneNode(true);
+  
+  // Replace the open button with the input
+  openButton.replaceWith(input);
+  input.focus();
+  input.select();
+  
+  // Function to save the new title
+  const saveTitle = async () => {
+    const newTitle = input.value.trim();
+    if (!newTitle || newTitle === currentTitle) {
+      // Restore original button if no change
+      input.replaceWith(originalButton);
+      originalButton.addEventListener("click", () => loadConversation(conversationId));
+      return;
+    }
+    
+    try {
+      const data = await api(`/api/conversations/${encodeURIComponent(conversationId)}/title`, {
+        method: "PATCH",
+        body: JSON.stringify({ title: newTitle }),
+      });
+      
+      if (data.title && state.activeConversation?.id === conversationId) {
+        state.activeConversation.title = data.title;
+      }
+      
+      await refreshConversations();
+      showNotification("Chat renamed", "success");
+    } catch (error) {
+      showNotification(error.action || error.message || "Failed to rename chat", "error");
+      // Restore original button on error
+      input.replaceWith(originalButton);
+      originalButton.addEventListener("click", () => loadConversation(conversationId));
+    }
+  };
+  
+  // Function to cancel renaming
+  const cancel = () => {
+    input.replaceWith(originalButton);
+    originalButton.addEventListener("click", () => loadConversation(conversationId));
+  };
+  
+  // Save on Enter, cancel on Escape
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      saveTitle();
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      cancel();
+    }
+  });
+  
+  // Save on blur (when clicking away)
+  input.addEventListener("blur", () => {
+    // Small delay to allow other click events to fire first
+    setTimeout(saveTitle, 100);
+  });
 }
 
 async function autoNameConversation(id, force = false) {

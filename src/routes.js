@@ -237,6 +237,39 @@ function register(app) {
     }
   });
 
+  // Manual rename endpoint - update conversation title directly
+  app.patch('/api/conversations/:id/title', (req, res) => {
+    try {
+      const conv = storage.get(req.params.id);
+      if (!conv) {
+        return res.status(404).json({
+          error: 'Conversation not found',
+          action: 'This conversation may have been deleted.',
+          recoverable: false,
+        });
+      }
+
+      const { title } = req.body || {};
+      if (typeof title !== 'string') {
+        return res.status(400).json({
+          error: 'Title is required',
+          action: 'Provide a title for the conversation.',
+          recoverable: true,
+        });
+      }
+
+      conv.title = title.trim() || 'Untitled';
+      storage.update(conv);
+      res.json({ title: conv.title });
+    } catch (e) {
+      console.error('[Rename Error]', formatErrorForLog(e, {
+        endpoint: '/api/conversations/:id/title',
+        conversationId: req.params.id,
+      }));
+      res.status(500).json(formatErrorForClient(e));
+    }
+  });
+
   // Erase last assistant response
   app.post('/api/conversations/:id/erase-last-response', (req, res) => {
     try {

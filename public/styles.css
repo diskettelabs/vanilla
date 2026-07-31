@@ -391,6 +391,26 @@ button img,
   cursor: not-allowed;
 }
 
+.conversation-rename-input {
+  flex: 1;
+  min-width: 0;
+  min-height: 36px;
+  border: 1px solid #307ab1;
+  border-radius: 8px;
+  background: white;
+  color: #363636;
+  font-size: 16px;
+  line-height: 1.15;
+  padding: 8px 12px;
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(48, 122, 177, 0.15);
+}
+
+.conversation-rename-input:focus {
+  border-color: #307ab1;
+  box-shadow: 0 0 0 2px rgba(48, 122, 177, 0.25);
+}
+
 .conversation-delete img {
   width: 14px;
   height: 14px;
