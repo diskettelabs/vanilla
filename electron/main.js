@@ -47,6 +47,7 @@ let mainWindow = null;
 let server = null;
 let ollamaServer = null;
 let retryTimer = null;
+let retrying = false;
 
 function updateSplash(percent, message) {
   if (!mainWindow || mainWindow.isDestroyed()) return;
@@ -240,7 +241,10 @@ app.whenReady().then(async () => {
   try {
     await ensureOllama();
   } catch (error) {
-    console.warn('Could not start bundled Ollama:', error.message);
+    console.error('Could not start bundled Ollama:', error.message);
+    showSplashError(`Could not start bundled Ollama: ${error.message}`);
+    startRetryLoop();
+    return;
   }
 
   try {
@@ -279,17 +283,21 @@ app.whenReady().then(async () => {
 function startRetryLoop() {
   if (retryTimer) return;
   retryTimer = setInterval(async () => {
+    if (retrying) return;
+    retrying = true;
     try {
+      if (!ollamaServer) {
+        await ensureOllama();
+      }
       await startServer();
       clearInterval(retryTimer);
       retryTimer = null;
+      console.log('Startup succeeded after retry.');
       mainWindow.loadURL(`http://localhost:${CONFIG.port}`);
     } catch (error) {
-      if (error && error.code !== 'EADDRINUSE') {
-        clearInterval(retryTimer);
-        retryTimer = null;
-        showSplashError(`Could not start the web server: ${(error && error.message) || error}`);
-      }
+      console.warn('Startup retry pending:', error && error.message);
+    } finally {
+      retrying = false;
     }
   }, 4000);
 }

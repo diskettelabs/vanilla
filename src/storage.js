@@ -430,4 +430,4 @@ function search(query) {
   return results;
 }
 
-module.exports = { init, list, create, get, update, remove, addMessage, eraseLastAssistant, replaceLastUserMessage, search };
+module.exports = { init, list, create, get, update, remove, addMessage, eraseLastAssistant, replaceLastUserMessage, search, DATA_DIR };

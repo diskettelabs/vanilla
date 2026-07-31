@@ -1,7 +1,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { execFile } = require('node:child_process');
-const CONFIG = require('../config/default.json');
+const storage = require('./storage');
 const lifecycle = require('./lifecycle');
 
 function removeRecursive(target, label) {
@@ -12,6 +12,14 @@ function removeRecursive(target, label) {
   } catch (e) {
     console.error(`[Uninstall] Could not remove ${label} (${target}):`, e.message);
   }
+}
+
+function removeIfEmpty(target, label) {
+  if (!target) return;
+  try {
+    fs.rmdirSync(target);
+    console.log(`[Uninstall] Removed ${label}: ${target}`);
+  } catch {}
 }
 
 function pgrepPids(pattern) {
@@ -63,9 +71,10 @@ async function runUninstall() {
   if (process.env.VANILLA_PACKAGED === '1') {
     removeRecursive(process.env.VANILLA_USER_DATA, 'user data');
     removeRecursive(process.env.VANILLA_APP_PATH, 'application');
-  } else {
+  } else if (process.env.VANILLA_OLLAMA_DIR) {
     removeRecursive(process.env.VANILLA_OLLAMA_DIR, 'bundled Ollama runtime');
-    removeRecursive(path.resolve(CONFIG.storage.dir, '..'), 'app data');
+    removeIfEmpty(path.dirname(process.env.VANILLA_OLLAMA_DIR), 'bundled Ollama folder');
+    removeRecursive(path.dirname(storage.DATA_DIR), 'app data');
   }
 
   setTimeout(() => {

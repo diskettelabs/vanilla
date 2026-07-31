@@ -58,6 +58,8 @@ const els = {
   displayNameInput: document.querySelector("#displayNameInput"),
   apiKeysList: document.querySelector("#apiKeysList"),
   uninstallButton: document.querySelector("#uninstallButton"),
+  uninstallModal: document.querySelector("#uninstallModal"),
+  uninstallConfirmButton: document.querySelector("#uninstallConfirmButton"),
   setupModal: document.querySelector("#setupModal"),
   autoNameToggle: document.querySelector("#autoNameToggle"),
 };
@@ -1538,6 +1540,7 @@ function closeModals() {
   els.searchModal.hidden = true;
   els.settingsModal.hidden = true;
   els.installModal.hidden = true;
+  els.uninstallModal.hidden = true;
 }
 
 // Helper function to find and highlight fuzzy matches
@@ -1785,15 +1788,10 @@ function bindHuggingFace() {
 }
 
 async function uninstallApp() {
-  const confirmed = window.confirm(
-    "Uninstall Vanilla Chat?\n\n" +
-    "This will close the app and permanently delete:\n" +
-    "• All your chats and conversations\n" +
-    "• The downloaded Ollama runtime\n" +
-    "• The application itself\n\n" +
-    "This cannot be undone."
-  );
-  if (!confirmed) return;
+  openModal(els.uninstallModal);
+}
+
+async function doUninstall() {
   els.uninstallButton.disabled = true;
   els.uninstallButton.textContent = "Uninstalling…";
   try {
@@ -1827,6 +1825,7 @@ function bindEvents() {
   });
   els.settingsButton.addEventListener("click", () => openModal(els.settingsModal));
   els.uninstallButton.addEventListener("click", uninstallApp);
+  els.uninstallConfirmButton.addEventListener("click", doUninstall);
   document.querySelectorAll("[data-close-modal]").forEach((button) => button.addEventListener("click", closeModals));
   document.querySelectorAll(".modal-backdrop").forEach((modal) => {
     modal.addEventListener("click", (event) => {

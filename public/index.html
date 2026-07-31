@@ -268,6 +268,27 @@
       </section>
     </div>
 
+    <!-- Uninstall confirmation -->
+    <div id="uninstallModal" class="modal-backdrop" hidden>
+      <section class="modal confirm-modal" role="dialog" aria-modal="true" aria-labelledby="uninstallTitle">
+        <div class="modal-head">
+          <h2 id="uninstallTitle">Uninstall Vanilla Chat?</h2>
+          <button class="text-button" type="button" data-close-modal>Close</button>
+        </div>
+        <p class="settings-note">This will close the app and permanently delete:</p>
+        <ul class="confirm-list">
+          <li>All your chats and conversations</li>
+          <li>The downloaded Ollama runtime</li>
+          <li>The application itself</li>
+        </ul>
+        <p class="settings-note"><strong>This cannot be undone.</strong></p>
+        <div class="confirm-actions">
+          <button id="uninstallCancelButton" class="text-button" type="button" data-close-modal>Cancel</button>
+          <button id="uninstallConfirmButton" class="uninstall-button" type="button">Yes, uninstall</button>
+        </div>
+      </section>
+    </div>
+
     <!-- First-run setup flow -->
     <div id="setupModal" class="modal-backdrop setup-backdrop" hidden>
       <section class="modal setup-modal" role="dialog" aria-modal="true" aria-labelledby="setupTitle">
