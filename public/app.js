@@ -59,6 +59,7 @@ const els = {
   apiKeysList: document.querySelector("#apiKeysList"),
   uninstallButton: document.querySelector("#uninstallButton"),
   setupModal: document.querySelector("#setupModal"),
+  autoNameToggle: document.querySelector("#autoNameToggle"),
 };
 
 const state = {
@@ -93,6 +94,7 @@ const state = {
     reduceMotion: localStorage.getItem("vanilla-reduce-motion") === "true",
     enterToSend: localStorage.getItem("vanilla-enter-to-send") !== "false",
     showStats: localStorage.getItem("vanilla-show-stats") !== "false",
+    autoName: localStorage.getItem("vanilla-auto-name") !== "false",
     userName: localStorage.getItem("vanilla-user-name") || "",
     customPrompt: localStorage.getItem("vanilla-custom-prompt") || "",
   },
@@ -579,6 +581,10 @@ async function autoNameConversation(id) {
   }
 }
 
+function prewarmTitleModel() {
+  api("/api/names/prewarm", { method: "POST" }).catch(() => {});
+}
+
 function renderMessages(conv) {
   els.messages.innerHTML = "";
   const messages = conv?.messages || [];
@@ -884,7 +890,7 @@ async function ensureConversation(message) {
   const title = message.trim().split(/\s+/).slice(0, 7).join(" ") || "New Conversation";
   const conv = await api("/api/conversations", {
     method: "POST",
-    body: JSON.stringify({ title, model: state.currentModel, provider: state.currentProvider, autoTitle: true }),
+    body: JSON.stringify({ title, model: state.currentModel, provider: state.currentProvider, autoTitle: state.settings.autoName }),
   });
   state.activeConversation = conv;
   await refreshConversations();
@@ -1469,6 +1475,7 @@ function applySettings() {
   els.reduceMotionToggle.checked = settings.reduceMotion;
   els.enterToSendToggle.checked = settings.enterToSend;
   els.showStatsToggle.checked = settings.showStats;
+  if (els.autoNameToggle) els.autoNameToggle.checked = settings.autoName;
   if (els.displayNameInput && document.activeElement !== els.displayNameInput) {
     els.displayNameInput.value = settings.userName || "";
   }
@@ -1501,6 +1508,7 @@ function applySettings() {
   localStorage.setItem("vanilla-reduce-motion", String(settings.reduceMotion));
   localStorage.setItem("vanilla-enter-to-send", String(settings.enterToSend));
   localStorage.setItem("vanilla-show-stats", String(settings.showStats));
+  localStorage.setItem("vanilla-auto-name", String(settings.autoName));
   localStorage.setItem("vanilla-user-name", settings.userName || "");
   localStorage.setItem("vanilla-custom-prompt", settings.customPrompt || "");
 }
@@ -1912,6 +1920,13 @@ function bindEvents() {
     state.settings.showStats = els.showStatsToggle.checked;
     applySettings();
   });
+  if (els.autoNameToggle) {
+    els.autoNameToggle.addEventListener("change", () => {
+      state.settings.autoName = els.autoNameToggle.checked;
+      applySettings();
+      if (state.settings.autoName) prewarmTitleModel();
+    });
+  }
 
   if (els.displayNameInput) {
     els.displayNameInput.addEventListener("input", () => {
@@ -1936,6 +1951,8 @@ function bindEvents() {
       // Reset choice state in the modal so it's fresh
       const aiNext = els.setupModal?.querySelector("#setupAiNext");
       if (aiNext) { aiNext.disabled = true; delete aiNext.dataset.choice; }
+      const namingNext = els.setupModal?.querySelector("#setupNamingNext");
+      if (namingNext) { namingNext.disabled = true; delete namingNext.dataset.naming; }
       els.setupModal?.querySelectorAll(".setup-choice").forEach((b) => b.setAttribute("aria-pressed", "false"));
       showSetupStep("1");
       els.setupModal.hidden = false;
@@ -2081,6 +2098,7 @@ async function boot() {
   renderApiKeys();
   setInterval(refreshStats, 3000);
   attachCodeCopy();
+  if (localStorage.getItem("vanilla-setup-done") && state.settings.autoName) prewarmTitleModel();
   maybeShowSetup();
 }
 
@@ -2102,10 +2120,11 @@ function finishSetup() {
   els.setupModal.hidden = true;
   chooseGreeting();
   els.promptInput.focus();
+  if (state.settings.autoName) prewarmTitleModel();
 }
 
 function updateSetupDots(stepAttr) {
-  const stepNum = stepAttr === "1" ? 1 : stepAttr === "2" ? 2 : 3;
+  const stepNum = stepAttr === "1" ? 1 : stepAttr === "2" ? 2 : stepAttr === "3" ? 3 : 4;
   els.setupModal.querySelectorAll(".setup-dot").forEach((dot) => {
     const n = Number(dot.dataset.dot);
     dot.dataset.state = n < stepNum ? "done" : n === stepNum ? "active" : "idle";
@@ -2129,8 +2148,10 @@ function bindSetupFlow() {
 
   const nameInput = els.setupModal.querySelector("#setupNameInput");
   const nameNext = els.setupModal.querySelector("#setupNameNext");
-  const choiceButtons = els.setupModal.querySelectorAll(".setup-choice");
+  const choiceButtons = els.setupModal.querySelectorAll(".setup-choice[data-choice]");
   const aiNext = els.setupModal.querySelector("#setupAiNext");
+  const namingButtons = els.setupModal.querySelectorAll(".setup-choice[data-naming]");
+  const namingNext = els.setupModal.querySelector("#setupNamingNext");
   const ollamaHost = els.setupModal.querySelector("#setupOllamaHost");
   const localDone = els.setupModal.querySelector("#setupLocalDone");
   const providerSelect = els.setupModal.querySelector("#setupProviderSelect");
@@ -2188,14 +2209,32 @@ function bindSetupFlow() {
 
   aiNext.addEventListener("click", () => {
     const choice = aiNext.dataset.choice;
-    if (choice === "local") {
-      showSetupStep("3a");
-    } else if (choice === "cloud") {
-      showSetupStep("3b");
+    if (choice === "local" || choice === "cloud") {
+      showSetupStep("3");
     }
   });
 
-  // Step 3a: local AI done
+  // Step 3: auto-naming preference
+  namingButtons.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      namingButtons.forEach((b) => b.setAttribute("aria-pressed", "false"));
+      btn.setAttribute("aria-pressed", "true");
+      namingNext.disabled = false;
+      namingNext.dataset.naming = btn.dataset.naming;
+    });
+  });
+
+  namingNext.addEventListener("click", () => {
+    const naming = namingNext.dataset.naming;
+    if (naming !== "yes" && naming !== "no") return;
+    state.settings.autoName = naming === "yes";
+    applySettings();
+    const choice = aiNext.dataset.choice;
+    if (choice === "local") showSetupStep("4a");
+    else if (choice === "cloud") showSetupStep("4b");
+  });
+
+  // Step 4a: local AI done
   localDone.addEventListener("click", () => {
     const host = ollamaHost.value.trim();
     if (host) localStorage.setItem("vanilla-ollama-host", host);
@@ -2203,7 +2242,7 @@ function bindSetupFlow() {
     finishSetup();
   });
 
-  // Step 3b: cloud provider done
+  // Step 4b: cloud provider done
   cloudDone.addEventListener("click", async () => {
     const provider = providerSelect.value;
     const key = apiKeyInput.value.trim();
@@ -2224,7 +2263,8 @@ function bindSetupFlow() {
     btn.addEventListener("click", () => {
       const currentStep = els.setupModal.querySelector(".setup-step:not([hidden])")?.dataset.step;
       if (currentStep === "2") showSetupStep("1");
-      if (currentStep === "3a" || currentStep === "3b") showSetupStep("2");
+      if (currentStep === "3") showSetupStep("2");
+      if (currentStep === "4a" || currentStep === "4b") showSetupStep("3");
     });
   });
 }

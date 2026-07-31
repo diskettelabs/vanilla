@@ -88,6 +88,10 @@ function cleanTitle(raw) {
   return title.slice(0, 60) || null;
 }
 
+async function ensureModel(host) {
+  return pickModel(host);
+}
+
 async function generateTitle(conv, { host } = {}) {
   const model = await pickModel(host);
   const text = excerpt(conv);
@@ -119,4 +123,4 @@ async function generateTitle(conv, { host } = {}) {
   }
 }
 
-module.exports = { generateTitle };
+module.exports = { generateTitle, ensureModel };

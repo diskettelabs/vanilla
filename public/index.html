@@ -242,7 +242,12 @@
               <input id="showStatsToggle" type="checkbox">
               <span>Show system stats</span>
             </label>
+            <label class="check-row">
+              <input id="autoNameToggle" type="checkbox">
+              <span>Auto-name chats</span>
+            </label>
           </div>
+          <p class="settings-note">Auto-naming uses a small local model (~350&nbsp;MB) that reads each conversation and picks a short title. It's downloaded through Ollama the first time it's needed.</p>
         </div>
         
         <div class="settings-divider" aria-hidden="true"></div>
@@ -272,6 +277,7 @@
           <span class="setup-dot" data-dot="1"></span>
           <span class="setup-dot" data-dot="2"></span>
           <span class="setup-dot" data-dot="3"></span>
+          <span class="setup-dot" data-dot="4"></span>
         </div>
 
         <!-- Step 1: Name -->
@@ -326,8 +332,39 @@
           </div>
         </div>
 
-        <!-- Step 3a: Local AI config -->
-        <div class="setup-step" data-step="3a" hidden>
+        <!-- Step 3: Auto-naming -->
+        <div class="setup-step" data-step="3" hidden>
+          <div class="setup-body">
+            <h2 class="setup-title">Name your chats automatically?</h2>
+            <p class="setup-subtitle">Vanilla can read each conversation and pick a short title using a tiny local model. It downloads about 350&nbsp;MB through Ollama and never sends your chats anywhere.</p>
+            <div class="setup-choice-grid">
+              <button class="setup-choice" type="button" data-naming="yes" aria-pressed="false">
+                <span class="setup-choice-icon">
+                  <svg width="22" height="22" viewBox="0 0 22 22" fill="none" aria-hidden="true"><path d="M6 3.5A2.5 2.5 0 0 1 8.5 6v6.6a3.5 3.5 0 0 0 7 0V11" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><rect x="3.5" y="8.5" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.6"/></svg>
+                </span>
+                <strong>Yes, auto-name</strong>
+                <span>Download the small model and name each chat for me.</span>
+              </button>
+              <button class="setup-choice" type="button" data-naming="no" aria-pressed="false">
+                <span class="setup-choice-icon">
+                  <svg width="22" height="22" viewBox="0 0 22 22" fill="none" aria-hidden="true"><path d="M4 4l14 14M4 18 18 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+                </span>
+                <strong>No, thanks</strong>
+                <span>Skip the download. I'll title chats myself.</span>
+              </button>
+            </div>
+          </div>
+          <div class="setup-actions setup-actions-split">
+            <button class="setup-back" type="button" data-setup-back>Back</button>
+            <button id="setupNamingNext" class="setup-primary" type="button" disabled>
+              Continue
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Step 4a: Local AI config -->
+        <div class="setup-step" data-step="4a" hidden>
           <div class="setup-body">
             <h2 class="setup-title">Local AI</h2>
             <p class="setup-subtitle">Vanilla connects to Ollama at <code>localhost:11434</code> by default. Only change this if you're running on a custom host or port.</p>
@@ -342,8 +379,8 @@
           </div>
         </div>
 
-        <!-- Step 3b: Cloud provider config -->
-        <div class="setup-step" data-step="3b" hidden>
+        <!-- Step 4b: Cloud provider config -->
+        <div class="setup-step" data-step="4b" hidden>
           <div class="setup-body">
             <h2 class="setup-title">Cloud provider</h2>
             <p class="setup-subtitle">Pick a provider and paste your API key. You can change this any time in Settings.</p>

@@ -184,6 +184,18 @@ function register(app) {
     res.json({ ok: true });
   });
 
+  // Pre-download the tiny local model used for auto-naming chats
+  app.post('/api/names/prewarm', async (_req, res) => {
+    try {
+      const host = CONFIG.providers?.ollama?.host;
+      const model = await titles.ensureModel(host);
+      res.json({ ok: true, model });
+    } catch (e) {
+      console.error('[Auto-Name Prewarm Error]', e.message);
+      res.json({ ok: false, error: e.message });
+    }
+  });
+
   // Auto-generate a short title for a conversation using a tiny local model
   app.post('/api/conversations/:id/name', async (req, res) => {
     try {
