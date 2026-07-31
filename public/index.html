@@ -201,50 +201,74 @@
     <div id="setupModal" class="modal-backdrop setup-backdrop" hidden>
       <section class="modal setup-modal" role="dialog" aria-modal="true" aria-labelledby="setupTitle">
 
+        <!-- Progress dots -->
+        <div class="setup-progress" aria-hidden="true">
+          <span class="setup-dot" data-dot="1"></span>
+          <span class="setup-dot" data-dot="2"></span>
+          <span class="setup-dot" data-dot="3"></span>
+        </div>
+
         <!-- Step 1: Name -->
         <div class="setup-step" data-step="1">
           <div class="setup-hero">
             <img src="./assets/vanilla%20logomark.svg" alt="vanilla." class="setup-logo">
+            <p class="setup-tagline">Your personal AI workspace.</p>
           </div>
-          <h2 id="setupTitle" class="setup-title">Welcome to Vanilla.</h2>
-          <p class="setup-subtitle">Let's get you set up. First — what should I call you?</p>
-          <div class="setup-field">
-            <input id="setupNameInput" class="setup-input" type="text" placeholder="Your name" autocomplete="given-name" spellcheck="false">
+          <div class="setup-body">
+            <h2 id="setupTitle" class="setup-title">What should I call you?</h2>
+            <p class="setup-subtitle">I'll use your name in greetings and around the app.</p>
+            <div class="setup-field">
+              <input id="setupNameInput" class="setup-input" type="text" placeholder="Your name" autocomplete="given-name" spellcheck="false">
+            </div>
           </div>
           <div class="setup-actions">
-            <button id="setupNameNext" class="setup-primary" type="button">Continue</button>
+            <button id="setupNameNext" class="setup-primary" type="button">
+              Continue
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
           </div>
         </div>
 
         <!-- Step 2: AI type -->
         <div class="setup-step" data-step="2" hidden>
-          <h2 class="setup-title">How are you running AI?</h2>
-          <p class="setup-subtitle">Vanilla works with local models or cloud providers.</p>
-          <div class="setup-choice-grid">
-            <button class="setup-choice" type="button" data-choice="local" aria-pressed="false">
-              <span class="setup-choice-icon">⚡</span>
-              <strong>Local AI</strong>
-              <span>Ollama, running on your machine. Private and offline.</span>
-            </button>
-            <button class="setup-choice" type="button" data-choice="cloud" aria-pressed="false">
-              <span class="setup-choice-icon">☁</span>
-              <strong>Cloud provider</strong>
-              <span>OpenAI, Anthropic, or another API-based service.</span>
-            </button>
+          <div class="setup-body">
+            <h2 class="setup-title">How are you running AI?</h2>
+            <p class="setup-subtitle">Vanilla works with local models and cloud providers.</p>
+            <div class="setup-choice-grid">
+              <button class="setup-choice" type="button" data-choice="local" aria-pressed="false">
+                <span class="setup-choice-icon">
+                  <svg width="22" height="22" viewBox="0 0 22 22" fill="none" aria-hidden="true"><rect x="2" y="5" width="18" height="13" rx="2" stroke="currentColor" stroke-width="1.6"/><path d="M7 9h8M7 13h5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M11 2v3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+                </span>
+                <strong>Local AI</strong>
+                <span>Ollama on your machine. Private, fast, offline.</span>
+              </button>
+              <button class="setup-choice" type="button" data-choice="cloud" aria-pressed="false">
+                <span class="setup-choice-icon">
+                  <svg width="22" height="22" viewBox="0 0 22 22" fill="none" aria-hidden="true"><path d="M6 15a4 4 0 1 1 .3-8A5 5 0 1 1 16 10a3 3 0 0 1-1 5.83" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M11 13v5M9 16l2 2 2-2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </span>
+                <strong>Cloud provider</strong>
+                <span>OpenAI, Anthropic, or another API service.</span>
+              </button>
+            </div>
           </div>
           <div class="setup-actions setup-actions-split">
             <button class="setup-back" type="button" data-setup-back>Back</button>
-            <button id="setupAiNext" class="setup-primary" type="button" disabled>Continue</button>
+            <button id="setupAiNext" class="setup-primary" type="button" disabled>
+              Continue
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
           </div>
         </div>
 
         <!-- Step 3a: Local AI config -->
         <div class="setup-step" data-step="3a" hidden>
-          <h2 class="setup-title">Local AI setup</h2>
-          <p class="setup-subtitle">Vanilla connects to Ollama at <code>localhost:11434</code> by default. No changes needed unless you're using a custom port.</p>
-          <div class="setup-field">
-            <label class="setup-label" for="setupOllamaHost">Ollama host</label>
-            <input id="setupOllamaHost" class="setup-input" type="text" value="http://localhost:11434" spellcheck="false">
+          <div class="setup-body">
+            <h2 class="setup-title">Local AI</h2>
+            <p class="setup-subtitle">Vanilla connects to Ollama at <code>localhost:11434</code> by default. Only change this if you're running on a custom host or port.</p>
+            <div class="setup-field">
+              <label class="setup-label" for="setupOllamaHost">Ollama host</label>
+              <input id="setupOllamaHost" class="setup-input" type="text" value="http://localhost:11434" spellcheck="false" autocomplete="off">
+            </div>
           </div>
           <div class="setup-actions setup-actions-split">
             <button class="setup-back" type="button" data-setup-back>Back</button>
@@ -254,18 +278,26 @@
 
         <!-- Step 3b: Cloud provider config -->
         <div class="setup-step" data-step="3b" hidden>
-          <h2 class="setup-title">Cloud provider</h2>
-          <p class="setup-subtitle">Pick a provider and paste your API key. You can change this any time in Settings.</p>
-          <div class="setup-field">
-            <label class="setup-label" for="setupProviderSelect">Provider</label>
-            <select id="setupProviderSelect" class="setup-select">
-              <option value="openai">OpenAI</option>
-              <option value="anthropic">Anthropic</option>
-            </select>
-          </div>
-          <div class="setup-field">
-            <label class="setup-label" for="setupApiKey">API key</label>
-            <input id="setupApiKey" class="setup-input" type="password" placeholder="sk-…" autocomplete="off" spellcheck="false">
+          <div class="setup-body">
+            <h2 class="setup-title">Cloud provider</h2>
+            <p class="setup-subtitle">Pick a provider and paste your API key. You can change this any time in Settings.</p>
+            <div class="setup-field">
+              <label class="setup-label" for="setupProviderSelect">Provider</label>
+              <select id="setupProviderSelect" class="setup-select">
+                <option value="openai">OpenAI</option>
+                <option value="anthropic">Anthropic</option>
+              </select>
+            </div>
+            <div class="setup-field">
+              <label class="setup-label" for="setupApiKey">API key</label>
+              <div class="setup-key-wrap">
+                <input id="setupApiKey" class="setup-input" type="password" placeholder="Paste your key here" autocomplete="off" spellcheck="false">
+                <button class="setup-key-toggle" type="button" aria-label="Show/hide key" tabindex="-1">
+                  <svg class="eye-show" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M1 8s2.5-5 7-5 7 5 7 5-2.5 5-7 5-7-5-7-5Z" stroke="currentColor" stroke-width="1.5"/><circle cx="8" cy="8" r="2" stroke="currentColor" stroke-width="1.5"/></svg>
+                  <svg class="eye-hide" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true" hidden><path d="M2 2l12 12M6.5 6.5A2 2 0 0 0 9.5 9.5M4 4.3C2.4 5.4 1 8 1 8s2.5 5 7 5c1.4 0 2.6-.4 3.7-1M7 3.1C7.3 3 7.7 3 8 3c4.5 0 7 5 7 5s-.7 1.4-1.9 2.7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                </button>
+              </div>
+            </div>
           </div>
           <div class="setup-actions setup-actions-split">
             <button class="setup-back" type="button" data-setup-back>Back</button>

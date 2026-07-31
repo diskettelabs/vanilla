@@ -4,7 +4,7 @@
   "description": "Simple web chat UI for Ollama",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js",
+    "start": "node start.js",
     "dev": "node --watch server.js",
     "electron": "npm --prefix electron start",
     "electron:install": "npm --prefix electron install",

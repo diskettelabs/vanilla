@@ -1395,10 +1395,19 @@ function finishSetup() {
   els.promptInput.focus();
 }
 
+function updateSetupDots(stepAttr) {
+  const stepNum = stepAttr === "1" ? 1 : stepAttr === "2" ? 2 : 3;
+  els.setupModal.querySelectorAll(".setup-dot").forEach((dot) => {
+    const n = Number(dot.dataset.dot);
+    dot.dataset.state = n < stepNum ? "done" : n === stepNum ? "active" : "idle";
+  });
+}
+
 function showSetupStep(stepAttr) {
   els.setupModal.querySelectorAll(".setup-step").forEach((step) => {
     step.hidden = step.dataset.step !== stepAttr;
   });
+  updateSetupDots(stepAttr);
   // Focus first focusable element in the revealed step
   requestAnimationFrame(() => {
     const step = els.setupModal.querySelector(`.setup-step[data-step="${stepAttr}"]`);
@@ -1421,6 +1430,20 @@ function bindSetupFlow() {
 
   // Pre-fill name if already set
   if (state.settings.userName) nameInput.value = state.settings.userName;
+
+  // Initialise progress dots
+  updateSetupDots("1");
+
+  // Show/hide API key toggle
+  const keyToggle = els.setupModal.querySelector(".setup-key-toggle");
+  if (keyToggle && apiKeyInput) {
+    keyToggle.addEventListener("click", () => {
+      const isPassword = apiKeyInput.type === "password";
+      apiKeyInput.type = isPassword ? "text" : "password";
+      keyToggle.querySelector(".eye-show").hidden = isPassword;
+      keyToggle.querySelector(".eye-hide").hidden = !isPassword;
+    });
+  }
 
   // Step 1 → 2: name
   nameNext.addEventListener("click", () => {
