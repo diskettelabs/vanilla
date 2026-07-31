@@ -21,7 +21,7 @@ Open `http://localhost:3000` in your browser. Make sure Ollama is running (`olla
 ## Requirements
 
 - [Node.js](https://nodejs.org) 18+
-- [Ollama](https://ollama.ai) running locally
+- [Ollama](https://ollama.ai) running locally(if using the cli)
 
 ## Project Structure
 
