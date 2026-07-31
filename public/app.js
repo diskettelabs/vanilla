@@ -605,15 +605,24 @@ function showRenameInput(conversationId, currentTitle, rowElement, openButton) {
   input.focus();
   input.select();
   
+  // Flag to prevent multiple saves
+  let saving = false;
+  let saved = false;
+  
   // Function to save the new title
   const saveTitle = async () => {
+    if (saving || saved) return;
+    
     const newTitle = input.value.trim();
     if (!newTitle || newTitle === currentTitle) {
       // Restore original button if no change
+      saved = true;
       input.replaceWith(originalButton);
       originalButton.addEventListener("click", () => loadConversation(conversationId));
       return;
     }
+    
+    saving = true;
     
     try {
       const data = await api(`/api/conversations/${encodeURIComponent(conversationId)}/title`, {
@@ -625,18 +634,24 @@ function showRenameInput(conversationId, currentTitle, rowElement, openButton) {
         state.activeConversation.title = data.title;
       }
       
+      saved = true;
       await refreshConversations();
       showNotification("Chat renamed", "success");
     } catch (error) {
+      saved = true;
       showNotification(error.action || error.message || "Failed to rename chat", "error");
       // Restore original button on error
       input.replaceWith(originalButton);
       originalButton.addEventListener("click", () => loadConversation(conversationId));
+    } finally {
+      saving = false;
     }
   };
   
   // Function to cancel renaming
   const cancel = () => {
+    if (saved) return;
+    saved = true;
     input.replaceWith(originalButton);
     originalButton.addEventListener("click", () => loadConversation(conversationId));
   };
@@ -1358,13 +1373,13 @@ function showNotification(message, type = "info", duration = 3000) {
   // Use appropriate icon based on type
   let iconContent = '';
   if (type === "error") {
-    iconContent = '<img src="./assets/error.svg" alt="" style="width: 20px; height: 20px;">';
+    iconContent = '<svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 1.5C4.86 1.5 1.5 4.86 1.5 9C1.5 13.14 4.86 16.5 9 16.5C13.14 16.5 16.5 13.14 16.5 9C16.5 4.86 13.14 1.5 9 1.5ZM9.75 12.75H8.25V11.25H9.75V12.75ZM9.75 9.75H8.25V5.25H9.75V9.75Z" fill="currentColor"/></svg>';
   } else if (type === "success") {
-    iconContent = '<span style="color: #059669; font-weight: 600;">✓</span>';
+    iconContent = '<svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 1.5C4.86 1.5 1.5 4.86 1.5 9C1.5 13.14 4.86 16.5 9 16.5C13.14 16.5 16.5 13.14 16.5 9C16.5 4.86 13.14 1.5 9 1.5ZM7.5 12.75L3.75 9L4.8075 7.9425L7.5 10.6275L13.1925 4.935L14.25 6L7.5 12.75Z" fill="currentColor"/></svg>';
   } else if (type === "warning") {
-    iconContent = '<span style="color: #d97706; font-weight: 600;">!</span>';
+    iconContent = '<svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M1.5 15.75H16.5L9 2.25L1.5 15.75ZM9.75 13.5H8.25V12H9.75V13.5ZM9.75 10.5H8.25V7.5H9.75V10.5Z" fill="currentColor"/></svg>';
   } else {
-    iconContent = '<span style="color: #2563eb; font-weight: 600;">i</span>';
+    iconContent = '<svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 1.5C4.86 1.5 1.5 4.86 1.5 9C1.5 13.14 4.86 16.5 9 16.5C13.14 16.5 16.5 13.14 16.5 9C16.5 4.86 13.14 1.5 9 1.5ZM9.75 12.75H8.25V8.25H9.75V12.75ZM9.75 6.75H8.25V5.25H9.75V6.75Z" fill="currentColor"/></svg>';
   }
   
   notification.innerHTML = `
