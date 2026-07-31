@@ -4,11 +4,78 @@ const http = require('node:http');
 const { GelectronOllama } = require('gelectron-ollama');
 const CONFIG = require('../config/default.json');
 
+const SPLASH_HTML = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Vanilla Chat</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: #faf7f2; color: #2b2b2b;
+    -webkit-user-select: none; user-select: none;
+  }
+  .wordmark { font-size: 42px; font-weight: 700; letter-spacing: -1px; }
+  .wordmark span { color: #b07a4d; }
+  .spinner {
+    margin-top: 26px; width: 22px; height: 22px;
+    border: 3px solid #e7e1d8; border-top-color: #b07a4d; border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .status { margin-top: 14px; font-size: 15px; color: #6b6b6b; }
+  .track {
+    display: none; margin-top: 20px; width: 280px; height: 6px;
+    border-radius: 3px; background: #e7e1d8; overflow: hidden;
+  }
+  .bar { height: 100%; width: 0; border-radius: 3px; background: #b07a4d; transition: width 0.25s ease; }
+  .pct { margin-top: 10px; font-size: 12px; color: #9a948c; font-variant-numeric: tabular-nums; }
+</style>
+</head>
+<body>
+  <div class="wordmark">vanilla<span>.</span></div>
+  <div class="spinner"></div>
+  <div class="status">Please wait, installing Ollama&hellip;</div>
+  <div class="track" id="track"><div class="bar" id="bar"></div></div>
+  <div class="pct" id="pct"></div>
+  <script>
+    function updateSplash(percent, message) {
+      var track = document.getElementById('track');
+      var bar = document.getElementById('bar');
+      var pct = document.getElementById('pct');
+      if (percent > 0 && percent < 100) {
+        track.style.display = 'block';
+        bar.style.width = percent + '%';
+        pct.textContent = percent + '% · ' + message;
+      } else if (percent >= 100) {
+        track.style.display = 'block';
+        bar.style.width = '100%';
+        pct.textContent = message;
+      } else {
+        pct.textContent = message || '';
+      }
+    }
+  </script>
+</body>
+</html>`;
+
+const SPLASH_URL = 'data:text/html;charset=utf-8,' + encodeURIComponent(SPLASH_HTML);
+
 let mainWindow = null;
 let server = null;
 let ollamaServer = null;
 
 process.chdir(path.join(__dirname, '..'));
+
+function updateSplash(percent, message) {
+  if (!mainWindow || mainWindow.isDestroyed()) return;
+  mainWindow.webContents.executeJavaScript(
+    `updateSplash(${Number.isFinite(percent) ? percent : 0}, ${JSON.stringify(message || '')});`
+  ).catch(() => {});
+}
 
 async function startServer() {
   const expressApp = require('../server');
@@ -28,9 +95,13 @@ async function ensureOllama() {
     return;
   }
   const metadata = await ollama.getMetadata('latest');
+  updateSplash(0, `Downloading ${metadata.fileName} (${metadata.sizeMB} MB)`);
   await ollama.serve(metadata.version, {
     serverLog: (message) => console.log('[Ollama]', message),
-    downloadLog: (percent, message) => console.log(`[Ollama Download] ${percent}% ${message}`),
+    downloadLog: (percent, message) => {
+      console.log(`[Ollama Download] ${percent}% ${message}`);
+      updateSplash(percent, message);
+    },
   });
   ollamaServer = ollama.getServer();
 }
@@ -110,7 +181,7 @@ function buildMenu() {
   Menu.setApplicationMenu(Menu.buildFromTemplate(template));
 }
 
-async function createWindow() {
+async function createWindow(url) {
   mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
@@ -124,7 +195,7 @@ async function createWindow() {
     show: false,
   });
 
-  mainWindow.loadURL(`http://localhost:${CONFIG.port}`);
+  mainWindow.loadURL(url);
 
   const showWhenReady = () => {
     if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.isVisible()) {
@@ -141,6 +212,8 @@ async function createWindow() {
 
 app.whenReady().then(async () => {
   buildMenu();
+  await createWindow(SPLASH_URL);
+
   try {
     await ensureOllama();
   } catch (error) {
@@ -159,11 +232,11 @@ app.whenReady().then(async () => {
     return;
   }
 
-  await createWindow();
+  mainWindow.loadURL(`http://localhost:${CONFIG.port}`);
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
-      createWindow();
+      createWindow(`http://localhost:${CONFIG.port}`);
     }
   });
 });
