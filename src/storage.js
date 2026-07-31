@@ -28,6 +28,7 @@ function convFromJson(fp) {
     title: raw.title || 'Untitled',
     model: raw.model || '',
     provider: raw.provider || undefined,
+    autoTitle: Boolean(raw.autoTitle),
     messages: raw.messages || [],
     createdAt: raw.createdAt || new Date().toISOString(),
     updatedAt: raw.updatedAt || new Date().toISOString(),
@@ -43,6 +44,7 @@ function convToMarkdown(conv) {
   if (conv.provider) lines.push(`- **Provider:** ${conv.provider}`);
   lines.push(`- **Created:** ${conv.createdAt}`);
   lines.push(`- **Updated:** ${conv.updatedAt}`);
+  lines.push(`- **AutoTitle:** ${conv.autoTitle ? 'true' : 'false'}`);
   lines.push('');
   lines.push('---');
   lines.push('');
@@ -66,6 +68,7 @@ function convFromMarkdown(fp) {
     id: '',
     title: '',
     model: '',
+    autoTitle: false,
     messages: [],
     createdAt: '',
     updatedAt: '',
@@ -93,6 +96,7 @@ function convFromMarkdown(fp) {
         else if (key === 'Provider') conv.provider = val;
         else if (key === 'Created') conv.createdAt = val;
         else if (key === 'Updated') conv.updatedAt = val;
+        else if (key === 'AutoTitle') conv.autoTitle = val === 'true';
         continue;
       }
 
@@ -153,6 +157,7 @@ function list() {
         title: conv.title,
         model: conv.model,
         provider: conv.provider,
+        autoTitle: conv.autoTitle,
         messageCount: conv.messages.length,
         createdAt: conv.createdAt,
         updatedAt: conv.updatedAt,
@@ -165,10 +170,10 @@ function list() {
   return convs.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
 }
 
-function create(title = 'New Conversation', model = 'llama2', provider) {
+function create(title = 'New Conversation', model = 'llama2', provider, { autoTitle } = {}) {
   const id = uuid();
   const now = new Date().toISOString();
-  const conv = { id, title, model, messages: [], createdAt: now, updatedAt: now };
+  const conv = { id, title, model, autoTitle: Boolean(autoTitle), messages: [], createdAt: now, updatedAt: now };
   if (provider) conv.provider = provider;
   fs.writeFileSync(filePath(id), convToMarkdown(conv));
   return conv;

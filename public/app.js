@@ -488,6 +488,9 @@ function groupLabel(dateString) {
   return date.toLocaleDateString(undefined, { month: "long", year: "numeric" }).toLowerCase();
 }
 
+const TRASH_ICON =
+  '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2m3 0-1 13a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1L6 7m4 4v6m4-6v6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
 function renderConversationList() {
   els.conversationList.innerHTML = "";
   if (!state.conversations.length) {
@@ -507,15 +510,71 @@ function renderConversationList() {
       els.conversationList.append(heading);
       lastGroup = group;
     }
-    const row = document.createElement("button");
-    row.type = "button";
+    const row = document.createElement("div");
     row.className = "conversation-row";
-    row.textContent = conv.title || "Untitled";
-    row.title = conv.title || "Untitled";
     row.setAttribute("role", "listitem");
     row.setAttribute("aria-current", state.activeConversation?.id === conv.id ? "true" : "false");
-    row.addEventListener("click", () => loadConversation(conv.id));
+
+    const openButton = document.createElement("button");
+    openButton.type = "button";
+    openButton.className = "conversation-open";
+    openButton.textContent = conv.title || "Untitled";
+    openButton.title = conv.title || "Untitled";
+    openButton.addEventListener("click", () => loadConversation(conv.id));
+
+    const deleteButton = document.createElement("button");
+    deleteButton.type = "button";
+    deleteButton.className = "conversation-delete";
+    deleteButton.title = "Delete chat";
+    deleteButton.setAttribute("aria-label", "Delete chat");
+    deleteButton.innerHTML = TRASH_ICON;
+    deleteButton.addEventListener("click", (event) => {
+      event.stopPropagation();
+      if (deleteButton.dataset.armed === "true") {
+        deleteConversation(conv.id);
+        return;
+      }
+      deleteButton.dataset.armed = "true";
+      deleteButton.classList.add("is-armed");
+      deleteButton.textContent = "Delete?";
+      clearTimeout(deleteButton._timer);
+      deleteButton._timer = setTimeout(() => {
+        deleteButton.dataset.armed = "false";
+        deleteButton.classList.remove("is-armed");
+        deleteButton.innerHTML = TRASH_ICON;
+      }, 2500);
+    });
+
+    row.append(openButton, deleteButton);
     els.conversationList.append(row);
+  }
+}
+
+async function deleteConversation(id) {
+  try {
+    await api(`/api/conversations/${encodeURIComponent(id)}`, { method: "DELETE" });
+    if (state.activeConversation?.id === id) {
+      state.activeConversation = null;
+      els.messages.innerHTML = "";
+      els.emptyState.hidden = false;
+      chooseGreeting();
+    }
+    await refreshConversations();
+    showNotification("Chat deleted");
+  } catch (error) {
+    showNotification(error.action || error.message || "Failed to delete chat", "error");
+  }
+}
+
+async function autoNameConversation(id) {
+  try {
+    const data = await api(`/api/conversations/${encodeURIComponent(id)}/name`, { method: "POST" });
+    if (data.title && state.activeConversation?.id === id) {
+      state.activeConversation.title = data.title;
+    }
+    if (data.title) await refreshConversations();
+  } catch {
+    // title generation is best-effort; retried on the next exchange
   }
 }
 
@@ -824,7 +883,7 @@ async function ensureConversation(message) {
   const title = message.trim().split(/\s+/).slice(0, 7).join(" ") || "New Conversation";
   const conv = await api("/api/conversations", {
     method: "POST",
-    body: JSON.stringify({ title, model: state.currentModel, provider: state.currentProvider }),
+    body: JSON.stringify({ title, model: state.currentModel, provider: state.currentProvider, autoTitle: true }),
   });
   state.activeConversation = conv;
   await refreshConversations();
@@ -1050,6 +1109,10 @@ async function streamChat(conversationId, message) {
       try {
         state.activeConversation = await api(`/api/conversations/${encodeURIComponent(state.activeConversation.id)}`);
       } catch {}
+    }
+    const updated = state.conversations.find((c) => c.id === conversationId);
+    if (updated?.autoTitle && (updated.messageCount || 0) >= 4) {
+      autoNameConversation(conversationId);
     }
   }
 }

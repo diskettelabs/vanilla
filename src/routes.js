@@ -3,6 +3,7 @@ const storage = require('./storage');
 const system = require('./system');
 const uploads = require('./upload');
 const hf = require('./huggingface');
+const titles = require('./titles');
 const https = require('https');
 const { formatErrorForClient, formatErrorForLog, parseError } = require('./errors');
 
@@ -149,8 +150,8 @@ function register(app) {
   });
 
   app.post('/api/conversations', (req, res) => {
-    const { title, model, provider } = req.body || {};
-    const conv = storage.create(title, model, provider);
+    const { title, model, provider, autoTitle } = req.body || {};
+    const conv = storage.create(title, model, provider, { autoTitle });
     res.status(201).json(conv);
   });
 
@@ -180,6 +181,36 @@ function register(app) {
   app.delete('/api/conversations/:id', (req, res) => {
     storage.remove(req.params.id);
     res.json({ ok: true });
+  });
+
+  // Auto-generate a short title for a conversation using a tiny local model
+  app.post('/api/conversations/:id/name', async (req, res) => {
+    try {
+      const conv = storage.get(req.params.id);
+      if (!conv) {
+        return res.status(404).json({
+          error: 'Conversation not found',
+          action: 'This conversation may have been deleted.',
+          recoverable: false,
+        });
+      }
+      if (conv.autoTitle === false || !conv.messages || conv.messages.length === 0) {
+        return res.json({ title: conv.title });
+      }
+      const host = CONFIG.providers?.ollama?.host;
+      const title = await titles.generateTitle(conv, { host });
+      if (!title) return res.json({ title: conv.title });
+      conv.title = title;
+      conv.autoTitle = false;
+      storage.update(conv);
+      res.json({ title });
+    } catch (e) {
+      console.error('[Auto-Name Error]', formatErrorForLog(e, {
+        endpoint: '/api/conversations/:id/name',
+        conversationId: req.params.id,
+      }));
+      res.status(502).json({ error: e.message || 'Failed to generate a title' });
+    }
   });
 
   // Erase last assistant response
