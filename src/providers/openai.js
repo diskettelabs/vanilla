@@ -10,6 +10,7 @@ class OpenAIError extends ProviderError {
 
 class OpenAIProvider extends Provider {
   static label = 'OpenAI-Compatible';
+  static requiresKey = true;
 
   constructor(config) {
     super(config);
@@ -18,6 +19,10 @@ class OpenAIProvider extends Provider {
     this.timeout = config.requestTimeout || 60000;
     this.defaultModel = config.defaultModel || 'gpt-4o-mini';
     this._httpModule = this.baseUrl.startsWith('http://') ? require('node:http') : require('node:https');
+  }
+
+  hasConfiguredKey() {
+    return Boolean(this.apiKey);
   }
 
   async listModels() {

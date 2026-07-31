@@ -27,14 +27,33 @@
   }
   .bar { height: 100%; width: 0; border-radius: 3px; background: #b07a4d; transition: width 0.25s ease; }
   .pct { margin-top: 10px; font-size: 12px; color: #9a948c; font-variant-numeric: tabular-nums; }
+  .error { margin-top: 18px; max-width: 380px; text-align: center; display: none; }
+  .error-title { font-size: 17px; font-weight: 600; color: #a3423a; }
+  .error-message { margin-top: 8px; font-size: 14px; line-height: 1.5; color: #6b6b6b; }
+  .error-actions { margin-top: 18px; display: flex; gap: 10px; justify-content: center; }
+  .error-btn {
+    border-radius: 8px; padding: 9px 20px; font-size: 14px; font-weight: 600;
+    background: #b07a4d; color: #fff; text-decoration: none;
+  }
+  .error-btn:hover { filter: brightness(1.08); }
+  .error-btn.secondary { background: #e7e1d8; color: #4a4a4a; }
+  .error-btn.secondary:hover { background: #ddd5c9; }
 </style>
 </head>
 <body>
   <div class="wordmark">vanilla<span>.</span></div>
-  <div class="spinner"></div>
-  <div class="status">Please wait, installing Ollama&hellip;</div>
+  <div class="spinner" id="spinner"></div>
+  <div class="status" id="status">Please wait, installing Ollama&hellip;</div>
   <div class="track" id="track"><div class="bar" id="bar"></div></div>
   <div class="pct" id="pct"></div>
+  <div class="error" id="error">
+    <div class="error-title">Vanilla Chat can&rsquo;t start</div>
+    <p class="error-message" id="errorMessage"></p>
+    <div class="error-actions">
+      <a class="error-btn" href="?action=retry">Retry</a>
+      <a class="error-btn secondary" href="?action=quit">Quit</a>
+    </div>
+  </div>
   <script>
     function updateSplash(percent, message) {
       var track = document.getElementById('track');
@@ -51,6 +70,12 @@
       } else {
         pct.textContent = message || '';
       }
+    }
+    function showError(message) {
+      var spinner = document.getElementById('spinner');
+      if (spinner) spinner.style.display = 'none';
+      document.getElementById('error').style.display = 'block';
+      document.getElementById('errorMessage').textContent = message || 'Unknown error';
     }
   </script>
 </body>

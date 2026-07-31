@@ -1,6 +1,12 @@
 class Provider {
+  static requiresKey = false;
+
   constructor(config) {
     this.config = config || {};
+  }
+
+  hasConfiguredKey() {
+    return false;
   }
 
   async listModels() {
