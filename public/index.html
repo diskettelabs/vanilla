@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Vanilla Chat</title>
     <link rel="stylesheet" href="./styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/line-numbers/prism-line-numbers.min.css">
   </head>
   <body>
     <div class="app-shell" data-sidebar="open">
@@ -84,11 +86,14 @@
             <button id="plusButton" class="plus-button" type="button" aria-label="Add context" title="Add context">
               <img src="./assets/add.svg" alt="">
             </button>
-            <textarea id="promptInput" rows="1" placeholder="what's up?" aria-label="Message"></textarea>
+            <div class="input-wrapper">
+              <div id="attachmentPreview" class="attachment-preview" hidden></div>
+              <textarea id="promptInput" rows="1" placeholder="what's up?" aria-label="Message"></textarea>
+            </div>
             <div class="expanded-tools" aria-hidden="true">
-              <button class="pill-tool" type="button" data-tool="add">
+              <button class="pill-tool" type="button" data-tool="attach">
                 <img src="./assets/add.svg" alt="">
-                <span>add</span>
+                <span>attach file</span>
               </button>
               <button class="pill-tool" type="button" data-tool="tools">
                 <img src="./assets/tools.svg" alt="">
@@ -182,6 +187,9 @@
     </div>
 
     <input type="file" id="fileInput" hidden accept="image/*,text/plain,text/markdown,text/csv,application/json,application/pdf">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/line-numbers/prism-line-numbers.min.js"></script>
     <script src="./app.js" defer></script>
   </body>
 </html>

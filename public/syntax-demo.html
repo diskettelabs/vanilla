@@ -1,0 +1,302 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Syntax Highlighting Demo - Vanilla Chat</title>
+    <link rel="stylesheet" href="./styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/line-numbers/prism-line-numbers.min.css">
+    <style>
+      body {
+        padding: 40px;
+        max-width: 1200px;
+        margin: 0 auto;
+      }
+      h1 {
+        margin-bottom: 30px;
+      }
+      .demo-section {
+        margin-bottom: 40px;
+      }
+      .demo-section h2 {
+        margin-bottom: 15px;
+        color: #454545;
+      }
+      .demo-section p {
+        margin-bottom: 15px;
+        color: #666;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Syntax Highlighting Demo</h1>
+    <p>This page demonstrates the new syntax highlighting and language awareness features.</p>
+
+    <div class="demo-section">
+      <h2>JavaScript with Explicit Language Declaration</h2>
+      <div class="code-box">
+        <div class="code-head">
+          <span>javascript</span>
+          <button type="button" onclick="copyCode(this)"><img src="./assets/copy.svg" alt="">Copy</button>
+        </div>
+        <pre class="line-numbers"><code class="language-javascript">// Example JavaScript code
+function calculateTotal(items) {
+  return items.reduce((sum, item) => {
+    return sum + item.price * item.quantity;
+  }, 0);
+}
+
+const cart = [
+  { name: "Widget", price: 9.99, quantity: 2 },
+  { name: "Gadget", price: 14.99, quantity: 1 }
+];
+
+console.log(`Total: $${calculateTotal(cart).toFixed(2)}`);</code></pre>
+      </div>
+    </div>
+
+    <div class="demo-section">
+      <h2>Python</h2>
+      <div class="code-box">
+        <div class="code-head">
+          <span>python</span>
+          <button type="button" onclick="copyCode(this)"><img src="./assets/copy.svg" alt="">Copy</button>
+        </div>
+        <pre class="line-numbers"><code class="language-python"># Python example with type hints
+from typing import List, Dict
+
+def process_data(items: List[Dict[str, any]]) -> Dict[str, int]:
+    """Process a list of items and return summary statistics."""
+    result = {
+        'total': len(items),
+        'processed': 0,
+        'errors': 0
+    }
+    
+    for item in items:
+        try:
+            # Process each item
+            validate_item(item)
+            result['processed'] += 1
+        except ValueError as e:
+            print(f"Error processing item: {e}")
+            result['errors'] += 1
+    
+    return result</code></pre>
+      </div>
+    </div>
+
+    <div class="demo-section">
+      <h2>Bash/Shell Script</h2>
+      <div class="code-box">
+        <div class="code-head">
+          <span>bash</span>
+          <button type="button" onclick="copyCode(this)"><img src="./assets/copy.svg" alt="">Copy</button>
+        </div>
+        <pre class="line-numbers"><code class="language-bash">#!/bin/bash
+# Deployment script example
+
+set -euo pipefail
+
+ENVIRONMENT=${1:-staging}
+VERSION=$(git describe --tags --always)
+
+echo "Deploying version $VERSION to $ENVIRONMENT"
+
+# Build the application
+npm run build
+
+# Run tests
+npm test
+
+# Deploy
+if [ "$ENVIRONMENT" = "production" ]; then
+    echo "⚠️  Deploying to PRODUCTION"
+    kubectl apply -f k8s/production/
+else
+    echo "Deploying to staging"
+    kubectl apply -f k8s/staging/
+fi
+
+echo "✅ Deployment complete!"</code></pre>
+      </div>
+    </div>
+
+    <div class="demo-section">
+      <h2>JSON</h2>
+      <div class="code-box">
+        <div class="code-head">
+          <span>json</span>
+          <button type="button" onclick="copyCode(this)"><img src="./assets/copy.svg" alt="">Copy</button>
+        </div>
+        <pre class="line-numbers"><code class="language-json">{
+  "name": "vanilla-chat",
+  "version": "1.0.0",
+  "description": "A lightweight chat interface with syntax highlighting",
+  "features": [
+    "Real-time streaming",
+    "Markdown rendering",
+    "Code syntax highlighting",
+    "File uploads"
+  ],
+  "dependencies": {
+    "prismjs": "^1.29.0"
+  },
+  "config": {
+    "theme": "default",
+    "language": "auto-detect"
+  }
+}</code></pre>
+      </div>
+    </div>
+
+    <div class="demo-section">
+      <h2>TypeScript</h2>
+      <div class="code-box">
+        <div class="code-head">
+          <span>typescript</span>
+          <button type="button" onclick="copyCode(this)"><img src="./assets/copy.svg" alt="">Copy</button>
+        </div>
+        <pre class="line-numbers"><code class="language-typescript">// TypeScript interface and implementation
+interface Message {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  timestamp: Date;
+}
+
+interface Conversation {
+  id: string;
+  title: string;
+  messages: Message[];
+  model: string;
+  provider: string;
+}
+
+class ChatManager {
+  private conversations: Map&lt;string, Conversation&gt;;
+  
+  constructor() {
+    this.conversations = new Map();
+  }
+  
+  async addMessage(conversationId: string, message: Message): Promise&lt;void&gt; {
+    const conversation = this.conversations.get(conversationId);
+    if (!conversation) {
+      throw new Error(`Conversation ${conversationId} not found`);
+    }
+    conversation.messages.push(message);
+  }
+  
+  getConversation(id: string): Conversation | undefined {
+    return this.conversations.get(id);
+  }
+}</code></pre>
+      </div>
+    </div>
+
+    <div class="demo-section">
+      <h2>CSS</h2>
+      <div class="code-box">
+        <div class="code-head">
+          <span>css</span>
+          <button type="button" onclick="copyCode(this)"><img src="./assets/copy.svg" alt="">Copy</button>
+        </div>
+        <pre class="line-numbers"><code class="language-css">/* Modern CSS with custom properties */
+:root {
+  --primary-color: #307ab1;
+  --background: #fbfbfb;
+  --text: #141414;
+  --border-radius: 8px;
+  --transition: 200ms ease;
+}
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 24px;
+  border: none;
+  border-radius: var(--border-radius);
+  background: var(--primary-color);
+  color: white;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+
+.button:hover {
+  background: color-mix(in srgb, var(--primary-color) 85%, black);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.button:active {
+  transform: translateY(0);
+}</code></pre>
+      </div>
+    </div>
+
+    <div class="demo-section">
+      <h2>SQL</h2>
+      <div class="code-box">
+        <div class="code-head">
+          <span>sql</span>
+          <button type="button" onclick="copyCode(this)"><img src="./assets/copy.svg" alt="">Copy</button>
+        </div>
+        <pre class="line-numbers"><code class="language-sql">-- Example SQL queries with syntax highlighting
+
+-- Create a conversations table
+CREATE TABLE conversations (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  title VARCHAR(255) NOT NULL,
+  model VARCHAR(100) NOT NULL,
+  provider VARCHAR(50) NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create an index for faster lookups
+CREATE INDEX idx_conversations_created_at ON conversations(created_at DESC);
+
+-- Query recent conversations
+SELECT 
+  c.id,
+  c.title,
+  c.model,
+  COUNT(m.id) as message_count,
+  MAX(m.created_at) as last_message_at
+FROM conversations c
+LEFT JOIN messages m ON m.conversation_id = c.id
+WHERE c.created_at > NOW() - INTERVAL '7 days'
+GROUP BY c.id, c.title, c.model
+ORDER BY last_message_at DESC
+LIMIT 20;</code></pre>
+      </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/line-numbers/prism-line-numbers.min.js"></script>
+    <script>
+      const COPY_ICON = "./assets/copy.svg";
+      
+      function copyCode(button) {
+        const code = button.closest(".code-box")?.querySelector("code")?.textContent || "";
+        navigator.clipboard.writeText(code).then(() => {
+          const originalHTML = button.innerHTML;
+          button.textContent = "Copied!";
+          setTimeout(() => {
+            button.innerHTML = originalHTML;
+          }, 1000);
+        });
+      }
+
+      // Apply syntax highlighting on load
+      document.addEventListener('DOMContentLoaded', () => {
+        Prism.highlightAll();
+      });
+    </script>
+  </body>
+</html>

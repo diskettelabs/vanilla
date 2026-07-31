@@ -45,6 +45,7 @@ const els = {
   searchResults: document.querySelector("#searchResults"),
   settingsButton: document.querySelector("#settingsButton"),
   fileInput: document.querySelector("#fileInput"),
+  attachmentPreview: document.querySelector("#attachmentPreview"),
 };
 
 const state = {
@@ -62,6 +63,7 @@ const state = {
   tokenText: "",
   tokenPump: null,
   streamComplete: false,
+  pendingAttachment: null,
   themes: [],
   settings: {
     theme: localStorage.getItem("vanilla-theme") || "default",
@@ -213,6 +215,88 @@ function extractThinking(markdown) {
   return { cleaned, blocks };
 }
 
+function detectLanguage(declaredLang, code) {
+  // If language is explicitly declared, normalize and use it
+  if (declaredLang) {
+    const normalized = declaredLang.toLowerCase().trim();
+    const langMap = {
+      'js': 'javascript',
+      'ts': 'typescript',
+      'jsx': 'jsx',
+      'tsx': 'tsx',
+      'py': 'python',
+      'rb': 'ruby',
+      'sh': 'bash',
+      'shell': 'bash',
+      'zsh': 'bash',
+      'yml': 'yaml',
+      'md': 'markdown',
+      'json': 'json',
+      'html': 'html',
+      'css': 'css',
+      'scss': 'scss',
+      'sass': 'sass',
+      'sql': 'sql',
+      'go': 'go',
+      'rust': 'rust',
+      'java': 'java',
+      'cpp': 'cpp',
+      'c': 'c',
+      'php': 'php',
+      'swift': 'swift',
+      'kotlin': 'kotlin',
+      'dart': 'dart',
+      'r': 'r',
+      'xml': 'xml',
+      'diff': 'diff',
+      'git': 'git',
+      'dockerfile': 'docker',
+      'makefile': 'makefile',
+      'graphql': 'graphql',
+    };
+    return langMap[normalized] || normalized;
+  }
+  
+  // Auto-detect language based on code patterns
+  const trimmed = code.trim();
+  
+  // JSON
+  if ((trimmed.startsWith('{') && trimmed.endsWith('}')) || 
+      (trimmed.startsWith('[') && trimmed.endsWith(']'))) {
+    try {
+      JSON.parse(trimmed);
+      return 'json';
+    } catch {}
+  }
+  
+  // HTML/XML
+  if (trimmed.startsWith('<!DOCTYPE') || trimmed.startsWith('<html')) return 'html';
+  if (trimmed.startsWith('<?xml')) return 'xml';
+  if (/<[a-z][\s\S]*>/i.test(trimmed)) return 'html';
+  
+  // JavaScript/TypeScript patterns
+  if (/^(import|export|const|let|var|function|class|interface|type)\s/m.test(trimmed)) {
+    if (/:\s*[A-Z][a-zA-Z<>[\]|&]+[;=]/.test(trimmed)) return 'typescript';
+    return 'javascript';
+  }
+  
+  // Python
+  if (/^(def|class|import|from|if __name__|print\()/m.test(trimmed)) return 'python';
+  
+  // Bash/Shell
+  if (/^#!\/bin\/(ba)?sh/.test(trimmed)) return 'bash';
+  if (/^\$\s|^(echo|cd|ls|mkdir|chmod)\s/m.test(trimmed)) return 'bash';
+  
+  // CSS/SCSS
+  if (/^[.#]?[a-zA-Z-_][\w-]*\s*\{/.test(trimmed)) return 'css';
+  
+  // SQL
+  if (/^(SELECT|INSERT|UPDATE|DELETE|CREATE|DROP|ALTER)\s/mi.test(trimmed)) return 'sql';
+  
+  // Default to plain text for unknown languages
+  return '';
+}
+
 function renderMarkdown(markdown, { streaming = false } = {}) {
   const { cleaned, blocks } = extractThinking(markdown);
   const chunks = [];
@@ -220,13 +304,22 @@ function renderMarkdown(markdown, { streaming = false } = {}) {
   for (let i = 0; i < fenceParts.length; i++) {
     const part = fenceParts[i];
     if (i % 2 === 1) {
+      // This is inside a code fence
+      const firstBreak = part.indexOf("\n");
+      const lang = firstBreak > -1 ? part.slice(0, firstBreak).trim() : "";
+      const code = firstBreak > -1 ? part.slice(firstBreak + 1) : part;
+      
+      // During streaming, if this is the last fence and incomplete, still render as code box
       if (streaming && i === fenceParts.length - 1) {
-        chunks.push(`<p>${inlineMarkdown(part, true)}</p>`);
+        const detectedLang = detectLanguage(lang, code);
+        const langClass = detectedLang ? `language-${detectedLang}` : "";
+        const langDisplay = detectedLang || lang || "code";
+        chunks.push(`<div class="code-box"><div class="code-head"><span>${escapeHtml(langDisplay)}</span><button type="button" data-copy-code><img src="${ASSET.copy}" alt="">Copy</button></div><pre class="line-numbers"><code class="${langClass}">${escapeHtml(code.trimEnd())}</code></pre></div>`);
       } else {
-        const firstBreak = part.indexOf("\n");
-        const lang = firstBreak > -1 ? part.slice(0, firstBreak).trim() : "";
-        const code = firstBreak > -1 ? part.slice(firstBreak + 1) : part;
-        chunks.push(`<div class="code-box"><div class="code-head"><span>${escapeHtml(lang || "code")}</span><button type="button" data-copy-code>Copy</button></div><pre><code>${escapeHtml(code.trimEnd())}</code></pre></div>`);
+        const detectedLang = detectLanguage(lang, code);
+        const langClass = detectedLang ? `language-${detectedLang}` : "";
+        const langDisplay = detectedLang || lang || "code";
+        chunks.push(`<div class="code-box"><div class="code-head"><span>${escapeHtml(langDisplay)}</span><button type="button" data-copy-code><img src="${ASSET.copy}" alt="">Copy</button></div><pre class="line-numbers"><code class="${langClass}">${escapeHtml(code.trimEnd())}</code></pre></div>`);
       }
       continue;
     }
@@ -372,7 +465,11 @@ function renderMessages(conv) {
       addAssistantMessage(msg.content, { animate: false, id: msg.id, done: true });
     }
   }
-  requestAnimationFrame(scrollToBottom);
+  requestAnimationFrame(() => {
+    scrollToBottom();
+    // Apply syntax highlighting to all loaded messages
+    attachCodeCopy(els.messages);
+  });
 }
 
 function addUserMessage(content, { id = crypto.randomUUID(), animate = true } = {}) {
@@ -434,6 +531,16 @@ function attachCodeCopy(root = document) {
       setTimeout(() => (button.textContent = "Copy"), 900);
     });
   });
+  
+  // Apply Prism syntax highlighting
+  if (typeof Prism !== 'undefined') {
+    root.querySelectorAll("pre code[class*='language-']").forEach((block) => {
+      if (!block.classList.contains('prism-highlighted')) {
+        Prism.highlightElement(block);
+        block.classList.add('prism-highlighted');
+      }
+    });
+  }
 }
 
 function scrollToBottom() {
@@ -545,10 +652,20 @@ async function submitPrompt(event) {
     return;
   }
   const message = els.promptInput.value.trim();
-  if (!message) return;
+  
+  // Check if we have an attachment without a message
+  if (!message && !state.pendingAttachment) return;
+
   const editingId = els.composer.dataset.editingMessageId;
   els.promptInput.value = "";
   delete els.composer.dataset.editingMessageId;
+
+  // Handle file upload if pending
+  if (state.pendingAttachment) {
+    await handleAttachmentUpload(message);
+    return;
+  }
+
   resizePrompt();
 
   try {
@@ -567,6 +684,71 @@ async function submitPrompt(event) {
     await streamChat(conv.id, message);
   } catch (error) {
     showAssistantError(error.message);
+  }
+}
+
+async function handleAttachmentUpload(message) {
+  if (!state.pendingAttachment) return;
+
+  state.uploading = true;
+  const { file, name, isImage } = state.pendingAttachment;
+  const progress = createUploadProgress();
+
+  try {
+    const result = await new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open("POST", "/api/upload");
+
+      xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable) {
+          const pct = Math.round((e.loaded / e.total) * 100);
+          progress.querySelector(".upload-fill").style.width = `${pct}%`;
+          progress.querySelector(".upload-label").textContent = `Uploading ${name} — ${pct}%`;
+        }
+      };
+
+      xhr.onload = () => {
+        if (xhr.status === 201) return resolve(JSON.parse(xhr.responseText));
+        try {
+          const err = JSON.parse(xhr.responseText);
+          reject(new Error(err.error || `Upload failed (${xhr.status})`));
+        } catch {
+          reject(new Error(`Upload failed (${xhr.status})`));
+        }
+      };
+
+      xhr.onerror = () => reject(new Error("Upload failed"));
+      const fd = new FormData();
+      fd.append("file", file);
+      xhr.send(fd);
+    });
+
+    progress.querySelector(".upload-fill").style.width = "100%";
+    progress.querySelector(".upload-label").textContent = `Uploaded ${name}`;
+    setTimeout(() => progress.remove(), 800);
+
+    // Clear the attachment preview
+    clearAttachment();
+    resizePrompt();
+
+    const ext = result.name.split(".").pop()?.toLowerCase();
+    const isResultImage = /^(jpg|jpeg|png|gif|webp|avif)$/.test(ext);
+
+    const fileHtml = `<a href="${result.url}" target="_blank" class="file-attachment"><span class="file-icon">${isResultImage ? "IMG" : "FILE"}</span><span class="file-info"><span class="file-name">${escapeHtml(result.name)}</span><span class="file-meta">${result.type} — ${formatFileSize(result.size)}</span></span></a>`;
+    const msgText = message 
+      ? `${message}\n\n[Uploaded: ${result.url}]\n\n${fileHtml}`
+      : `[Uploaded: ${result.url}]\n\n${fileHtml}`;
+
+    const conv = await ensureConversation(msgText);
+    addUploadedMessage(msgText);
+    await streamChat(conv.id, msgText);
+  } catch (error) {
+    progress.querySelector(".upload-fill").classList.add("upload-error");
+    progress.querySelector(".upload-label").textContent = error.message;
+    setTimeout(() => progress.remove(), 2500);
+    showAssistantError(error.message);
+  } finally {
+    state.uploading = false;
   }
 }
 
@@ -1027,7 +1209,14 @@ function bindEvents() {
     }
   });
 
-  document.querySelector('[data-tool="add"]').addEventListener("click", () => els.fileInput.click());
+  document.querySelector('[data-tool="attach"]').addEventListener("click", () => els.fileInput.click());
+  els.plusButton.addEventListener("click", () => {
+    if (els.omnibar.dataset.expanded === "false") {
+      expandOmnibar(true);
+    } else {
+      els.fileInput.click();
+    }
+  });
   els.fileInput.addEventListener("change", uploadFile);
 }
 
@@ -1050,58 +1239,68 @@ async function uploadFile(event) {
   event.target.value = "";
   if (!file || state.uploading) return;
 
-  state.uploading = true;
-  const progress = createUploadProgress();
+  // Automatically expand omnibar when file is selected
+  expandOmnibar(true);
 
-  try {
-    const result = await new Promise((resolve, reject) => {
-      const xhr = new XMLHttpRequest();
-      xhr.open("POST", "/api/upload");
+  const ext = file.name.split(".").pop()?.toLowerCase();
+  const isImage = /^(jpg|jpeg|png|gif|webp|avif)$/.test(ext);
 
-      xhr.upload.onprogress = (e) => {
-        if (e.lengthComputable) {
-          const pct = Math.round((e.loaded / e.total) * 100);
-          progress.querySelector(".upload-fill").style.width = `${pct}%`;
-          progress.querySelector(".upload-label").textContent = `Uploading ${file.name} — ${pct}%`;
-        }
-      };
+  // Show attachment preview with thumbnail
+  state.pendingAttachment = {
+    file,
+    name: file.name,
+    size: file.size,
+    type: file.type,
+    isImage,
+  };
 
-      xhr.onload = () => {
-        if (xhr.status === 201) return resolve(JSON.parse(xhr.responseText));
-        try {
-          const err = JSON.parse(xhr.responseText);
-          reject(new Error(err.error || `Upload failed (${xhr.status})`));
-        } catch {
-          reject(new Error(`Upload failed (${xhr.status})`));
-        }
-      };
-
-      xhr.onerror = () => reject(new Error("Upload failed"));
-      const fd = new FormData();
-      fd.append("file", file);
-      xhr.send(fd);
-    });
-
-    progress.querySelector(".upload-fill").style.width = "100%";
-    progress.querySelector(".upload-label").textContent = `Uploaded ${file.name}`;
-
-    const ext = result.name.split(".").pop()?.toLowerCase();
-    const isImage = /^(jpg|jpeg|png|gif|webp|avif)$/.test(ext);
-
-    const fileHtml = `<a href="${result.url}" target="_blank" class="file-attachment"><span class="file-icon">${isImage ? "IMG" : "FILE"}</span><span class="file-info"><span class="file-name">${escapeHtml(result.name)}</span><span class="file-meta">${result.type} — ${formatFileSize(result.size)}</span></span></a>`;
-    const msgText = `[Uploaded: ${result.url}]\n\n${fileHtml}`;
-
-    const conv = await ensureConversation(msgText);
-    addUploadedMessage(msgText);
-    await streamChat(conv.id, msgText);
-  } catch (error) {
-    progress.querySelector(".upload-fill").classList.add("upload-error");
-    progress.querySelector(".upload-label").textContent = error.message;
-    setTimeout(() => progress.remove(), 2500);
-    showAssistantError(error.message);
-  } finally {
-    state.uploading = false;
+  if (isImage) {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      state.pendingAttachment.dataUrl = e.target.result;
+      renderAttachmentPreview();
+    };
+    reader.readAsDataURL(file);
+  } else {
+    renderAttachmentPreview();
   }
+}
+
+function renderAttachmentPreview() {
+  if (!state.pendingAttachment) {
+    els.attachmentPreview.hidden = true;
+    return;
+  }
+
+  const { name, size, isImage, dataUrl } = state.pendingAttachment;
+  const ext = name.split(".").pop()?.toLowerCase() || "FILE";
+
+  els.attachmentPreview.hidden = false;
+  els.attachmentPreview.innerHTML = `
+    <div class="attachment-item">
+      ${
+        isImage && dataUrl
+          ? `<div class="attachment-thumb"><img src="${dataUrl}" alt="${escapeHtml(name)}"></div>`
+          : `<div class="attachment-thumb attachment-thumb-icon">${escapeHtml(ext.toUpperCase())}</div>`
+      }
+      <div class="attachment-info">
+        <div class="attachment-name">${escapeHtml(name)}</div>
+        <div class="attachment-size">${formatFileSize(size)}</div>
+      </div>
+      <button type="button" class="attachment-remove" aria-label="Remove attachment" title="Remove attachment">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M12 4L4 12M4 4L12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      </button>
+    </div>
+  `;
+
+  els.attachmentPreview.querySelector(".attachment-remove").addEventListener("click", clearAttachment);
+}
+
+function clearAttachment() {
+  state.pendingAttachment = null;
+  renderAttachmentPreview();
 }
 
 function createUploadProgress() {
