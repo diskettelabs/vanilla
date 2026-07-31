@@ -1,5 +1,5 @@
 const ASSET = {
-  logo: "./scoop-outline.svg",
+  logo: "./assets/scoop-outline.svg",
   add: "./assets/add.svg",
   submit: "./assets/submit.svg",
   stop: "./assets/stop.svg",
