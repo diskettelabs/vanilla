@@ -8,34 +8,30 @@ let mainWindow = null;
 let server = null;
 let ollamaServer = null;
 
-async function startOllama() {
-  const go = new GelectronOllama({
-    basePath: app.getPath('userData'),
-  });
-
-  if (await go.isRunning()) {
-    console.log('Ollama is already running');
-    return;
-  }
-
-  console.log('Ollama not detected — downloading and starting...');
-  const metadata = await go.getMetadata('latest');
-  await go.serve(metadata.version, {
-    serverLog: (msg) => console.log('[Ollama]', msg),
-    downloadLog: (pct, msg) => console.log('[Ollama]', `${pct}%`, msg),
-  });
-  ollamaServer = go.getServer();
-  console.log(`Ollama ${metadata.version} is now running`);
-}
+process.chdir(path.join(__dirname, '..'));
 
 async function startServer() {
   const expressApp = require('../server');
   return new Promise((resolve) => {
     server = http.createServer(expressApp);
-    server.listen(CONFIG.port, () => {
-      resolve();
-    });
+    server.listen(CONFIG.port, () => resolve());
   });
+}
+
+async function ensureOllama() {
+  const ollama = new GelectronOllama({
+    basePath: path.join(app.getPath('userData'), 'vanilla-chat', 'ollama'),
+  });
+  if (await ollama.isRunning()) {
+    console.log('Ollama is already running on port 11434');
+    return;
+  }
+  const metadata = await ollama.getMetadata('latest');
+  await ollama.serve(metadata.version, {
+    serverLog: (message) => console.log('[Ollama]', message),
+    downloadLog: (percent, message) => console.log(`[Ollama Download] ${percent}% ${message}`),
+  });
+  ollamaServer = ollama.getServer();
 }
 
 function buildMenu() {
@@ -44,8 +40,6 @@ function buildMenu() {
     ...(isMac ? [{
       label: app.name,
       submenu: [
-        { role: 'about' },
-        { type: 'separator' },
         { role: 'hide' },
         { role: 'hideOthers' },
         { role: 'unhide' },
@@ -81,8 +75,6 @@ function buildMenu() {
       label: 'View',
       submenu: [
         { role: 'reload' },
-        { role: 'forceReload' },
-        { role: 'toggleDevTools' },
         { type: 'separator' },
         { role: 'resetZoom' },
         { role: 'zoomIn' },
@@ -108,8 +100,8 @@ function buildMenu() {
       label: 'Help',
       submenu: [
         {
-          label: 'Vanilla Chat Docs',
-          click: () => shell.openExternal('https://github.com/milesallen/vanilla-chat'),
+          label: 'Gelectron',
+          click: () => shell.openExternal('https://gelectron.milesallen.site/'),
         },
       ],
     },
@@ -125,7 +117,6 @@ async function createWindow() {
     minHeight: 500,
     title: 'Vanilla Chat',
     webPreferences: {
-      preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
       nodeIntegration: false,
     },
@@ -134,9 +125,13 @@ async function createWindow() {
 
   mainWindow.loadURL(`http://localhost:${CONFIG.port}`);
 
-  mainWindow.once('ready-to-show', () => {
-    mainWindow.show();
-  });
+  const showWhenReady = () => {
+    if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.isVisible()) {
+      mainWindow.show();
+    }
+  };
+  mainWindow.once('ready-to-show', showWhenReady);
+  mainWindow.webContents.once('did-finish-load', showWhenReady);
 
   mainWindow.on('closed', () => {
     mainWindow = null;
@@ -145,7 +140,11 @@ async function createWindow() {
 
 app.whenReady().then(async () => {
   buildMenu();
-  await startOllama();
+  try {
+    await ensureOllama();
+  } catch (error) {
+    console.warn('Could not start bundled Ollama:', error.message);
+  }
   await startServer();
   await createWindow();
 
@@ -162,11 +161,11 @@ app.on('window-all-closed', () => {
   }
 });
 
-app.on('will-quit', async () => {
+app.on('will-quit', () => {
+  if (ollamaServer) {
+    ollamaServer.stop();
+  }
   if (server) {
     server.close();
-  }
-  if (ollamaServer) {
-    await ollamaServer.stop();
   }
 });

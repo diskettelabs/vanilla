@@ -1,0 +1,15 @@
+{
+  "name": "vanilla-chat-electron",
+  "version": "2.0.0",
+  "description": "Vanilla Chat desktop app (Electron)",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "dependencies": {
+    "electron-ollama": "^0.1.25"
+  },
+  "devDependencies": {
+    "electron": "^43.2.0"
+  }
+}
