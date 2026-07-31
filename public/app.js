@@ -1,5 +1,5 @@
 const ASSET = {
-  logo: "./assets/vanilla%20logomark.svg",
+  logo: "./scoop-outline.svg",
   add: "./assets/add.svg",
   submit: "./assets/submit.svg",
   stop: "./assets/stop.svg",
@@ -143,17 +143,34 @@ function api(path, options = {}) {
     signal: timeoutController?.signal || options.signal,
   }).then(async (res) => {
     if (!res.ok) {
-      let message = `${res.status} ${res.statusText}`;
+      let errorData = null;
       try {
-        const data = await res.json();
-        message = data.error || message;
+        errorData = await res.json();
       } catch {}
-      throw new Error(message);
+      
+      // Extract user-friendly error message and action if available
+      const userMessage = errorData?.error || `${res.status} ${res.statusText}`;
+      const action = errorData?.action || null;
+      
+      const error = new Error(userMessage);
+      error.action = action;
+      error.statusCode = res.status;
+      error.recoverable = errorData?.recoverable !== false;
+      throw error;
     }
     return res.json();
   }).catch((error) => {
-    if (error.name === "AbortError" && timeoutMs) {
-      throw new Error(`Timed out after ${Math.round(timeoutMs / 1000)}s`);
+    if (error.name === "AbortError") {
+      const err = new Error(timeoutMs ? `Request timed out after ${Math.round(timeoutMs / 1000)}s` : "Request was cancelled");
+      err.action = timeoutMs ? "The server took too long to respond. Check your connection and try again." : null;
+      err.recoverable = true;
+      throw err;
+    }
+    if (error.message === "Failed to fetch" || error.message.includes("NetworkError")) {
+      const err = new Error("Cannot connect to server");
+      err.action = "Check that the server is running and you have an internet connection.";
+      err.recoverable = true;
+      throw err;
     }
     throw error;
   }).finally(() => {
@@ -599,34 +616,16 @@ function resizePrompt() {
 // Speech Recognition / Dictation using Vosk (offline)
 async function initDictation() {
   if (!window.Vosk) {
-    console.warn('Vosk library not loaded, hiding dictation button');
     if (els.dictationButton) {
       els.dictationButton.style.display = 'none';
     }
     return;
   }
-
-  try {
-    console.log('Initializing Vosk speech recognition...');
-    
-    // Load Vosk model (small English model)
-    // We'll download it on first use
-    const modelUrl = 'https://alphacephei.com/vosk/models/vosk-model-small-en-us-0.15.zip';
-    
-    console.log('Vosk initialized. Model will be loaded on first use.');
-    console.log('Note: First use will download ~40MB model file.');
-    
-  } catch (error) {
-    console.error('Failed to initialize Vosk:', error);
-    if (els.dictationButton) {
-      els.dictationButton.style.display = 'none';
-    }
-  }
 }
 
 async function toggleDictation() {
   if (!window.Vosk) {
-    alert('Speech recognition is not available.');
+    showNotification("Speech recognition is not available", "warning");
     return;
   }
 
@@ -639,7 +638,6 @@ async function toggleDictation() {
 
 async function startDictation() {
   try {
-    console.log('Starting Vosk dictation...');
     state.isRecording = true;
     
     els.dictationButton.dataset.active = 'true';
@@ -660,13 +658,11 @@ async function startDictation() {
 
     // Load model if not loaded
     if (!state.voskModel) {
-      console.log('Loading Vosk model (first time, ~40MB download)...');
       els.dictationLabel.textContent = 'downloading model...';
       
       // Use our server as proxy to bypass CORS
       const model = await Vosk.createModel('/api/vosk-model');
       state.voskModel = model;
-      console.log('Model loaded successfully');
     }
 
     // Create recognizer with sample rate (must match AudioContext)
@@ -675,7 +671,6 @@ async function startDictation() {
     // Set up event handlers for results
     state.voskRecognizer.on("result", (message) => {
       if (message.result && message.result.text && message.result.text.trim()) {
-        console.log('Result:', message.result.text);
         els.promptInput.value += message.result.text + ' ';
         resizePrompt();
       }
@@ -683,12 +678,13 @@ async function startDictation() {
     
     state.voskRecognizer.on("partialresult", (message) => {
       if (message.result && message.result.partial) {
-        console.log('Partial:', message.result.partial);
+        // Show partial results in button label for feedback
+        const partial = message.result.partial.split(' ').slice(-3).join(' ');
+        if (partial) els.dictationLabel.textContent = partial;
       }
     });
     
     els.dictationLabel.textContent = 'listening...';
-    console.log('Vosk recognizer ready');
 
     // Create audio processor
     const recognizerNode = state.audioContext.createScriptProcessor(4096, 1, 1);
@@ -700,7 +696,7 @@ async function startDictation() {
         // Pass the AudioBuffer directly to Vosk
         state.voskRecognizer.acceptWaveform(event.inputBuffer);
       } catch (error) {
-        console.error('acceptWaveform failed:', error);
+        // Silently ignore audio processing errors
       }
     };
 
@@ -710,30 +706,41 @@ async function startDictation() {
     state.audioProcessor = recognizerNode;
 
   } catch (error) {
-    console.error('Failed to start dictation:', error);
     state.isRecording = false;
     els.dictationButton.dataset.active = 'false';
     els.dictationLabel.textContent = 'dictate';
     
+    let message = "Speech recognition failed";
+    let action = "Try again or type your message instead.";
+    
     if (error.name === 'NotAllowedError') {
-      alert('Microphone access denied. Please allow microphone access in your browser settings.');
-    } else {
-      alert('Failed to start speech recognition: ' + error.message);
+      message = "Microphone access denied";
+      action = "Grant microphone permissions in your browser settings (usually in the address bar), then try again.";
+    } else if (error.name === 'NotFoundError') {
+      message = "No microphone detected";
+      action = "Connect a microphone and refresh the page, or check your audio input settings.";
+    } else if (error.message?.includes('model') || error.message?.includes('download')) {
+      message = "Failed to load speech model";
+      action = "Check your internet connection. The first use requires downloading a 40MB model file.";
+    }
+    
+    showNotification(message, "error", 4000);
+    // Also show the action in a second notification
+    if (action) {
+      setTimeout(() => showNotification(action, "info", 5000), 500);
     }
   }
 }
 
 function stopDictation() {
-  console.log('Stopping Vosk dictation');
   state.isRecording = false;
   
   // Remove the recognizer
   if (state.voskRecognizer) {
     try {
-      // Remove event listeners
       state.voskRecognizer.remove();
     } catch (e) {
-      console.log('Could not remove recognizer:', e);
+      // Silently handle cleanup errors
     }
     state.voskRecognizer = null;
   }
@@ -763,7 +770,7 @@ async function refreshConversations() {
     state.conversations = await api("/api/conversations");
     renderConversationList();
   } catch (error) {
-    console.warn("Unable to load conversations", error);
+    // Silently handle - conversations will show empty, user can still create new
   }
 }
 
@@ -777,7 +784,7 @@ async function loadConversation(id) {
     renderMessages(conv);
     renderConversationList();
   } catch (error) {
-    showAssistantError(error.message);
+    showNotification(error.action || error.message || "Failed to load conversation", "error");
   }
 }
 
@@ -848,7 +855,7 @@ async function submitPrompt(event) {
     }
     await streamChat(conv.id, message);
   } catch (error) {
-    showAssistantError(error.message);
+    showAssistantError(error);
   }
 }
 
@@ -876,13 +883,17 @@ async function handleAttachmentUpload(message) {
         if (xhr.status === 201) return resolve(JSON.parse(xhr.responseText));
         try {
           const err = JSON.parse(xhr.responseText);
-          reject(new Error(err.error || `Upload failed (${xhr.status})`));
+          const error = new Error(err.error || `Upload failed (${xhr.status})`);
+          error.action = err.action || null;
+          reject(error);
         } catch {
           reject(new Error(`Upload failed (${xhr.status})`));
         }
       };
 
-      xhr.onerror = () => reject(new Error("Upload failed"));
+      xhr.onerror = () => reject(new Error("Upload failed - network error"));
+      xhr.ontimeout = () => reject(new Error("Upload timed out - try a smaller file"));
+      
       const fd = new FormData();
       fd.append("file", file);
       xhr.send(fd);
@@ -923,8 +934,18 @@ async function handleAttachmentUpload(message) {
   } catch (error) {
     progress.querySelector(".upload-fill").classList.add("upload-error");
     progress.querySelector(".upload-label").textContent = error.message;
-    setTimeout(() => progress.remove(), 2500);
-    showAssistantError(error.message);
+    
+    // Show detailed error with action
+    if (error.action) {
+      setTimeout(() => {
+        progress.querySelector(".upload-label").textContent = error.action;
+      }, 1500);
+      setTimeout(() => progress.remove(), 4000);
+    } else {
+      setTimeout(() => progress.remove(), 2500);
+    }
+    
+    showAssistantError(error);
   } finally {
     state.uploading = false;
   }
@@ -1017,10 +1038,12 @@ function handleSsePart(part) {
       } else if (event.type === "done") {
         state.streamComplete = true;
       } else if (event.type === "error") {
-        showAssistantError(event.error || "Stream failed", state.activeAssistant?.closest(".assistant-message"));
+        const error = new Error(event.error || "Stream failed");
+        error.action = event.action || null;
+        showAssistantError(error, state.activeAssistant?.closest(".assistant-message"));
       }
     } catch (error) {
-      console.warn("Bad SSE event", error);
+      // Skip malformed SSE events silently
     }
   }
 }
@@ -1070,7 +1093,7 @@ async function stopStream() {
   try {
     await api(`/api/chat/stop/${encodeURIComponent(id)}`, { method: "POST" });
   } catch (error) {
-    console.warn("Stop endpoint unavailable or already complete", error);
+    // Silently handle - stream may have already completed
   }
   state.streamAbort?.abort();
   setRunning(null, false);
@@ -1084,16 +1107,99 @@ function setRunning(conversationId, running) {
   els.submitButton.setAttribute("aria-label", running ? "Stop response" : "Submit message");
 }
 
-function showAssistantError(message, existingMessage) {
+function showAssistantError(error, existingMessage) {
   const wrap = existingMessage || addAssistantMessage("", { done: true });
   const body = wrap.classList?.contains("assistant-message") ? wrap.querySelector(".assistant-body") : wrap;
-  if (body) body.innerHTML = `<p><strong>Something went sideways:</strong> ${escapeHtml(message)}</p>`;
+  
+  const message = typeof error === "string" ? error : error?.message || "An unexpected error occurred";
+  const action = error?.action || null;
+  const recoverable = error?.recoverable !== false;
+  
+  let html = `<div class="error-message"><p><strong>${escapeHtml(message)}</strong></p>`;
+  
+  if (action) {
+    html += `<p class="error-action">${escapeHtml(action)}</p>`;
+  }
+  
+  if (recoverable && state.activeConversation?.id) {
+    html += `<p class="error-recovery"><button type="button" class="retry-button" onclick="retryLastMessage()">Try Again</button></p>`;
+  }
+  
+  html += `</div>`;
+  
+  if (body) body.innerHTML = html;
+}
+
+async function retryLastMessage() {
+  if (!state.activeConversation?.id) return;
+  
+  try {
+    // Get the last user message
+    const messages = state.activeConversation.messages || [];
+    const lastUserMsg = messages.filter(m => m.role === "user").pop();
+    
+    if (!lastUserMsg) {
+      showNotification("No message to retry", "warning");
+      return;
+    }
+    
+    // Remove the last assistant error message if present
+    await api(`/api/conversations/${encodeURIComponent(state.activeConversation.id)}/erase-last-response`, {
+      method: "POST",
+    });
+    
+    // Reload conversation and retry
+    state.activeConversation = await api(`/api/conversations/${encodeURIComponent(state.activeConversation.id)}`);
+    renderMessages(state.activeConversation);
+    await streamChat(state.activeConversation.id, lastUserMsg.content);
+  } catch (error) {
+    showNotification(error.message || "Retry failed", "error");
+  }
+}
+
+function showNotification(message, type = "info", duration = 3000) {
+  // Create notification element
+  const notification = document.createElement("div");
+  notification.className = `app-notification app-notification-${type}`;
+  
+  // Use appropriate icon based on type
+  let iconContent = '';
+  if (type === "error") {
+    iconContent = '<img src="./assets/error.svg" alt="" style="width: 20px; height: 20px;">';
+  } else if (type === "success") {
+    iconContent = '<span style="color: #059669; font-weight: 600;">✓</span>';
+  } else if (type === "warning") {
+    iconContent = '<span style="color: #d97706; font-weight: 600;">!</span>';
+  } else {
+    iconContent = '<span style="color: #2563eb; font-weight: 600;">i</span>';
+  }
+  
+  notification.innerHTML = `
+    <div class="notification-content">
+      <span class="notification-icon">${iconContent}</span>
+      <span class="notification-message">${escapeHtml(message)}</span>
+    </div>
+  `;
+  
+  document.body.appendChild(notification);
+  
+  // Trigger animation
+  requestAnimationFrame(() => {
+    notification.classList.add("show");
+  });
+  
+  // Auto-dismiss
+  setTimeout(() => {
+    notification.classList.remove("show");
+    setTimeout(() => notification.remove(), 300);
+  }, duration);
 }
 
 async function loadProvidersAndModels() {
   try {
     state.providers = await api("/api/providers");
   } catch (error) {
+    showNotification("Could not load providers, using default", "warning");
     state.providers = [{ id: "ollama", label: "Ollama (Local)" }];
   }
 
@@ -1103,12 +1209,13 @@ async function loadProvidersAndModels() {
       const models = await api(`/api/models?provider=${encodeURIComponent(provider.id)}`, { timeoutMs: 10000 });
       return models.map((model) => ({ provider: provider.id, providerLabel: provider.label, model }));
     } catch (error) {
+      const reason = error.action || error.message;
       return [{
         provider: provider.id,
         providerLabel: provider.label,
         model: "Unavailable",
         disabled: true,
-        reason: error.message,
+        reason,
       }];
     }
   }));
@@ -1118,6 +1225,8 @@ async function loadProvidersAndModels() {
   if (firstUsable) {
     state.currentProvider = firstUsable.provider;
     state.currentModel = firstUsable.model;
+  } else {
+    showNotification("No models available. Configure a provider in Settings.", "error", 5000);
   }
   renderModelOptions();
   updateModelLabel();
@@ -1270,6 +1379,48 @@ function closeModals() {
   els.settingsModal.hidden = true;
 }
 
+// Helper function to find and highlight fuzzy matches
+function highlightFuzzyMatch(text, query) {
+  const lowerText = text.toLowerCase();
+  const lowerQuery = query.toLowerCase();
+  
+  // First try exact match
+  const exactIdx = lowerText.indexOf(lowerQuery);
+  if (exactIdx !== -1) {
+    const before = escapeHtml(text.slice(0, exactIdx));
+    const matched = escapeHtml(text.slice(exactIdx, exactIdx + query.length));
+    const after = escapeHtml(text.slice(exactIdx + query.length));
+    return `${before}<mark>${matched}</mark>${after}`;
+  }
+  
+  // Try fuzzy match - find all characters in order
+  const chars = lowerQuery.split('');
+  let textIdx = 0;
+  let matchStart = -1;
+  let matchEnd = -1;
+  let charIdx = 0;
+  
+  while (textIdx < lowerText.length && charIdx < chars.length) {
+    if (lowerText[textIdx] === chars[charIdx]) {
+      if (matchStart === -1) matchStart = textIdx;
+      matchEnd = textIdx + 1;
+      charIdx++;
+    }
+    textIdx++;
+  }
+  
+  // If we found all characters and the span is reasonable
+  if (charIdx === chars.length && matchEnd - matchStart < query.length * 4) {
+    const before = escapeHtml(text.slice(0, matchStart));
+    const matched = escapeHtml(text.slice(matchStart, matchEnd));
+    const after = escapeHtml(text.slice(matchEnd));
+    return `${before}<mark>${matched}</mark>${after}`;
+  }
+  
+  // No good match found, return escaped text
+  return escapeHtml(text);
+}
+
 async function runSearch() {
   const q = els.searchInput.value.trim();
   if (!q) {
@@ -1280,7 +1431,22 @@ async function runSearch() {
     const results = await api(`/api/search?q=${encodeURIComponent(q)}`);
     els.searchResults.innerHTML = results.map((result) => {
       const snippet = result.matches?.find((match) => match.snippet)?.snippet || "Title match";
-      return `<button class="search-result" type="button" data-conversation-id="${escapeHtml(result.id)}"><strong>${escapeHtml(result.title)}</strong><span>${escapeHtml(snippet)}</span></button>`;
+      const match = result.matches?.find((match) => match.snippet);
+      
+      // Highlight the query in title
+      let highlightedTitle = escapeHtml(result.title);
+      const titleMatch = result.matches?.find((m) => m.type === 'title');
+      if (titleMatch) {
+        highlightedTitle = highlightFuzzyMatch(result.title, q);
+      }
+      
+      // Highlight the query in snippet
+      let highlightedSnippet = escapeHtml(snippet);
+      if (match && match.query) {
+        highlightedSnippet = highlightFuzzyMatch(snippet, match.query);
+      }
+      
+      return `<button class="search-result" type="button" data-conversation-id="${escapeHtml(result.id)}"><strong>${highlightedTitle}</strong><span>${highlightedSnippet}</span></button>`;
     }).join("") || '<p class="muted-note">No matches.</p>';
     els.searchResults.querySelectorAll("[data-conversation-id]").forEach((button) => {
       button.addEventListener("click", async () => {
@@ -1289,7 +1455,7 @@ async function runSearch() {
       });
     });
   } catch (error) {
-    els.searchResults.innerHTML = `<p class="muted-note">${escapeHtml(error.message)}</p>`;
+    els.searchResults.innerHTML = `<p class="muted-note">Search failed. Try again.</p>`;
   }
 }
 
@@ -1302,8 +1468,12 @@ function bindEvents() {
   };
   els.sidebarToggle.addEventListener("click", toggleSidebar);
   els.mainSidebarToggle.addEventListener("click", toggleSidebar);
-  document.querySelector('[data-action="new-chat"]').addEventListener("click", newChat);
-  document.querySelector('[data-action="search"]').addEventListener("click", () => openModal(els.searchModal));
+  document.querySelectorAll('[data-action="new-chat"]').forEach((button) => {
+    button.addEventListener("click", newChat);
+  });
+  document.querySelectorAll('[data-action="search"]').forEach((button) => {
+    button.addEventListener("click", () => openModal(els.searchModal));
+  });
   els.settingsButton.addEventListener("click", () => openModal(els.settingsModal));
   document.querySelectorAll("[data-close-modal]").forEach((button) => button.addEventListener("click", closeModals));
   document.querySelectorAll(".modal-backdrop").forEach((modal) => {

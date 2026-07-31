@@ -240,14 +240,21 @@ function replaceLastUserMessage(id, content) {
 
 const WORD_RADIUS = 8;
 
-function fuzzyCharMatch(query, text) {
+// Check if query matches text as a substring or word boundary
+function smartMatch(query, text) {
   const q = query.toLowerCase();
   const t = text.toLowerCase();
-  let qi = 0;
-  for (let ti = 0; ti < t.length && qi < q.length; ti++) {
-    if (t[ti] === q[qi]) qi++;
+  
+  // First check for exact substring match
+  if (t.includes(q)) return true;
+  
+  // Check for word boundary match (query starts with a word in the text)
+  const words = t.split(/\s+/);
+  for (const word of words) {
+    if (word.startsWith(q)) return true;
   }
-  return qi === q.length;
+  
+  return false;
 }
 
 function findExactMatch(query, text) {
@@ -259,18 +266,34 @@ function findExactMatch(query, text) {
 function findTightFuzzySpan(query, text) {
   const q = query.toLowerCase();
   const t = text.toLowerCase();
+  
+  // Try to find sequential match within a reasonable span
+  // This looks for all characters in order, but close together
   let bestStart = -1;
   let bestLen = Infinity;
+  const maxGap = Math.max(3, Math.floor(q.length * 0.5)); // Allow small gaps
 
   for (let start = 0; start < t.length; start++) {
     if (t[start] !== q[0]) continue;
     let qi = 1;
     let end = start + 1;
+    let gaps = 0;
+    
     while (qi < q.length && end < t.length) {
-      if (t[end] === q[qi]) qi++;
+      if (t[end] === q[qi]) {
+        qi++;
+        gaps = 0; // Reset gap counter on match
+      } else {
+        gaps++;
+        // If gap is too large, this isn't a good match
+        if (gaps > maxGap) break;
+      }
       end++;
     }
-    if (qi === q.length && (end - start) < bestLen) {
+    
+    // Only count it as a match if we found all characters
+    // and the span is reasonable (not scattered across the whole text)
+    if (qi === q.length && (end - start) < bestLen && (end - start) < q.length * 4) {
       bestStart = start;
       bestLen = end - start;
     }
@@ -350,9 +373,18 @@ function search(query) {
 
       const matches = [];
 
-      // Check title
-      if (fuzzyCharMatch(q, conv.title)) {
-        matches.push({ type: 'title' });
+      // Check title with smart matching
+      if (smartMatch(q, conv.title)) {
+        const matchPos = findExactMatch(q, conv.title);
+        if (matchPos) {
+          matches.push({ 
+            type: 'title',
+            matchStart: matchPos.start,
+            matchEnd: matchPos.end
+          });
+        } else {
+          matches.push({ type: 'title' });
+        }
       }
 
       // Check messages
@@ -373,6 +405,9 @@ function search(query) {
             messageId: msg.id,
             role: msg.role,
             snippet,
+            matchStart: matchPos.start,
+            matchEnd: matchPos.end,
+            query: q
           };
           if (hasExactMatch) entry.term = q;
           matches.push(entry);

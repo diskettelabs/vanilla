@@ -2,6 +2,7 @@ const multer = require('multer');
 const path = require('node:path');
 const fs = require('node:fs');
 const sharp = require('sharp');
+const { FileError } = require('./errors');
 
 const UPLOAD_DIR = path.join(__dirname, '..', 'data', 'uploads');
 
@@ -45,7 +46,14 @@ const upload = multer({
       mime = EXT_MAP[ext] || mime;
     }
     const cat = typeCategory(mime);
-    if (!cat) return cb(new Error(`Unsupported file type: ${file.mimetype}`));
+    if (!cat) {
+      const err = new FileError(`Unsupported file type: ${file.mimetype}`, {
+        userMessage: 'File type not supported',
+        action: `${file.mimetype} files are not allowed. Supported types: images (PNG, JPG, GIF, WebP), documents (PDF, TXT, MD), and code files.`,
+        statusCode: 415,
+      });
+      return cb(err);
+    }
     file.mimetype = mime;
     cb(null, true);
   },
@@ -54,16 +62,20 @@ const upload = multer({
 async function processUpload(file) {
   const cat = typeCategory(file.mimetype);
   const limit = TYPE_LIMITS[cat];
+  
   if (file.size > limit) {
-    const err = new Error(`${cat} file exceeds ${limit / 1024 / 1024}MB limit`);
-    err.statusCode = 413;
-    throw err;
+    throw new FileError(`${cat} file exceeds ${limit / 1024 / 1024}MB limit`, {
+      userMessage: 'File is too large',
+      action: `Maximum ${cat} file size is ${limit / 1024 / 1024}MB. Compress or resize your file and try again.`,
+      statusCode: 413,
+    });
   }
 
   let safeExt = path.extname(file.originalname) || '.bin';
   const safeBase = path.basename(file.originalname, safeExt).replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 64);
   let buf = file.buffer;
 
+  // Process images
   if (IMAGE_MIME.includes(file.mimetype) && file.mimetype !== 'image/gif') {
     try {
       buf = await sharp(buf)
@@ -71,15 +83,42 @@ async function processUpload(file) {
         .jpeg({ quality: 80 })
         .toBuffer();
       safeExt = '.jpg';
-    } catch {
-      // fall through with original
+    } catch (imageError) {
+      throw new FileError('Failed to process image', {
+        userMessage: 'Image processing failed',
+        action: 'The image file may be corrupted. Try a different image or check the file format.',
+        statusCode: 400,
+        details: imageError.message,
+      });
     }
   }
 
   const uniqueName = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${safeBase}${safeExt}`;
   const destPath = path.join(UPLOAD_DIR, uniqueName);
 
-  await fs.promises.writeFile(destPath, buf);
+  // Ensure upload directory exists
+  try {
+    await fs.promises.mkdir(UPLOAD_DIR, { recursive: true });
+  } catch (dirError) {
+    throw new FileError('Failed to create upload directory', {
+      userMessage: 'Upload directory unavailable',
+      action: 'The server cannot create the upload directory. Contact your administrator.',
+      statusCode: 500,
+      details: dirError.message,
+    });
+  }
+
+  // Write file
+  try {
+    await fs.promises.writeFile(destPath, buf);
+  } catch (writeError) {
+    throw new FileError('Failed to save file', {
+      userMessage: 'Failed to save uploaded file',
+      action: 'Check that the server has sufficient disk space and write permissions.',
+      statusCode: 500,
+      details: writeError.message,
+    });
+  }
 
   // Ensure filename is properly encoded for JSON response
   const cleanName = Buffer.from(file.originalname, 'latin1').toString('utf8');

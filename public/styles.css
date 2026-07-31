@@ -404,10 +404,19 @@ img {
 }
 
 .chevron {
-  color: #b5b5b5;
-  font-size: 30px;
-  line-height: 20px;
+  width: 16px;
+  height: 16px;
+  opacity: 0.5;
   flex-shrink: 0;
+  transition: transform 200ms ease, opacity 200ms ease;
+}
+
+.model-button:hover .chevron {
+  opacity: 0.7;
+}
+
+.model-picker[data-open="true"] .chevron {
+  transform: rotate(180deg);
 }
 
 .system-stats {
@@ -656,6 +665,7 @@ img {
   height: 36px;
   object-fit: cover;
   object-position: left center;
+  overflow: visible;
 }
 
 .assistant-body {
@@ -1300,6 +1310,15 @@ img {
 .search-result span {
   color: #666;
   font-size: 14px;
+}
+
+/* Highlighted search terms */
+.search-result mark {
+  background: #ffeb3b;
+  color: #1a1a1a;
+  padding: 2px 4px;
+  border-radius: 3px;
+  font-weight: 600;
 }
 
 /* Settings Modal */
@@ -2134,4 +2153,163 @@ body[data-reduce-motion="true"] *::after {
 
 .inline-text-button:hover {
   color: var(--text);
+}
+
+/* Error messages and notifications */
+.error-message {
+  padding: 20px;
+  background: var(--panel);
+  border: 1px solid #f09898;
+  border-radius: var(--radius);
+  margin: 8px 0;
+}
+
+.error-message p {
+  margin: 0 0 12px 0;
+  line-height: 1.5;
+}
+
+.error-message p:last-child {
+  margin-bottom: 0;
+}
+
+.error-message strong {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  color: #c23b3b;
+}
+
+.error-message strong::before {
+  content: '';
+  display: block;
+  width: 20px;
+  height: 20px;
+  background-image: url('./assets/error.svg');
+  background-size: contain;
+  background-repeat: no-repeat;
+  flex-shrink: 0;
+}
+
+.error-action {
+  color: var(--text);
+  opacity: 0.75;
+  font-size: 0.95em;
+  line-height: 1.6;
+}
+
+.error-recovery {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+
+.retry-button {
+  background: var(--text);
+  color: var(--bg);
+  border: none;
+  padding: 10px 18px;
+  border-radius: 6px;
+  font-size: 0.9em;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.retry-button:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
+
+.retry-button:active {
+  transform: translateY(0);
+}
+
+/* Toast notifications */
+.app-notification {
+  position: fixed;
+  top: 24px;
+  right: 24px;
+  min-width: 320px;
+  max-width: 480px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 16px 18px;
+  box-shadow: var(--shadow);
+  z-index: 10000;
+  opacity: 0;
+  transform: translateX(400px);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.app-notification.show {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.notification-content {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.notification-icon {
+  font-size: 18px;
+  flex-shrink: 0;
+  line-height: 1.4;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.notification-message {
+  flex: 1;
+  line-height: 1.5;
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.app-notification-error {
+  border-color: #f09898;
+}
+
+.app-notification-error .notification-icon {
+  color: #c23b3b;
+}
+
+.app-notification-warning {
+  border-color: #f5c563;
+}
+
+.app-notification-warning .notification-icon {
+  color: #d97706;
+}
+
+.app-notification-success {
+  border-color: #8dd9a0;
+}
+
+.app-notification-success .notification-icon {
+  color: #059669;
+}
+
+.app-notification-info {
+  border-color: #9cc5f5;
+}
+
+.app-notification-info .notification-icon {
+  color: #2563eb;
+}
+
+@media (max-width: 600px) {
+  .app-notification {
+    right: 12px;
+    left: 12px;
+    min-width: auto;
+    max-width: none;
+  }
 }
