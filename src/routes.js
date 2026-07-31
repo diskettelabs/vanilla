@@ -4,6 +4,7 @@ const system = require('./system');
 const uploads = require('./upload');
 const hf = require('./huggingface');
 const https = require('https');
+const { formatErrorForClient, formatErrorForLog, parseError } = require('./errors');
 
 const CONFIG = require('../config/default.json');
 
@@ -21,20 +22,39 @@ function register(app) {
   app.post('/api/upload', (req, res, next) => {
     uploads.upload.single('file')(req, res, (err) => {
       if (err) {
-        if (err.code === 'LIMIT_FILE_SIZE') return res.status(413).json({ error: 'File too large (max 10MB)' });
-        if (err.message?.startsWith('Unsupported file type')) return res.status(415).json({ error: err.message });
-        return res.status(400).json({ error: err.message });
+        if (err.code === 'LIMIT_FILE_SIZE') {
+          return res.status(413).json({
+            error: 'File is too large',
+            action: 'Maximum file size is 10MB. Compress or resize your file and try again.',
+            recoverable: true,
+          });
+        }
+        if (err.message?.startsWith('Unsupported file type')) {
+          return res.status(415).json({
+            error: err.message,
+            action: 'Supported types: images (PNG, JPG, GIF, WebP), documents (PDF, TXT, MD), and code files.',
+            recoverable: true,
+          });
+        }
+        return res.status(400).json(formatErrorForClient(err));
       }
       next();
     });
   }, async (req, res) => {
-    if (!req.file) return res.status(400).json({ error: 'No file provided' });
+    if (!req.file) {
+      return res.status(400).json({
+        error: 'No file provided',
+        action: 'Select a file to upload.',
+        recoverable: true,
+      });
+    }
     try {
       const result = await uploads.processUpload(req.file);
       res.status(201).json(result);
     } catch (e) {
+      console.error('[Upload Error]', formatErrorForLog(e, { endpoint: '/api/upload' }));
       const status = e.statusCode || 500;
-      res.status(status).json({ error: e.message });
+      res.status(status).json(formatErrorForClient(e));
     }
   });
 
@@ -46,7 +66,11 @@ function register(app) {
     try {
       res.json(system.getStats());
     } catch (e) {
-      res.status(500).json({ error: e.message });
+      console.error('[System Stats Error]', formatErrorForLog(e, { endpoint: '/api/system/stats' }));
+      res.status(500).json(formatErrorForClient(e, {
+        userMessage: 'Failed to retrieve system statistics',
+        action: 'System monitoring is unavailable. This won\'t affect chat functionality.',
+      }));
     }
   });
 
@@ -63,7 +87,13 @@ function register(app) {
       const models = await provider.listChatModels();
       res.json(models);
     } catch (e) {
-      res.status(503).json({ error: e.message });
+      console.error('[Model List Error]', formatErrorForLog(e, { 
+        endpoint: '/api/models', 
+        provider: providerName 
+      }));
+      
+      const parsed = parseError(e, { provider: providerName });
+      res.status(parsed.statusCode || 503).json(formatErrorForClient(parsed));
     }
   });
 
@@ -125,9 +155,26 @@ function register(app) {
   });
 
   app.get('/api/conversations/:id', (req, res) => {
-    const conv = storage.get(req.params.id);
-    if (!conv) return res.status(404).json({ error: 'not found' });
-    res.json(conv);
+    try {
+      const conv = storage.get(req.params.id);
+      if (!conv) {
+        return res.status(404).json({
+          error: 'Conversation not found',
+          action: 'This conversation may have been deleted. Start a new chat or select a different conversation.',
+          recoverable: false,
+        });
+      }
+      res.json(conv);
+    } catch (e) {
+      console.error('[Load Conversation Error]', formatErrorForLog(e, { 
+        endpoint: '/api/conversations/:id',
+        conversationId: req.params.id 
+      }));
+      res.status(500).json(formatErrorForClient(e, {
+        userMessage: 'Failed to load conversation',
+        action: 'The conversation file may be corrupted. Try another conversation or start a new one.',
+      }));
+    }
   });
 
   app.delete('/api/conversations/:id', (req, res) => {
@@ -137,19 +184,53 @@ function register(app) {
 
   // Erase last assistant response
   app.post('/api/conversations/:id/erase-last-response', (req, res) => {
-    const conv = storage.eraseLastAssistant(req.params.id);
-    if (!conv) return res.status(404).json({ error: 'not found' });
-    res.json(conv);
+    try {
+      const conv = storage.eraseLastAssistant(req.params.id);
+      if (!conv) {
+        return res.status(404).json({
+          error: 'Conversation not found',
+          action: 'This conversation may have been deleted.',
+          recoverable: false,
+        });
+      }
+      res.json(conv);
+    } catch (e) {
+      console.error('[Erase Response Error]', formatErrorForLog(e, { 
+        endpoint: '/api/conversations/:id/erase-last-response',
+        conversationId: req.params.id 
+      }));
+      res.status(500).json(formatErrorForClient(e));
+    }
   });
 
   // Regenerate: replace last user message, remove last assistant, re-trigger
   app.post('/api/conversations/:id/regenerate', (req, res) => {
     const { message } = req.body || {};
-    if (!message) return res.status(400).json({ error: 'message is required' });
-    const conv = storage.replaceLastUserMessage(req.params.id, message);
-    if (!conv) return res.status(404).json({ error: 'not found' });
-    storage.eraseLastAssistant(req.params.id);
-    res.json(storage.get(req.params.id));
+    if (!message) {
+      return res.status(400).json({
+        error: 'Message is required',
+        action: 'Provide a message to regenerate the response.',
+        recoverable: true,
+      });
+    }
+    try {
+      const conv = storage.replaceLastUserMessage(req.params.id, message);
+      if (!conv) {
+        return res.status(404).json({
+          error: 'Conversation not found',
+          action: 'This conversation may have been deleted.',
+          recoverable: false,
+        });
+      }
+      storage.eraseLastAssistant(req.params.id);
+      res.json(storage.get(req.params.id));
+    } catch (e) {
+      console.error('[Regenerate Error]', formatErrorForLog(e, { 
+        endpoint: '/api/conversations/:id/regenerate',
+        conversationId: req.params.id 
+      }));
+      res.status(500).json(formatErrorForClient(e));
+    }
   });
 
   // Search conversations
@@ -162,7 +243,13 @@ function register(app) {
   // Stop an active stream
   app.post('/api/chat/stop/:conversationId', (req, res) => {
     const controller = activeStreams.get(req.params.conversationId);
-    if (!controller) return res.status(404).json({ error: 'no active stream' });
+    if (!controller) {
+      return res.status(404).json({
+        error: 'No active stream',
+        action: 'The response has already completed or was never started.',
+        recoverable: false,
+      });
+    }
     controller.abort();
     activeStreams.delete(req.params.conversationId);
     res.json({ ok: true });
@@ -171,8 +258,6 @@ function register(app) {
   // Vosk model proxy (to bypass CORS)
   app.get('/api/vosk-model', (req, res) => {
     const modelUrl = 'https://alphacephei.com/vosk/models/vosk-model-small-en-us-0.15.zip';
-    
-    console.log('Proxying Vosk model download...');
     
     https.get(modelUrl, (proxyRes) => {
       // Set headers
@@ -187,20 +272,37 @@ function register(app) {
       proxyRes.pipe(res);
       
     }).on('error', (err) => {
-      console.error('Error downloading Vosk model:', err);
-      res.status(500).json({ error: 'Failed to download model' });
+      console.error('[Vosk Model Download Error]', formatErrorForLog(err, { endpoint: '/api/vosk-model' }));
+      if (!res.headersSent) {
+        res.status(500).json({
+          error: 'Failed to download speech recognition model',
+          action: 'Check your internet connection. The speech recognition feature requires downloading a 40MB model file on first use.',
+          recoverable: true,
+        });
+      }
     });
   });
 
   // Streaming chat
   app.post('/api/chat/stream', async (req, res) => {
     const { conversationId, message, model, provider: providerName, customPrompt, apiKey } = req.body || {};
+
     if (!conversationId || !message) {
-      return res.status(400).json({ error: 'conversationId and message are required' });
+      return res.status(400).json({
+        error: 'Missing required parameters',
+        action: 'Both conversationId and message are required.',
+        recoverable: true,
+      });
     }
 
     let conv = storage.get(conversationId);
-    if (!conv) return res.status(404).json({ error: 'conversation not found' });
+    if (!conv) {
+      return res.status(404).json({
+        error: 'Conversation not found',
+        action: 'This conversation may have been deleted. Start a new chat.',
+        recoverable: false,
+      });
+    }
 
     const effectiveProvider = providerName || conv.provider || CONFIG.defaultProvider || 'ollama';
     const effectiveModel = model || conv.model || 'llama2';
@@ -209,7 +311,15 @@ function register(app) {
     try {
       provider = providers.create(effectiveProvider, mergeConfig(effectiveProvider, apiKey));
     } catch (e) {
-      return res.status(400).json({ error: `Unknown provider: ${effectiveProvider}` });
+      console.error('[Provider Creation Error]', formatErrorForLog(e, { 
+        endpoint: '/api/chat/stream',
+        provider: effectiveProvider 
+      }));
+      return res.status(400).json({
+        error: `Provider "${effectiveProvider}" is not available`,
+        action: 'Configure your AI provider in config/default.json. Set up either Ollama (local) or OpenAI (cloud).',
+        recoverable: true,
+      });
     }
 
     // Save user message
@@ -278,9 +388,18 @@ function register(app) {
             res.write(`data: ${JSON.stringify({ type: 'done', interrupted: true })}\n\n`);
             res.end();
           } else {
-            res.write(`data: ${JSON.stringify({ type: 'error', error: err.message })}\n\n`);
+            console.error('[Stream Error]', formatErrorForLog(err, { 
+              endpoint: '/api/chat/stream',
+              provider: effectiveProvider,
+              model: effectiveModel 
+            }));
+            
+            const parsed = parseError(err, { provider: effectiveProvider });
+            const errorResponse = formatErrorForClient(parsed);
+            res.write(`data: ${JSON.stringify({ type: 'error', ...errorResponse })}\n\n`);
+            
             if (fullContent) {
-              storage.addMessage(conversationId, 'assistant', fullContent + '\n[interrupted]', effectiveModel);
+              storage.addMessage(conversationId, 'assistant', fullContent + '\n[error: ' + errorResponse.error + ']', effectiveModel);
             }
             res.end();
           }
@@ -289,10 +408,19 @@ function register(app) {
       );
     } catch (e) {
       cleanup();
+      console.error('[Chat Stream Error]', formatErrorForLog(e, { 
+        endpoint: '/api/chat/stream',
+        provider: effectiveProvider,
+        model: effectiveModel 
+      }));
+      
+      const parsed = parseError(e, { provider: effectiveProvider });
+      
       if (!res.headersSent) {
-        res.status(503).json({ error: e.message });
+        res.status(parsed.statusCode || 503).json(formatErrorForClient(parsed));
       } else {
-        res.write(`data: ${JSON.stringify({ type: 'error', error: e.message })}\n\n`);
+        const errorResponse = formatErrorForClient(parsed);
+        res.write(`data: ${JSON.stringify({ type: 'error', ...errorResponse })}\n\n`);
         res.end();
       }
     }

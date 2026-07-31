@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="8px" height="18px" viewBox="0 0 8 18" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <title>chevron-right</title>
+    <g id="Page-1" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="fill-copy-2" transform="translate(-45, -5)" fill="#000000" fill-rule="nonzero">
+            <path d="M46.8044225,5.40594242 L52.7123385,13.4059424 C52.9731085,13.7590551 52.9731085,14.2409449 52.7123385,14.5940576 L46.8044225,22.5940576 C46.4763336,23.0383279 45.8502127,23.1325115 45.4059424,22.8044225 C44.9616721,22.4763336 44.8674885,21.8502127 45.1955775,21.4059424 L50.6647882,14 L45.1955775,6.59405758 C44.8674885,6.14978729 44.9616721,5.52366643 45.4059424,5.19557748 C45.8502127,4.86748854 46.4763336,4.96167213 46.8044225,5.40594242 Z" id="chevron-right"></path>
+        </g>
+    </g>
+</svg>
