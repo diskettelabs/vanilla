@@ -17,10 +17,11 @@ const els = {
   messages: document.querySelector("#messages"),
   composer: document.querySelector("#composer"),
   omnibar: document.querySelector(".omnibar"),
-  plusButton: document.querySelector("#plusButton"),
   promptInput: document.querySelector("#promptInput"),
   submitButton: document.querySelector("#submitButton"),
   submitIcon: document.querySelector("#submitIcon"),
+  dictationButton: document.querySelector("#dictationButton"),
+  dictationLabel: document.querySelector("#dictationLabel"),
   modelPicker: document.querySelector(".model-picker"),
   modelButton: document.querySelector("#modelButton"),
   activeModel: document.querySelector("#activeModel"),
@@ -67,6 +68,11 @@ const state = {
   streamComplete: false,
   pendingAttachment: null,
   themes: [],
+  voskModel: null,
+  voskRecognizer: null,
+  audioContext: null,
+  mediaStream: null,
+  isRecording: false,
   settings: {
     theme: localStorage.getItem("vanilla-theme") || "default",
     density: localStorage.getItem("vanilla-density") || "comfortable",
@@ -90,12 +96,10 @@ const greetings = [
   "Bring me a problem.", "I saved you a clean slate.", "What needs untangling?",
   "Let's make it useful.", "What are we thinking through?", "Tell me where to aim.",
   "Ready to dive in, {name}?", "What's the move, {name}?", "Give me the weird version, {name}.",
-  "{name}, I've got the page warmed up.", "Let's turn the idea into something real, {name}.",
+  "{name}, let's do this.", "Let's turn the idea into something real, {name}.",
   "What are we shipping today, {name}?", "{name}, your cursor has the floor.",
   "Ready for the next thread, {name}?", "I am listening, {name}.", "Start anywhere, {name}.",
-  "I'm here for the 2AM grind.", "Light mode at 2AM is crazy, {name}.",
   "Quiet hours, loud ideas.", "Too late to be vague. What's the mission?",
-  "The 2AM committee is now in session.", "Moonlit debugging has entered the chat.",
   "Ready or not, here I come!", "Let's do the satisfying version.",
   "Give me the messy draft.", "We can make that sharper.", "What deserves attention?",
   "Let's find the cleanest path.", "Drop the thought here.", "What should Vanilla chew on?",
@@ -576,35 +580,177 @@ async function copyText(text) {
 
 async function editPrompt(content, id) {
   els.promptInput.value = content;
-  resizePrompt({ forceExpanded: true });
+  resizePrompt();
   els.promptInput.focus();
   els.composer.dataset.editingMessageId = id;
 }
 
-function setOmnibarState(shouldExpand) {
-  els.omnibar.dataset.expanded = shouldExpand ? "true" : "false";
-  els.omnibar.querySelector(".expanded-tools").setAttribute("aria-hidden", shouldExpand ? "false" : "true");
+function resizePrompt() {
+  els.promptInput.style.height = "auto";
+  const naturalHeight = Math.min(els.promptInput.scrollHeight, 164);
+  els.promptInput.style.height = `${naturalHeight}px`;
 }
 
-function expandOmnibar(force = true) {
-  resizePrompt({ forceExpanded: force });
-}
-
-function resizePrompt({ forceExpanded = false } = {}) {
-  const compactHeight = 36;
-  const shouldExpand = forceExpanded || els.promptInput.value.includes("\n") || els.promptInput.scrollHeight > compactHeight + 3;
-  
-  if (shouldExpand !== (els.omnibar.dataset.expanded === "true")) {
-    setOmnibarState(shouldExpand);
+// Speech Recognition / Dictation using Vosk (offline)
+async function initDictation() {
+  if (!window.Vosk) {
+    console.warn('Vosk library not loaded, hiding dictation button');
+    if (els.dictationButton) {
+      els.dictationButton.style.display = 'none';
+    }
+    return;
   }
-  
-  if (shouldExpand) {
-    els.promptInput.style.height = "auto";
-    const naturalHeight = Math.min(els.promptInput.scrollHeight, 164);
-    els.promptInput.style.height = `${naturalHeight}px`;
+
+  try {
+    console.log('Initializing Vosk speech recognition...');
+    
+    // Load Vosk model (small English model)
+    // We'll download it on first use
+    const modelUrl = 'https://alphacephei.com/vosk/models/vosk-model-small-en-us-0.15.zip';
+    
+    console.log('Vosk initialized. Model will be loaded on first use.');
+    console.log('Note: First use will download ~40MB model file.');
+    
+  } catch (error) {
+    console.error('Failed to initialize Vosk:', error);
+    if (els.dictationButton) {
+      els.dictationButton.style.display = 'none';
+    }
+  }
+}
+
+async function toggleDictation() {
+  if (!window.Vosk) {
+    alert('Speech recognition is not available.');
+    return;
+  }
+
+  if (state.isRecording) {
+    stopDictation();
   } else {
-    els.promptInput.style.height = `${compactHeight}px`;
+    await startDictation();
   }
+}
+
+async function startDictation() {
+  try {
+    console.log('Starting Vosk dictation...');
+    state.isRecording = true;
+    
+    els.dictationButton.dataset.active = 'true';
+    els.dictationLabel.textContent = 'loading...';
+
+    // Request microphone access
+    state.mediaStream = await navigator.mediaDevices.getUserMedia({
+      audio: {
+        echoCancellation: true,
+        noiseSuppression: true,
+        sampleRate: 16000,
+      }
+    });
+
+    // Create audio context
+    state.audioContext = new AudioContext({ sampleRate: 16000 });
+    const source = state.audioContext.createMediaStreamSource(state.mediaStream);
+
+    // Load model if not loaded
+    if (!state.voskModel) {
+      console.log('Loading Vosk model (first time, ~40MB download)...');
+      els.dictationLabel.textContent = 'downloading model...';
+      
+      // Use our server as proxy to bypass CORS
+      const model = await Vosk.createModel('/api/vosk-model');
+      state.voskModel = model;
+      console.log('Model loaded successfully');
+    }
+
+    // Create recognizer with sample rate (must match AudioContext)
+    state.voskRecognizer = new state.voskModel.KaldiRecognizer(16000);
+    
+    // Set up event handlers for results
+    state.voskRecognizer.on("result", (message) => {
+      if (message.result && message.result.text && message.result.text.trim()) {
+        console.log('Result:', message.result.text);
+        els.promptInput.value += message.result.text + ' ';
+        resizePrompt();
+      }
+    });
+    
+    state.voskRecognizer.on("partialresult", (message) => {
+      if (message.result && message.result.partial) {
+        console.log('Partial:', message.result.partial);
+      }
+    });
+    
+    els.dictationLabel.textContent = 'listening...';
+    console.log('Vosk recognizer ready');
+
+    // Create audio processor
+    const recognizerNode = state.audioContext.createScriptProcessor(4096, 1, 1);
+    
+    recognizerNode.onaudioprocess = (event) => {
+      if (!state.isRecording) return;
+      
+      try {
+        // Pass the AudioBuffer directly to Vosk
+        state.voskRecognizer.acceptWaveform(event.inputBuffer);
+      } catch (error) {
+        console.error('acceptWaveform failed:', error);
+      }
+    };
+
+    source.connect(recognizerNode);
+    recognizerNode.connect(state.audioContext.destination);
+    
+    state.audioProcessor = recognizerNode;
+
+  } catch (error) {
+    console.error('Failed to start dictation:', error);
+    state.isRecording = false;
+    els.dictationButton.dataset.active = 'false';
+    els.dictationLabel.textContent = 'dictate';
+    
+    if (error.name === 'NotAllowedError') {
+      alert('Microphone access denied. Please allow microphone access in your browser settings.');
+    } else {
+      alert('Failed to start speech recognition: ' + error.message);
+    }
+  }
+}
+
+function stopDictation() {
+  console.log('Stopping Vosk dictation');
+  state.isRecording = false;
+  
+  // Remove the recognizer
+  if (state.voskRecognizer) {
+    try {
+      // Remove event listeners
+      state.voskRecognizer.remove();
+    } catch (e) {
+      console.log('Could not remove recognizer:', e);
+    }
+    state.voskRecognizer = null;
+  }
+
+  // Cleanup audio
+  if (state.audioProcessor) {
+    state.audioProcessor.disconnect();
+    state.audioProcessor = null;
+  }
+  
+  if (state.audioContext) {
+    state.audioContext.close();
+    state.audioContext = null;
+  }
+  
+  if (state.mediaStream) {
+    state.mediaStream.getTracks().forEach(track => track.stop());
+    state.mediaStream = null;
+  }
+
+  els.dictationButton.dataset.active = 'false';
+  els.dictationLabel.textContent = 'dictate';
 }
 
 async function refreshConversations() {
@@ -1154,7 +1300,6 @@ function bindEvents() {
     }
   });
 
-  els.plusButton.addEventListener("click", () => expandOmnibar(true));
   els.promptInput.addEventListener("input", resizePrompt);
   els.promptInput.addEventListener("keydown", (event) => {
     if (event.key === "Enter" && !event.shiftKey && state.settings.enterToSend) {
@@ -1251,13 +1396,12 @@ function bindEvents() {
   });
 
   document.querySelector('[data-tool="attach"]').addEventListener("click", () => els.fileInput.click());
-  els.plusButton.addEventListener("click", () => {
-    if (els.omnibar.dataset.expanded === "false") {
-      expandOmnibar(true);
-    } else {
-      els.fileInput.click();
-    }
-  });
+  
+  // Dictation button
+  if (els.dictationButton) {
+    els.dictationButton.addEventListener("click", toggleDictation);
+  }
+  
   els.fileInput.addEventListener("change", uploadFile);
 }
 
@@ -1279,9 +1423,6 @@ async function uploadFile(event) {
   const file = event.target.files[0];
   event.target.value = "";
   if (!file || state.uploading) return;
-
-  // Automatically expand omnibar when file is selected
-  expandOmnibar(true);
 
   const ext = file.name.split(".").pop()?.toLowerCase();
   const isImage = /^(jpg|jpeg|png|gif|webp|avif)$/.test(ext);
@@ -1369,6 +1510,7 @@ async function boot() {
   chooseGreeting();
   bindEvents();
   bindSetupFlow();
+  initDictation();
   await Promise.all([loadProvidersAndModels(), refreshConversations(), refreshStats(), loadThemes()]);
   setInterval(refreshStats, 3000);
   attachCodeCopy();

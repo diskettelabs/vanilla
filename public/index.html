@@ -20,6 +20,15 @@
           </button>
         </div>
 
+        <div class="collapsed-actions">
+          <button class="icon-button collapsed-action" type="button" data-action="new-chat" aria-label="New chat" title="New chat">
+            <img src="./assets/new%20chat.svg" alt="">
+          </button>
+          <button class="icon-button collapsed-action" type="button" data-action="search" aria-label="Search" title="Search">
+            <img src="./assets/search.svg" alt="">
+          </button>
+        </div>
+
         <div class="quick-actions">
           <button class="side-command" type="button" data-action="new-chat">
             <span class="command-main">
@@ -82,18 +91,19 @@
         </section>
 
         <form id="composer" class="composer" autocomplete="off">
-          <div class="omnibar" data-expanded="false">
-            <button id="plusButton" class="plus-button" type="button" aria-label="Add context" title="Add context">
-              <img src="./assets/add.svg" alt="">
-            </button>
+          <div class="omnibar">
             <div class="input-wrapper">
               <div id="attachmentPreview" class="attachment-preview" hidden></div>
               <textarea id="promptInput" rows="1" placeholder="what's up?" aria-label="Message"></textarea>
             </div>
-            <div class="expanded-tools" aria-hidden="true">
+            <div class="omnibar-tools">
               <button class="pill-tool" type="button" data-tool="attach">
                 <img src="./assets/add.svg" alt="">
                 <span>attach file</span>
+              </button>
+              <button id="dictationButton" class="pill-tool" type="button" data-tool="dictation" aria-label="Toggle dictation" title="Voice input">
+                <img src="./assets/dictate.svg" alt="">
+                <span id="dictationLabel">dictate</span>
               </button>
               <button class="pill-tool" type="button" data-tool="tools">
                 <img src="./assets/tools.svg" alt="">
@@ -312,6 +322,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/line-numbers/prism-line-numbers.min.js"></script>
+    <script src="/node_modules/vosk-browser/dist/vosk.js"></script>
     <script src="./app.js" defer></script>
   </body>
 </html>

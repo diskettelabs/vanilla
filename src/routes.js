@@ -2,6 +2,7 @@ const providers = require('./providers');
 const storage = require('./storage');
 const system = require('./system');
 const uploads = require('./upload');
+const https = require('https');
 
 const CONFIG = require('../config/default.json');
 
@@ -111,6 +112,30 @@ function register(app) {
     controller.abort();
     activeStreams.delete(req.params.conversationId);
     res.json({ ok: true });
+  });
+
+  // Vosk model proxy (to bypass CORS)
+  app.get('/api/vosk-model', (req, res) => {
+    const modelUrl = 'https://alphacephei.com/vosk/models/vosk-model-small-en-us-0.15.zip';
+    
+    console.log('Proxying Vosk model download...');
+    
+    https.get(modelUrl, (proxyRes) => {
+      // Set headers
+      res.writeHead(proxyRes.statusCode, {
+        'Content-Type': 'application/zip',
+        'Content-Length': proxyRes.headers['content-length'],
+        'Access-Control-Allow-Origin': '*',
+        'Cache-Control': 'public, max-age=31536000', // Cache for 1 year
+      });
+      
+      // Stream the response
+      proxyRes.pipe(res);
+      
+    }).on('error', (err) => {
+      console.error('Error downloading Vosk model:', err);
+      res.status(500).json({ error: 'Failed to download model' });
+    });
   });
 
   // Streaming chat

@@ -16,6 +16,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use('/ui', express.static(path.join(__dirname, 'ui')));
 app.use('/themes', express.static(path.join(__dirname, 'themes')));
 app.use('/uploads', express.static(uploads.UPLOAD_DIR));
+app.use('/node_modules', express.static(path.join(__dirname, 'node_modules')));
 
 routes.register(app);
 

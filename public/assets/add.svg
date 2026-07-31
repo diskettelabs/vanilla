@@ -1,14 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg width="18px" height="18px" viewBox="0 0 18 18" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
-    <title>Group 2</title>
+<svg width="16px" height="16px" viewBox="0 0 16 16" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <title>Path</title>
     <g id="Page-1" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
-        <g id="fill-copy-2" transform="translate(-23, -23)" fill="#000000">
-            <g id="Group-2" transform="translate(19, 19)">
-                <g id="Group" transform="translate(5, 5)" fill-rule="nonzero">
-                    <path d="M9,0 L9,16 C9,16.5522847 8.55228475,17 8,17 C7.44771525,17 7,16.5522847 7,16 L7,0 C7,-0.55228475 7.44771525,-1 8,-1 C8.55228475,-1 9,-0.55228475 9,0 Z" id="Path"></path>
-                    <path d="M17,8 C17,8.55228475 16.5522847,9 16,9 L0,9 C-0.55228475,9 -1,8.55228475 -1,8 C-1,7.44771525 -0.55228475,7 0,7 L16,7 C16.5522847,7 17,7.44771525 17,8 Z" id="Path-2"></path>
-                </g>
-            </g>
+        <g id="fill-copy-2" transform="translate(-33, -42)" fill="#000000" fill-rule="nonzero">
+            <path d="M41,42 C41.5522847,42 42,42.4477153 42,43 L41.99905,49 L48.00005,49 C48.5523276,49 49.00005,49.4477081 49.00005,50 C49.00005,50.5522776 48.5523419,51 48.00005,51 L41.99905,51 L42,57 C42,57.5522847 41.5522847,58 41,58 C40.4477153,58 40,57.5522847 40,57 L39.99905,51 L34.00005,51.0001 C33.4477724,51.0001 33.00005,50.5523919 33.00005,50.0001071 C33.00005,49.4478224 33.4477581,49.0001039 34.00005,49.0001 L39.99905,49 L40,43 C40,42.4477153 40.4477153,42 41,42 Z" id="Path"></path>
         </g>
     </g>
 </svg>
