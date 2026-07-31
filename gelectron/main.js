@@ -1,16 +1,26 @@
 const { app, BrowserWindow, Menu, shell } = require('electron');
 const path = require('node:path');
+const fs = require('node:fs');
 const http = require('node:http');
 const { GelectronOllama } = require('gelectron-ollama');
-const CONFIG = require('../config/default.json');
+
+function appRoot() {
+  const parent = path.join(__dirname, '..');
+  if (fs.existsSync(path.join(parent, 'server.js'))) return parent;
+  return __dirname;
+}
+
+const APP_ROOT = appRoot();
+const IS_PACKAGED = APP_ROOT.includes('.app/Contents') || APP_ROOT.includes('app.asar');
+process.chdir(IS_PACKAGED ? app.getPath('userData') : APP_ROOT);
+
+const CONFIG = require(path.join(APP_ROOT, 'config', 'default.json'));
 
 const SPLASH_FILE = path.join(__dirname, 'splash.html');
 
 let mainWindow = null;
 let server = null;
 let ollamaServer = null;
-
-process.chdir(path.join(__dirname, '..'));
 
 function updateSplash(percent, message) {
   if (!mainWindow || mainWindow.isDestroyed()) return;
@@ -20,7 +30,7 @@ function updateSplash(percent, message) {
 }
 
 async function startServer() {
-  const expressApp = require('../server');
+  const expressApp = require(path.join(APP_ROOT, 'server'));
   return new Promise((resolve, reject) => {
     server = http.createServer(expressApp);
     server.once('error', reject);
