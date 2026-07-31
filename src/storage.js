@@ -123,6 +123,11 @@ function convFromMarkdown(fp) {
       }
 
       if (currentMsg) {
+        // Skip empty lines immediately after message header
+        if (currentMsg.content === '' && line.trim() === '') {
+          continue;
+        }
+        
         if (currentMsg.content === '') {
           currentMsg.content = line;
         } else {
@@ -132,7 +137,11 @@ function convFromMarkdown(fp) {
     }
   }
 
-  if (currentMsg) conv.messages.push(currentMsg);
+  if (currentMsg) {
+    // Trim trailing newlines/whitespace from the last message
+    currentMsg.content = currentMsg.content.replace(/\n+$/, '');
+    conv.messages.push(currentMsg);
+  }
 
   return conv;
 }
@@ -230,17 +239,39 @@ function eraseLastAssistant(id) {
   return conv;
 }
 
-function replaceLastUserMessage(id, content) {
+function replaceUserMessageAndTruncate(id, messageId, content) {
   const conv = get(id);
   if (!conv) return null;
-  for (let i = conv.messages.length - 1; i >= 0; i--) {
-    if (conv.messages[i].role === 'user') {
-      conv.messages[i].content = content;
-      conv.messages[i].timestamp = new Date().toISOString();
-      return update(conv);
+  
+  // If messageId not provided, find the last user message
+  if (!messageId) {
+    for (let i = conv.messages.length - 1; i >= 0; i--) {
+      if (conv.messages[i].role === 'user') {
+        conv.messages[i].content = content;
+        conv.messages[i].timestamp = new Date().toISOString();
+        // Remove all messages after this one
+        conv.messages.splice(i + 1);
+        return update(conv);
+      }
     }
+    return conv;
   }
-  return conv;
+  
+  // Find the message to replace by ID
+  const msgIndex = conv.messages.findIndex(m => m.id === messageId);
+  if (msgIndex === -1) {
+    // Message ID not found, fall back to replacing last user message
+    return replaceUserMessageAndTruncate(id, null, content);
+  }
+  
+  // Update the message content
+  conv.messages[msgIndex].content = content;
+  conv.messages[msgIndex].timestamp = new Date().toISOString();
+  
+  // Remove all messages after this one (including any assistant responses and further exchanges)
+  conv.messages.splice(msgIndex + 1);
+  
+  return update(conv);
 }
 
 const WORD_RADIUS = 8;
@@ -430,4 +461,4 @@ function search(query) {
   return results;
 }
 
-module.exports = { init, list, create, get, update, remove, addMessage, eraseLastAssistant, replaceLastUserMessage, search, DATA_DIR };
+module.exports = { init, list, create, get, update, remove, addMessage, eraseLastAssistant, replaceLastUserMessage: replaceUserMessageAndTruncate, search, DATA_DIR };

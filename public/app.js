@@ -534,6 +534,26 @@ function renderConversationList() {
     openButton.title = conv.title || "Untitled";
     openButton.addEventListener("click", () => loadConversation(conv.id));
 
+    const renameButton = document.createElement("button");
+    renameButton.type = "button";
+    renameButton.className = "conversation-rename";
+    renameButton.title = "Rename chat";
+    renameButton.setAttribute("aria-label", "Rename chat");
+    renameButton.innerHTML = `<img src="${ASSET.autoname}" alt="">`;
+    renameButton.addEventListener("click", async (event) => {
+      event.stopPropagation();
+      renameButton.disabled = true;
+      renameButton.innerHTML = '<span style="font-size: 10px;">...</span>';
+      const newTitle = await autoNameConversation(conv.id, true);
+      if (newTitle) {
+        showNotification("Chat renamed", "success");
+      } else {
+        showNotification("Failed to rename chat", "error");
+      }
+      renameButton.disabled = false;
+      renameButton.innerHTML = `<img src="${ASSET.autoname}" alt="">`;
+    });
+
     const deleteButton = document.createElement("button");
     deleteButton.type = "button";
     deleteButton.className = "conversation-delete";
@@ -557,7 +577,7 @@ function renderConversationList() {
       }, 2500);
     });
 
-    row.append(openButton, deleteButton);
+    row.append(openButton, renameButton, deleteButton);
     els.conversationList.append(row);
   }
 }
@@ -578,15 +598,18 @@ async function deleteConversation(id) {
   }
 }
 
-async function autoNameConversation(id) {
+async function autoNameConversation(id, force = false) {
   try {
-    const data = await api(`/api/conversations/${encodeURIComponent(id)}/name`, { method: "POST" });
+    const params = force ? '?force=true' : '';
+    const data = await api(`/api/conversations/${encodeURIComponent(id)}/name${params}`, { method: "POST" });
     if (data.title && state.activeConversation?.id === id) {
       state.activeConversation.title = data.title;
     }
     if (data.title) await refreshConversations();
-  } catch {
-    // title generation is best-effort; retried on the next exchange
+    return data.title;
+  } catch (error) {
+    console.warn('Auto-naming failed:', error.message);
+    return null;
   }
 }
 
@@ -943,15 +966,17 @@ async function submitPrompt(event) {
 
   try {
     let conv = await ensureConversation(message);
-    if (editingId && conv.messages?.at(-1)?.role === "assistant") {
+    if (editingId) {
+      // Editing an existing message - regenerate from that point
       await api(`/api/conversations/${encodeURIComponent(conv.id)}/regenerate`, {
         method: "POST",
-        body: JSON.stringify({ message }),
+        body: JSON.stringify({ message, messageId: editingId }),
       });
       conv = await api(`/api/conversations/${encodeURIComponent(conv.id)}`);
       state.activeConversation = conv;
       renderMessages(conv);
     } else {
+      // New message - just add it
       addUserMessage(message);
     }
     await streamChat(conv.id, message);
@@ -1127,7 +1152,8 @@ async function streamChat(conversationId, message) {
       } catch {}
     }
     const updated = state.conversations.find((c) => c.id === conversationId);
-    if (updated?.autoTitle && (updated.messageCount || 0) >= 4) {
+    // Auto-name if setting is enabled and conversation has at least one exchange (2 messages: user + assistant)
+    if (state.settings.autoName && updated && updated.autoTitle !== false && (updated.messageCount || 0) >= 2) {
       autoNameConversation(conversationId);
     }
   }

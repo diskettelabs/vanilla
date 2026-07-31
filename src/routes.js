@@ -207,14 +207,25 @@ function register(app) {
           recoverable: false,
         });
       }
-      if (conv.autoTitle === false || !conv.messages || conv.messages.length === 0) {
+      
+      // Check if forced (manual rename) or auto-naming
+      const force = req.query.force === 'true';
+      
+      // Skip if auto-naming is disabled and not forced
+      if (!force && (conv.autoTitle === false || !conv.messages || conv.messages.length === 0)) {
         return res.json({ title: conv.title });
       }
+      
       const host = CONFIG.providers?.ollama?.host;
       const title = await titles.generateTitle(conv, { host });
       if (!title) return res.json({ title: conv.title });
       conv.title = title;
-      conv.autoTitle = false;
+      
+      // Only set autoTitle to false if this was an automatic naming
+      if (!force) {
+        conv.autoTitle = false;
+      }
+      
       storage.update(conv);
       res.json({ title });
     } catch (e) {
@@ -247,9 +258,9 @@ function register(app) {
     }
   });
 
-  // Regenerate: replace last user message, remove last assistant, re-trigger
+  // Regenerate: replace user message and truncate all messages after it, then re-trigger
   app.post('/api/conversations/:id/regenerate', (req, res) => {
-    const { message } = req.body || {};
+    const { message, messageId } = req.body || {};
     if (!message) {
       return res.status(400).json({
         error: 'Message is required',
@@ -258,7 +269,7 @@ function register(app) {
       });
     }
     try {
-      const conv = storage.replaceLastUserMessage(req.params.id, message);
+      const conv = storage.replaceLastUserMessage(req.params.id, messageId, message);
       if (!conv) {
         return res.status(404).json({
           error: 'Conversation not found',
@@ -266,7 +277,7 @@ function register(app) {
           recoverable: false,
         });
       }
-      storage.eraseLastAssistant(req.params.id);
+      // No need to call eraseLastAssistant - replaceLastUserMessage now truncates everything after
       res.json(storage.get(req.params.id));
     } catch (e) {
       console.error('[Regenerate Error]', formatErrorForLog(e, { 
