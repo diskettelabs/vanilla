@@ -73,6 +73,7 @@ const state = {
   audioContext: null,
   mediaStream: null,
   isRecording: false,
+  scrollLocked: true, // Track if auto-scroll is enabled
   settings: {
     theme: localStorage.getItem("vanilla-theme") || "default",
     density: localStorage.getItem("vanilla-density") || "comfortable",
@@ -562,6 +563,7 @@ function attachCodeCopy(root = document) {
 }
 
 function scrollToBottom() {
+  if (!state.scrollLocked) return; // Only auto-scroll if locked
   els.messages.scrollTop = els.messages.scrollHeight;
 }
 
@@ -894,14 +896,27 @@ async function handleAttachmentUpload(message) {
     const ext = result.name.split(".").pop()?.toLowerCase();
     const isResultImage = /^(jpg|jpeg|png|gif|webp|avif)$/.test(ext);
 
-    const fileHtml = `<a href="${result.url}" target="_blank" class="file-attachment"><span class="file-icon">${isResultImage ? "IMG" : "FILE"}</span><span class="file-info"><span class="file-name">${escapeHtml(result.name)}</span><span class="file-meta">${result.type} — ${formatFileSize(result.size)}</span></span></a>`;
-    const msgText = message 
-      ? `${message}\n\n[Uploaded: ${result.url}]\n\n${fileHtml}`
-      : `[Uploaded: ${result.url}]\n\n${fileHtml}`;
+    // Create visual message with image preview or file attachment
+    let visualContent;
+    if (isResultImage) {
+      visualContent = `<img src="${result.url}" alt="${escapeHtml(result.name)}" style="max-width: 100%; border-radius: 12px; margin-top: 10px;">`;
+    } else {
+      visualContent = `<a href="${result.url}" target="_blank" class="file-attachment"><span class="file-icon">${ext.toUpperCase()}</span><span class="file-info"><span class="file-name">${escapeHtml(result.name)}</span><span class="file-meta">${escapeHtml(result.type)} — ${formatFileSize(result.size)}</span></span></a>`;
+    }
 
-    const conv = await ensureConversation(msgText);
-    addUploadedMessage(msgText);
-    await streamChat(conv.id, msgText);
+    // Message sent to AI (just URL for context)
+    const aiMessage = message 
+      ? `${message}\n\n[Image: ${result.url}]`
+      : `[Image: ${result.url}]`;
+
+    // Message displayed to user (with visual preview)
+    const displayMessage = message 
+      ? `${escapeHtml(message)}\n\n${visualContent}`
+      : visualContent;
+
+    const conv = await ensureConversation(aiMessage);
+    addUploadedMessage(displayMessage);
+    await streamChat(conv.id, aiMessage);
   } catch (error) {
     progress.querySelector(".upload-fill").classList.add("upload-error");
     progress.querySelector(".upload-label").textContent = error.message;
@@ -1310,6 +1325,23 @@ function bindEvents() {
   els.composer.addEventListener("submit", submitPrompt);
   els.searchInput.addEventListener("input", debounce(runSearch, 160));
 
+  // Scroll lock behavior: unlock when user scrolls up, relock when scrolling to bottom
+  els.messages.addEventListener("scroll", () => {
+    const container = els.messages;
+    const scrollTop = container.scrollTop;
+    const scrollHeight = container.scrollHeight;
+    const clientHeight = container.clientHeight;
+    const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
+    
+    // If user is within 100px of the bottom, lock scrolling
+    if (distanceFromBottom < 100) {
+      state.scrollLocked = true;
+    } else {
+      // User has scrolled up, unlock auto-scroll
+      state.scrollLocked = false;
+    }
+  });
+
   els.providerSelect.addEventListener("change", () => {
     state.currentProvider = els.providerSelect.value;
     const firstModel = state.modelOptions.find((option) => option.provider === state.currentProvider && !option.disabled);
@@ -1483,6 +1515,7 @@ function renderAttachmentPreview() {
 function clearAttachment() {
   state.pendingAttachment = null;
   renderAttachmentPreview();
+  resizePrompt();
 }
 
 function createUploadProgress() {

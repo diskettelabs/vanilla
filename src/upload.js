@@ -81,9 +81,12 @@ async function processUpload(file) {
 
   await fs.promises.writeFile(destPath, buf);
 
+  // Ensure filename is properly encoded for JSON response
+  const cleanName = Buffer.from(file.originalname, 'latin1').toString('utf8');
+
   return {
     url: `/uploads/${uniqueName}`,
-    name: file.originalname,
+    name: cleanName,
     size: buf.length,
     type: file.mimetype,
   };
