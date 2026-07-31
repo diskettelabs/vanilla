@@ -3,3 +3,4 @@ data/conversations/
 data/uploads/
 *.log
 .DS_Store
+build/
