@@ -5,6 +5,14 @@ const ASSET = {
   stop: "./assets/stop.svg",
   copy: "./assets/copy.svg",
   edit: "./assets/new%20chat.svg",
+  trash: "./assets/trashcan.svg",
+  keyShown: "./assets/key-shown.svg",
+  keyHidden: "./assets/key-hidden.svg",
+  local: "./assets/local.svg",
+  cloud: "./assets/cloud.svg",
+  autoname: "./assets/autoname.svg",
+  close: "./assets/close.svg",
+  download: "./assets/download.svg",
 };
 
 const els = {
@@ -493,8 +501,7 @@ function groupLabel(dateString) {
   return date.toLocaleDateString(undefined, { month: "long", year: "numeric" }).toLowerCase();
 }
 
-const TRASH_ICON =
-  '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2m3 0-1 13a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1L6 7m4 4v6m4-6v6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+// Trash icon now uses ASSET.trash instead of inline SVG
 
 function renderConversationList() {
   els.conversationList.innerHTML = "";
@@ -532,7 +539,7 @@ function renderConversationList() {
     deleteButton.className = "conversation-delete";
     deleteButton.title = "Delete chat";
     deleteButton.setAttribute("aria-label", "Delete chat");
-    deleteButton.innerHTML = TRASH_ICON;
+    deleteButton.innerHTML = `<img src="${ASSET.trash}" alt="">`;
     deleteButton.addEventListener("click", (event) => {
       event.stopPropagation();
       if (deleteButton.dataset.armed === "true") {
@@ -546,7 +553,7 @@ function renderConversationList() {
       deleteButton._timer = setTimeout(() => {
         deleteButton.dataset.armed = "false";
         deleteButton.classList.remove("is-armed");
-        deleteButton.innerHTML = TRASH_ICON;
+        deleteButton.innerHTML = `<img src="${ASSET.trash}" alt="">`;
       }, 2500);
     });
 
@@ -1352,9 +1359,8 @@ function renderApiKeys() {
         <span class="api-key-label">${escapeHtml(provider.label)}${configured ? ' <span class="api-key-badge">configured</span>' : ""}</span>
         <span class="api-key-input-wrap">
           <input class="settings-input api-key-input" type="password" placeholder="Paste your ${escapeHtml(provider.label)} API key" autocomplete="off" spellcheck="false" value="${escapeHtml(stored)}">
-          <button class="api-key-toggle" type="button" aria-label="Show/hide key" title="Show/hide">
-            <svg class="api-eye-show" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M1 8s2.5-5 7-5 7 5 7 5-2.5 5-7 5-7-5-7-5Z" stroke="currentColor" stroke-width="1.5"/><circle cx="8" cy="8" r="2" stroke="currentColor" stroke-width="1.5"/></svg>
-            <svg class="api-eye-hide" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true" hidden><path d="M2 2l12 12M6.5 6.5A2 2 0 0 0 9.5 9.5M4 4.3C2.4 5.4 1 8 1 8s2.5 5 7 5c1.4 0 2.6-.4 3.7-1M7 3.1C7.3 3 7.7 3 8 3c4.5 0 7 5 7 5s-.7 1.4-1.9 2.7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+          <button class="api-key-toggle" type="button" aria-label="Show key" title="Show key">
+            <img src="${ASSET.keyShown}" alt="">
           </button>
         </span>
         <span class="api-key-save-wrap">
@@ -1369,11 +1375,14 @@ function renderApiKeys() {
     const input = row.querySelector(".api-key-input");
     const status = row.querySelector(".api-key-status");
 
-    row.querySelector(".api-key-toggle").addEventListener("click", () => {
+    row.querySelector(".api-key-toggle").addEventListener("click", (e) => {
+      const button = e.currentTarget;
+      const img = button.querySelector("img");
       const isPassword = input.type === "password";
       input.type = isPassword ? "text" : "password";
-      row.querySelector(".api-eye-show").hidden = !isPassword;
-      row.querySelector(".api-eye-hide").hidden = isPassword;
+      img.src = isPassword ? ASSET.keyHidden : ASSET.keyShown;
+      button.setAttribute("aria-label", isPassword ? "Hide key" : "Show key");
+      button.setAttribute("title", isPassword ? "Hide key" : "Show key");
     });
 
     row.querySelector(".api-key-save").addEventListener("click", async () => {
@@ -2050,9 +2059,7 @@ function renderAttachmentPreview() {
         <div class="attachment-size">${formatFileSize(size)}</div>
       </div>
       <button type="button" class="attachment-remove" aria-label="Remove attachment" title="Remove attachment">
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M12 4L4 12M4 4L12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-        </svg>
+        <img src="${ASSET.close}" alt="">
       </button>
     </div>
   `;
@@ -2173,10 +2180,12 @@ function bindSetupFlow() {
   const keyToggle = els.setupModal.querySelector(".setup-key-toggle");
   if (keyToggle && apiKeyInput) {
     keyToggle.addEventListener("click", () => {
+      const img = keyToggle.querySelector("img");
       const isPassword = apiKeyInput.type === "password";
       apiKeyInput.type = isPassword ? "text" : "password";
-      keyToggle.querySelector(".eye-show").hidden = isPassword;
-      keyToggle.querySelector(".eye-hide").hidden = !isPassword;
+      img.src = isPassword ? ASSET.keyHidden : ASSET.keyShown;
+      keyToggle.setAttribute("aria-label", isPassword ? "Hide key" : "Show key");
+      keyToggle.setAttribute("title", isPassword ? "Hide key" : "Show key");
     });
   }
 

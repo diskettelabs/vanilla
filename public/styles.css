@@ -104,6 +104,34 @@ img {
   display: block;
 }
 
+/* Icon utilities - support for currentColor and consistent sizing */
+.icon,
+button img,
+.pill-tool img,
+.icon-button img {
+  color: currentColor;
+}
+
+.icon-sm {
+  width: 14px;
+  height: 14px;
+}
+
+.icon-md {
+  width: 16px;
+  height: 16px;
+}
+
+.icon-lg {
+  width: 20px;
+  height: 20px;
+}
+
+.icon-xl {
+  width: 24px;
+  height: 24px;
+}
+
 .app-shell {
   display: grid;
   grid-template-columns: 313px 1fr;
@@ -196,14 +224,19 @@ img {
   padding: 6px 8px;
   border: 0;
   border-radius: 8px;
-  background: rgba(0, 0, 0, 0.04);
   font-weight: 700;
   font-size: 16px;
   cursor: pointer;
+  background: none;
+}
+
+.side-command:first {
+  background: rgba(0, 0, 0, 0.07) !important;
 }
 
 .side-command:hover {
   background: rgba(0, 0, 0, 0.07);
+  background: rgba(0, 0, 0, 0.04);
 }
 
 .command-main {
@@ -246,16 +279,17 @@ img {
 .chat-nav {
   height: calc(100vh - 162px);
   overflow: auto;
-  padding: 0 20px 24px;
+  padding: 0 8px 24px;
   min-width: 0;
 }
 
 .chat-nav h2 {
-  margin: 0 0 14px;
   color: #454545;
   font-size: 18px;
   font-weight: 400;
   flex-shrink: 0;
+  padding: 0 10px 0;
+  margin: 16px 0 0 0;
 }
 
 .conversation-list {
@@ -265,7 +299,8 @@ img {
 }
 
 .date-heading {
-  margin: 14px 0 4px;
+  margin: 18px 0 0;
+  padding: 0 12px 0;
   color: #a5a5a5;
   font-size: 15px;
   font-weight: 800;
@@ -319,6 +354,12 @@ img {
   opacity: 0;
 }
 
+.conversation-delete img {
+  width: 14px;
+  height: 14px;
+  filter: invert(60%) sepia(0%) saturate(0%) hue-rotate(0deg);
+}
+
 .conversation-row:hover,
 .conversation-row[aria-current="true"] {
   background: rgba(0, 0, 0, 0.04);
@@ -331,6 +372,10 @@ img {
 .conversation-delete:hover {
   color: #b0332c;
   background: rgba(0, 0, 0, 0.06);
+}
+
+.conversation-delete:hover img {
+  filter: invert(21%) sepia(72%) saturate(2456%) hue-rotate(349deg) brightness(88%) contrast(86%);
 }
 
 .conversation-delete.is-armed {
@@ -999,7 +1044,7 @@ img {
   align-items: start;
   gap: var(--composer-gap);
   border: 1px solid #dbdbda;
-  border-radius: 20px;
+  border-radius: 28px;
   background: rgba(255, 255, 255, 0.9);
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
   padding: 12px;
@@ -1108,19 +1153,19 @@ img {
   transition: all 180ms ease;
 }
 
+.attachment-remove img {
+  width: 16px;
+  height: 16px;
+  opacity: 0.6;
+}
+
 .attachment-remove:hover {
   background: rgba(239, 68, 68, 0.12);
   color: #dc2626;
 }
 
-.attachment-remove:active {
-}
-
-.attachment-remove svg {
-}
-
-.attachment-remove:hover svg {
-  opacity: 0.7;
+.attachment-remove:hover img {
+  opacity: 1;
 }
 
 @keyframes slide-down {
@@ -1395,6 +1440,8 @@ img {
 
 .hf-open-icon {
   flex-shrink: 0;
+  width: 18px;
+  height: 18px;
   color: var(--accent, #b07a4d);
 }
 
@@ -1618,8 +1665,18 @@ img {
   color: var(--muted);
 }
 
+.api-key-toggle img {
+  width: 16px;
+  height: 16px;
+  opacity: 0.6;
+}
+
 .api-key-toggle:hover {
   background: rgba(0, 0, 0, 0.05);
+}
+
+.api-key-toggle:hover img {
+  opacity: 1;
 }
 
 .api-key-save-wrap {
@@ -2392,13 +2449,19 @@ body[data-reduce-motion="true"] *::after {
   transition: background 140ms ease, color 140ms ease;
 }
 
+.setup-key-toggle img {
+  width: 16px;
+  height: 16px;
+  opacity: 0.6;
+}
+
 .setup-key-toggle:hover {
   background: rgba(0, 0, 0, 0.04);
   color: var(--text);
 }
 
-.setup-key-toggle svg {
-  display: block;
+.setup-key-toggle:hover img {
+  opacity: 1;
 }
 
 /* AI type choice cards */
@@ -2444,6 +2507,11 @@ body[data-reduce-motion="true"] *::after {
   background: var(--panel);
   color: var(--text);
   transition: background 160ms ease;
+}
+
+.setup-choice-icon img {
+  width: 22px;
+  height: 22px;
 }
 
 .setup-choice[aria-pressed="true"] .setup-choice-icon {
