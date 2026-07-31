@@ -80,7 +80,16 @@ ensure_repo "$APP_DIR"                 "$APP_REPO"       "vanilla-sh"
 echo
 echo "── Installing gelectron-ollama ──"
 npm install --prefix "$PARENT/gelectron-ollama" --no-audit --no-fund
-[ -d "$PARENT/gelectron-ollama/dist" ] && echo "✓ gelectron-ollama built (dist/ ready)"
+if [ ! -f "$PARENT/gelectron-ollama/dist/index.js" ]; then
+  echo "  dist/ not built (npm lifecycle scripts may be disabled) — running tsc…"
+  (cd "$PARENT/gelectron-ollama" && npm run build)
+fi
+[ -f "$PARENT/gelectron-ollama/dist/index.js" ] || {
+  echo "✗ gelectron-ollama build failed: dist/index.js is missing." >&2
+  echo "  Try: cd \"$PARENT/gelectron-ollama\" && npm run build" >&2
+  exit 1
+}
+echo "✓ gelectron-ollama built (dist/index.js ready)"
 
 # ------------------------------------------------------------- gelectron
 echo
@@ -114,6 +123,37 @@ fi
 echo
 echo "── Installing app dependencies ──"
 npm install --prefix "$APP_DIR" --no-audit --no-fund
+
+# -------------------------------------------------- gelectron subpackage
+echo
+echo "── Wiring the gelectron subpackage ──"
+if [ -f "$APP_DIR/gelectron/package.json" ]; then
+  node -e "
+    const fs = require('node:fs');
+    const file = '$APP_DIR/gelectron/package.json';
+    const pkg = JSON.parse(fs.readFileSync(file, 'utf8'));
+    const want = 'file:../../gelectron-ollama';
+    if (!pkg.dependencies) pkg.dependencies = {};
+    if (pkg.dependencies['gelectron-ollama'] !== want) {
+      pkg.dependencies['gelectron-ollama'] = want;
+      fs.writeFileSync(file, JSON.stringify(pkg, null, 2) + '\n');
+      console.log('  normalized gelectron-ollama dependency -> ' + want);
+    }
+  "
+  npm install --prefix "$APP_DIR/gelectron" --no-audit --no-fund
+else
+  echo "  (no gelectron subpackage found, skipping)"
+fi
+
+# ------------------------------------------------------------- smoke test
+echo
+echo "── Verifying gelectron-ollama resolves ──"
+if (cd "$APP_DIR/gelectron" && node -e "require('gelectron-ollama'); process.exit(0)"); then
+  echo "✓ require('gelectron-ollama') works from $APP_DIR/gelectron"
+else
+  echo "✗ Could not resolve gelectron-ollama. Run: npm install --prefix \"$APP_DIR/gelectron\"" >&2
+  exit 1
+fi
 
 # ------------------------------------------------------------- summary
 echo
