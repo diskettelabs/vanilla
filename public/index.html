@@ -135,52 +135,71 @@
           <h2 id="settingsTitle">Settings</h2>
           <button class="text-button" type="button" data-close-modal>Close</button>
         </div>
+        
         <div class="settings-section">
           <h3>Account</h3>
           <div class="settings-grid">
-            <label>
-              <span>Your name</span>
-              <input id="displayNameInput" class="settings-text-input" type="text" placeholder="Enter your name" autocomplete="off" spellcheck="false">
+            <label class="settings-label">
+              <span class="label-text">Your name</span>
+              <input id="displayNameInput" class="settings-input" type="text" placeholder="Enter your name" autocomplete="off" spellcheck="false">
             </label>
           </div>
         </div>
+        
         <div class="settings-divider" aria-hidden="true"></div>
-        <div class="settings-grid">
-          <label>
-            <span>Provider</span>
-            <select id="providerSelect"></select>
-          </label>
-          <label>
-            <span>Model</span>
-            <select id="modelSelect"></select>
+        
+        <div class="settings-section">
+          <h3>AI Model</h3>
+          <div class="settings-grid">
+            <label class="settings-label">
+              <span class="label-text">Provider</span>
+              <select id="providerSelect" class="settings-select"></select>
+            </label>
+            <label class="settings-label">
+              <span class="label-text">Model</span>
+              <select id="modelSelect" class="settings-select"></select>
+            </label>
+          </div>
+        </div>
+        
+        <div class="settings-section">
+          <label class="settings-label">
+            <div class="label-row">
+              <span class="label-text">Custom system prompt</span>
+              <span id="customPromptBadge" class="custom-prompt-badge" hidden>Active</span>
+            </div>
+            <span class="label-help">Optional instructions to customize the AI's behavior</span>
+            <textarea id="customPromptInput" class="settings-textarea" rows="4" placeholder="e.g., You are a helpful coding assistant who prefers functional programming..." spellcheck="true"></textarea>
           </label>
         </div>
+        
         <div class="settings-divider" aria-hidden="true"></div>
+        
         <div class="settings-section">
           <h3>Appearance</h3>
-          <div class="settings-grid">
-            <label>
-              <span>Theme</span>
-              <select id="themeSelect"></select>
+          <div class="settings-grid settings-grid-2col">
+            <label class="settings-label">
+              <span class="label-text">Theme</span>
+              <select id="themeSelect" class="settings-select"></select>
             </label>
-            <label>
-              <span>Density</span>
-              <select id="densitySelect">
+            <label class="settings-label">
+              <span class="label-text">Density</span>
+              <select id="densitySelect" class="settings-select">
                 <option value="comfortable">Comfortable</option>
                 <option value="compact">Compact</option>
               </select>
             </label>
-            <label>
-              <span>Text size</span>
-              <select id="textSizeSelect">
+            <label class="settings-label">
+              <span class="label-text">Text size</span>
+              <select id="textSizeSelect" class="settings-select">
                 <option value="small">Small</option>
                 <option value="regular">Regular</option>
                 <option value="large">Large</option>
               </select>
             </label>
-            <label>
-              <span>Message accent</span>
-              <select id="accentSelect">
+            <label class="settings-label">
+              <span class="label-text">Message accent</span>
+              <select id="accentSelect" class="settings-select">
                 <option value="sky">Sky</option>
                 <option value="mint">Mint</option>
                 <option value="peach">Peach</option>
@@ -188,22 +207,40 @@
                 <option value="lavender">Lavender</option>
               </select>
             </label>
-            <label>
-              <span>Sidebar</span>
-              <select id="sidebarSelect">
-                <option value="open">Open by default</option>
-                <option value="closed">Collapsed by default</option>
-              </select>
+          </div>
+        </div>
+        
+        <div class="settings-divider" aria-hidden="true"></div>
+        
+        <div class="settings-section">
+          <h3>Preferences</h3>
+          <div class="settings-options">
+            <label class="check-row">
+              <input id="sidebarOpenToggle" type="checkbox">
+              <span>Open sidebar by default</span>
+            </label>
+            <label class="check-row">
+              <input id="reduceMotionToggle" type="checkbox">
+              <span>Reduce motion</span>
+            </label>
+            <label class="check-row">
+              <input id="enterToSendToggle" type="checkbox">
+              <span>Press Enter to send</span>
+            </label>
+            <label class="check-row">
+              <input id="showStatsToggle" type="checkbox">
+              <span>Show system stats</span>
             </label>
           </div>
         </div>
-        <div class="settings-section settings-options">
-          <label class="check-row"><input id="reduceMotionToggle" type="checkbox"><span>Reduce motion</span></label>
-          <label class="check-row"><input id="enterToSendToggle" type="checkbox"><span>Press Enter to send</span></label>
-          <label class="check-row"><input id="showStatsToggle" type="checkbox"><span>Show system stats</span></label>
+        
+        <div class="settings-divider" aria-hidden="true"></div>
+        
+        <div class="settings-footer">
+          <p class="settings-note">Themes are loaded from <code>themes/</code>. Provider and model options come from the configured server.</p>
+          <p class="settings-note">Custom system prompts are applied at the start of each conversation to influence the AI's behavior and responses.</p>
+          <button id="redoSetupButton" class="settings-link-button" type="button">Redo first-time setup</button>
         </div>
-        <p class="muted-note">Themes are loaded from the palettes in <code>themes/</code>. Provider and model options come from the configured server.</p>
-        <p class="muted-note"><button id="redoSetupButton" class="inline-text-button" type="button">Redo first-time setup</button></p>
       </section>
     </div>
 

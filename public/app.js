@@ -33,10 +33,12 @@ const els = {
   densitySelect: document.querySelector("#densitySelect"),
   textSizeSelect: document.querySelector("#textSizeSelect"),
   accentSelect: document.querySelector("#accentSelect"),
-  sidebarSelect: document.querySelector("#sidebarSelect"),
+  sidebarOpenToggle: document.querySelector("#sidebarOpenToggle"),
   reduceMotionToggle: document.querySelector("#reduceMotionToggle"),
   enterToSendToggle: document.querySelector("#enterToSendToggle"),
   showStatsToggle: document.querySelector("#showStatsToggle"),
+  customPromptInput: document.querySelector("#customPromptInput"),
+  customPromptBadge: document.querySelector("#customPromptBadge"),
   cpuStat: document.querySelector("#cpuStat"),
   gpuStat: document.querySelector("#gpuStat"),
   ramStat: document.querySelector("#ramStat"),
@@ -84,6 +86,7 @@ const state = {
     enterToSend: localStorage.getItem("vanilla-enter-to-send") !== "false",
     showStats: localStorage.getItem("vanilla-show-stats") !== "false",
     userName: localStorage.getItem("vanilla-user-name") || "",
+    customPrompt: localStorage.getItem("vanilla-custom-prompt") || "",
   },
 };
 
@@ -949,6 +952,7 @@ async function streamChat(conversationId, message) {
         message,
         model: state.currentModel,
         provider: state.currentProvider,
+        customPrompt: state.settings.customPrompt || undefined,
       }),
       signal: controller.signal,
     });
@@ -1200,12 +1204,18 @@ function applySettings() {
   els.densitySelect.value = settings.density;
   els.textSizeSelect.value = settings.textSize;
   els.accentSelect.value = settings.accent;
-  els.sidebarSelect.value = settings.sidebar;
+  els.sidebarOpenToggle.checked = settings.sidebar === "open";
   els.reduceMotionToggle.checked = settings.reduceMotion;
   els.enterToSendToggle.checked = settings.enterToSend;
   els.showStatsToggle.checked = settings.showStats;
   if (els.displayNameInput && document.activeElement !== els.displayNameInput) {
     els.displayNameInput.value = settings.userName || "";
+  }
+  if (els.customPromptInput && document.activeElement !== els.customPromptInput) {
+    els.customPromptInput.value = settings.customPrompt || "";
+  }
+  if (els.customPromptBadge) {
+    els.customPromptBadge.hidden = !settings.customPrompt || settings.customPrompt.trim() === "";
   }
   const theme = state.themes.find((item) => item.name === settings.theme);
   if (theme?.colors) {
@@ -1231,6 +1241,7 @@ function applySettings() {
   localStorage.setItem("vanilla-enter-to-send", String(settings.enterToSend));
   localStorage.setItem("vanilla-show-stats", String(settings.showStats));
   localStorage.setItem("vanilla-user-name", settings.userName || "");
+  localStorage.setItem("vanilla-custom-prompt", settings.customPrompt || "");
 }
 
 async function loadThemes() {
@@ -1371,8 +1382,8 @@ function bindEvents() {
     state.settings.accent = els.accentSelect.value;
     applySettings();
   });
-  els.sidebarSelect.addEventListener("change", () => {
-    state.settings.sidebar = els.sidebarSelect.value;
+  els.sidebarOpenToggle.addEventListener("change", () => {
+    state.settings.sidebar = els.sidebarOpenToggle.checked ? "open" : "closed";
     applySettings();
   });
   els.reduceMotionToggle.addEventListener("change", () => {
@@ -1393,6 +1404,13 @@ function bindEvents() {
       state.settings.userName = els.displayNameInput.value.trim();
       applySettings();
       chooseGreeting();
+    });
+  }
+
+  if (els.customPromptInput) {
+    els.customPromptInput.addEventListener("input", () => {
+      state.settings.customPrompt = els.customPromptInput.value.trim();
+      applySettings();
     });
   }
 

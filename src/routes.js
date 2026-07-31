@@ -140,7 +140,7 @@ function register(app) {
 
   // Streaming chat
   app.post('/api/chat/stream', async (req, res) => {
-    const { conversationId, message, model, provider: providerName } = req.body || {};
+    const { conversationId, message, model, provider: providerName, customPrompt } = req.body || {};
     if (!conversationId || !message) {
       return res.status(400).json({ error: 'conversationId and message are required' });
     }
@@ -165,10 +165,24 @@ function register(app) {
     conv = storage.get(conversationId);
 
     // Build messages array for provider (strip internal ids)
-    const chatMessages = conv.messages.map((m) => ({
+    let chatMessages = conv.messages.map((m) => ({
       role: m.role,
       content: m.content,
     }));
+
+    // Prepend custom system prompt if provided
+    if (customPrompt && customPrompt.trim()) {
+      // Check if there's already a system message at the start
+      if (chatMessages.length === 0 || chatMessages[0].role !== 'system') {
+        chatMessages = [
+          { role: 'system', content: customPrompt.trim() },
+          ...chatMessages
+        ];
+      } else {
+        // Replace existing system message with custom one
+        chatMessages[0] = { role: 'system', content: customPrompt.trim() };
+      }
+    }
 
     // Set up SSE
     res.writeHead(200, {
