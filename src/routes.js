@@ -99,14 +99,18 @@ function register(app) {
     }
   });
 
-  // HuggingFace: search GGUF models
+  // HuggingFace: search GGUF models (empty q returns most popular)
   app.get('/api/hf/search', async (req, res) => {
     const q = (req.query.q || '').trim();
-    if (!q) return res.json({ results: [] });
+    console.log('[Route] /api/hf/search called with q:', JSON.stringify(q));
     try {
       const results = await hf.searchModels(q);
+      console.log('[Route] Returning', results.length, 'results to client');
+      // Cache for 5 minutes to avoid hammering HF API, but allow fresh data
+      res.set('Cache-Control', 'public, max-age=300');
       res.json({ results });
     } catch (e) {
+      console.error('[Route] Search error:', e);
       res.status(502).json({ error: e.message });
     }
   });

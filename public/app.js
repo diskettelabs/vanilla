@@ -58,8 +58,10 @@ const els = {
   installModal: document.querySelector("#installModal"),
   hfInstallButton: document.querySelector("#hfInstallButton"),
   hfSearchInput: document.querySelector("#hfSearchInput"),
+  hfSortSelect: document.querySelector("#hfSortSelect"),
   hfResults: document.querySelector("#hfResults"),
-  hfFiles: document.querySelector("#hfFiles"),
+  hfDetail: document.querySelector("#hfDetail"),
+  hfBackButton: document.querySelector(".hf-back-button"),
   hfProgress: document.querySelector("#hfProgress"),
   fileInput: document.querySelector("#fileInput"),
   attachmentPreview: document.querySelector("#attachmentPreview"),
@@ -1746,70 +1748,145 @@ function formatBytes(value) {
   return `${n >= 100 ? Math.round(n) : n.toFixed(1)} ${units[i]}`;
 }
 
-async function searchHuggingFace(query) {
-  if (!query) {
-    els.hfResults.innerHTML = "";
-    return;
+function formatCount(value) {
+  if (!Number.isFinite(value) || value <= 0) return "—";
+  if (value >= 1_000_000) {
+    const millions = value / 1_000_000;
+    return `${millions >= 10 ? Math.round(millions) : millions.toFixed(1)}M`;
   }
-  els.hfResults.innerHTML = '<p class="muted-note">Searching HuggingFace…</p>';
+  if (value >= 1_000) {
+    const thousands = value / 1_000;
+    return `${thousands >= 10 ? Math.round(thousands) : thousands.toFixed(1)}K`;
+  }
+  return `${value}`;
+}
+
+let hfSort = "downloads";
+let hfSearchSeq = 0;
+
+function sortHfResults(results) {
+  const sorted = [...results];
+  if (hfSort === "downloads") sorted.sort((a, b) => b.downloads - a.downloads);
+  else if (hfSort === "likes") sorted.sort((a, b) => b.likes - a.likes);
+  else if (hfSort === "name") sorted.sort((a, b) => a.id.localeCompare(b.id));
+  return sorted;
+}
+
+async function searchHuggingFace(query) {
+  const seq = ++hfSearchSeq;
+  console.log('[Frontend] searchHuggingFace called with query:', JSON.stringify(query));
+  els.hfResults.innerHTML = query.trim()
+    ? '<p class="muted-note">Searching HuggingFace…</p>'
+    : '<p class="muted-note">Loading popular models…</p>';
   try {
     const data = await api(`/api/hf/search?q=${encodeURIComponent(query)}`);
-    renderHfResults(data.results || []);
+    console.log('[Frontend] Received response:', data);
+    if (seq !== hfSearchSeq) return;
+    state.lastHfResults = data.results || [];
+    renderHfResults(sortHfResults(state.lastHfResults));
   } catch (error) {
+    console.error('[Frontend] Search failed:', error);
+    if (seq !== hfSearchSeq) return;
     els.hfResults.innerHTML = `<p class="muted-note">${escapeHtml(error.message)}</p>`;
   }
 }
 
 function renderHfResults(results) {
-  els.hfFiles.innerHTML = "";
   if (!results.length) {
     els.hfResults.innerHTML = '<p class="muted-note">No GGUF models found. Try another search.</p>';
     return;
   }
   els.hfResults.innerHTML = results.map((repo) => `
     <button class="hf-repo" type="button" data-repo="${escapeHtml(repo.id)}">
-      <span class="hf-repo-id">${escapeHtml(repo.id)}</span>
-      <span class="hf-repo-meta">${formatBytes(repo.downloads)} downloads${repo.gated ? " · gated" : ""}</span>
+      <div class="hf-repo-info">
+        <span class="hf-repo-id">${escapeHtml(repo.id)}</span>
+      </div>
+      <span class="hf-repo-meta">${formatCount(repo.downloads)} downloads${repo.gated ? " · gated" : ""}</span>
     </button>
   `).join("");
   els.hfResults.querySelectorAll("[data-repo]").forEach((button) => {
-    button.addEventListener("click", () => loadHfFiles(button.dataset.repo));
+    button.addEventListener("click", () => {
+      const repo = button.dataset.repo;
+      showHfDetail(repo);
+    });
   });
 }
 
+function showHfDetail(repo) {
+  // Hide list, show detail view
+  els.hfResults.hidden = true;
+  els.hfDetail.hidden = false;
+  els.hfBackButton.hidden = false;
+  els.hfSearchInput.parentElement.parentElement.hidden = true;
+  
+  // Load model details
+  loadHfFiles(repo);
+}
+
+function showHfList() {
+  // Show list, hide detail view
+  els.hfResults.hidden = false;
+  els.hfDetail.hidden = true;
+  els.hfBackButton.hidden = true;
+  els.hfSearchInput.parentElement.parentElement.hidden = false;
+}
+
 async function loadHfFiles(repo) {
-  els.hfFiles.innerHTML = `<p class="muted-note">Loading files for ${escapeHtml(repo)}…</p>`;
+  els.hfDetail.innerHTML = '<div class="install-detail-loading"><p>Loading model details...</p></div>';
   try {
     const data = await api(`/api/hf/repo?repo=${encodeURIComponent(repo)}`);
     renderHfFiles(repo, data.files || []);
   } catch (error) {
-    els.hfFiles.innerHTML = `<p class="muted-note">${escapeHtml(error.message)}</p>`;
+    els.hfDetail.innerHTML = `<div class="install-detail-error"><p>${escapeHtml(error.message)}</p></div>`;
   }
 }
 
 function renderHfFiles(repo, files) {
   if (!files.length) {
-    els.hfFiles.innerHTML = '<p class="muted-note">No GGUF files found in this repo.</p>';
+    els.hfDetail.innerHTML = '<p class="muted-note" style="padding: 20px; text-align: center;">No GGUF files found in this repo.</p>';
     return;
   }
-  els.hfFiles.innerHTML = `<div class="hf-files-head"><span>${escapeHtml(repo)}</span></div>` +
-    files.map((file) => `
-      <div class="hf-file" data-file="${escapeHtml(file.filename)}">
-        <div class="hf-file-info">
-          <span class="hf-file-quant">${escapeHtml(file.quant)}</span>
-          <span class="hf-file-name">${escapeHtml(file.filename)}</span>
-          <span class="hf-file-size">${formatBytes(file.size)}</span>
-        </div>
-        <button class="hf-install-btn" type="button">Install</button>
+  
+  // Find the model info from the results
+  const modelInfo = state.lastHfResults?.find(m => m.id === repo);
+  const downloads = modelInfo?.downloads || 0;
+  const likes = modelInfo?.likes || 0;
+  const gated = modelInfo?.gated || false;
+  
+  els.hfDetail.innerHTML = `
+    <div class="hf-detail-header">
+      <h3>${escapeHtml(repo)}</h3>
+      <div class="hf-detail-stats">
+        <span><strong>${formatCount(downloads)}</strong> downloads</span>
+        <span>·</span>
+        <span><strong>${formatCount(likes)}</strong> likes</span>
+        ${gated ? '<span>·</span><span class="hf-gated-badge">Gated</span>' : ''}
       </div>
-    `).join("");
-  els.hfFiles.querySelectorAll(".hf-install-btn").forEach((button) => {
+    </div>
+    <div class="hf-detail-body">
+      <p class="hf-detail-label">Available quantizations (${files.length}):</p>
+      <div class="hf-files">
+        ${files.map((file) => `
+          <div class="hf-file" data-file="${escapeHtml(file.filename)}">
+            <div class="hf-file-info">
+              <span class="hf-file-quant">${escapeHtml(file.quant)}</span>
+              <span class="hf-file-name">${escapeHtml(file.filename)}</span>
+              <span class="hf-file-size">${formatBytes(file.size)}</span>
+            </div>
+            <button class="hf-install-btn" type="button">Install</button>
+          </div>
+        `).join("")}
+      </div>
+    </div>
+  `;
+  
+  els.hfDetail.querySelectorAll(".hf-install-btn").forEach((button) => {
     button.addEventListener("click", () => installHfModel(repo, button.closest(".hf-file").dataset.file, button));
   });
 }
 
 function installHfModel(repo, file, button) {
-  els.hfFiles.querySelectorAll(".hf-install-btn").forEach((btn) => { btn.disabled = true; });
+  els.hfDetail.querySelectorAll(".hf-install-btn").forEach((btn) => { btn.disabled = true; });
   button.textContent = "Installing…";
   els.hfProgress.hidden = false;
   els.hfProgress.innerHTML = `
@@ -1888,14 +1965,22 @@ async function refreshModelsAfterInstall(model) {
 function bindHuggingFace() {
   els.hfInstallButton.addEventListener("click", () => {
     closeModals();
-    els.hfResults.innerHTML = "";
-    els.hfFiles.innerHTML = "";
+    showHfList();
     els.hfProgress.hidden = true;
+    els.hfSearchInput.value = "";
     openModal(els.installModal);
+    searchHuggingFace("");
+  });
+  els.hfBackButton.addEventListener("click", () => {
+    showHfList();
   });
   els.hfSearchInput.addEventListener("input", debounce(() => {
     searchHuggingFace(els.hfSearchInput.value.trim());
   }, 300));
+  els.hfSortSelect.addEventListener("change", () => {
+    hfSort = els.hfSortSelect.value;
+    renderHfResults(sortHfResults(state.lastHfResults || []));
+  });
 }
 
 async function uninstallApp() {

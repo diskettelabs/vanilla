@@ -54,17 +54,24 @@ function sanitizeRepo(repo) {
 }
 
 async function searchModels(query, limit = 24) {
-  const url = `${HF_API}/models?search=${encodeURIComponent(query)}&filter=gguf&limit=${limit}`;
+  const q = String(query || '').trim();
+  const url = q
+    ? `${HF_API}/models?search=${encodeURIComponent(q)}&filter=gguf&limit=${limit}`
+    : `${HF_API}/models?filter=gguf&sort=downloads&direction=-1&limit=${limit}`;
+  console.log('[HF] Searching with URL:', url);
   const res = await _request(url);
   const data = await _readJson(res);
-  return (data || [])
-    .filter((m) => !m.private && Array.isArray(m.tags) && m.tags.includes('gguf'))
+  console.log('[HF] Received', data?.length || 0, 'models from API');
+  const filtered = (data || [])
+    .filter((m) => !m.private)
     .map((m) => ({
       id: m.id,
       downloads: m.downloads || 0,
       likes: m.likes || 0,
       gated: Boolean(m.gated),
     }));
+  console.log('[HF] Returning', filtered.length, 'models after filtering');
+  return filtered;
 }
 
 async function listModelFiles(repo) {

@@ -435,17 +435,31 @@
     <div id="installModal" class="modal-backdrop" hidden>
       <section class="modal install-modal" role="dialog" aria-modal="true" aria-labelledby="installTitle">
         <div class="modal-head">
+          <button class="hf-back-button" type="button" hidden>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M19 12H5M12 19l-7-7 7-7"/>
+            </svg>
+            Back
+          </button>
           <h2 id="installTitle">Install a model</h2>
           <button class="text-button" type="button" data-close-modal>Close</button>
         </div>
         <div class="install-body">
           <div class="install-search-wrap">
-            <input id="hfSearchInput" class="modal-input" type="search" placeholder="Search HuggingFace — e.g. Llama, Qwen, Mistral…" autocomplete="off" spellcheck="false">
+            <div class="install-search-row">
+              <input id="hfSearchInput" class="modal-input" type="search" placeholder="Search HuggingFace — e.g. Llama, Qwen, Mistral…" autocomplete="off" spellcheck="false">
+              <select id="hfSortSelect" class="hf-sort-select" title="Sort results">
+                <option value="downloads" selected>Most popular</option>
+                <option value="likes">Most liked</option>
+                <option value="name">A–Z</option>
+              </select>
+            </div>
           </div>
-          <div id="hfResults" class="hf-results"></div>
-          <div id="hfFiles" class="hf-files"></div>
+          <div class="install-content">
+            <div id="hfResults" class="hf-results"></div>
+            <div id="hfDetail" class="hf-detail" hidden></div>
+          </div>
           <div id="hfProgress" class="hf-progress" hidden></div>
-          <p class="hf-empty-note">Search above to find GGUF models. Pick a repo, choose a quantization (Q4_K_M is a good default), and hit Install — it downloads and imports into your local Ollama.</p>
         </div>
       </section>
     </div>
