@@ -35,12 +35,12 @@ const els = {
   activeModel: document.querySelector("#activeModel"),
   modelSearch: document.querySelector("#modelSearch"),
   modelOptions: document.querySelector("#modelOptions"),
-  providerSelect: document.querySelector("#providerSelect"),
-  modelSelect: document.querySelector("#modelSelect"),
-  themeSelect: document.querySelector("#themeSelect"),
-  densitySelect: document.querySelector("#densitySelect"),
-  textSizeSelect: document.querySelector("#textSizeSelect"),
-  accentSelect: document.querySelector("#accentSelect"),
+  providerPicker: document.querySelector("#providerPicker"),
+  settingsModelPicker: document.querySelector("#settingsModelPicker"),
+  themePicker: document.querySelector("#themePicker"),
+  densityPicker: document.querySelector("#densityPicker"),
+  textSizePicker: document.querySelector("#textSizePicker"),
+  accentPicker: document.querySelector("#accentPicker"),
   sidebarOpenToggle: document.querySelector("#sidebarOpenToggle"),
   reduceMotionToggle: document.querySelector("#reduceMotionToggle"),
   enterToSendToggle: document.querySelector("#enterToSendToggle"),
@@ -73,6 +73,8 @@ const els = {
   setupModal: document.querySelector("#setupModal"),
   autoNameToggle: document.querySelector("#autoNameToggle"),
 };
+
+const dropdowns = {};
 
 const state = {
   conversations: [],
@@ -1541,13 +1543,127 @@ function renderModelOptions() {
   syncSettingsSelects();
 }
 
+function createSettingsDropdown(root, onChange) {
+  const button = root.querySelector(".settings-picker-button");
+  const label = root.querySelector(".settings-picker-label");
+  const box = root.querySelector(".settings-picker-options");
+  let items = [];
+  let value = "";
+
+  function render() {
+    const match = items.find((item) => item.value === value);
+    label.textContent = match ? match.label : "";
+    root.dataset.value = value;
+    box.querySelectorAll(".settings-picker-option").forEach((option, index) => {
+      option.setAttribute("aria-selected", items[index]?.value === value ? "true" : "false");
+    });
+  }
+
+  function close() {
+    root.dataset.open = "false";
+    button.setAttribute("aria-expanded", "false");
+  }
+
+  button.addEventListener("click", (event) => {
+    event.stopPropagation();
+    const open = root.dataset.open !== "true";
+    root.dataset.open = open ? "true" : "false";
+    button.setAttribute("aria-expanded", String(open));
+  });
+  document.addEventListener("click", (event) => {
+    if (!root.contains(event.target)) close();
+  });
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && root.dataset.open === "true") close();
+  });
+
+  return {
+    setOptions(list) {
+      items = list;
+      box.innerHTML = "";
+      list.forEach((item) => {
+        const option = document.createElement("button");
+        option.type = "button";
+        option.className = "settings-picker-option";
+        option.setAttribute("role", "option");
+        option.disabled = Boolean(item.disabled);
+        option.textContent = item.label;
+        option.addEventListener("click", () => {
+          if (item.disabled) return;
+          value = item.value;
+          close();
+          render();
+          if (typeof onChange === "function") onChange(value);
+        });
+        box.append(option);
+      });
+      render();
+    },
+    setValue(next) {
+      value = next;
+      render();
+    },
+    get value() {
+      return value;
+    },
+  };
+}
+
+function bindSettingsDropdowns() {
+  dropdowns.provider = createSettingsDropdown(els.providerPicker, () => {
+    state.currentProvider = dropdowns.provider.value;
+    const firstModel = state.modelOptions.find((option) => option.provider === state.currentProvider && !option.disabled);
+    if (firstModel) state.currentModel = firstModel.model;
+    updateModelLabel();
+    renderModelOptions();
+  });
+  dropdowns.model = createSettingsDropdown(els.settingsModelPicker, () => {
+    state.currentModel = dropdowns.model.value;
+    updateModelLabel();
+    renderModelOptions();
+  });
+  dropdowns.theme = createSettingsDropdown(els.themePicker, () => {
+    state.settings.theme = dropdowns.theme.value;
+    applySettings();
+  });
+  dropdowns.density = createSettingsDropdown(els.densityPicker, () => {
+    state.settings.density = dropdowns.density.value;
+    applySettings();
+  });
+  dropdowns.textSize = createSettingsDropdown(els.textSizePicker, () => {
+    state.settings.textSize = dropdowns.textSize.value;
+    applySettings();
+  });
+  dropdowns.accent = createSettingsDropdown(els.accentPicker, () => {
+    state.settings.accent = dropdowns.accent.value;
+    applySettings();
+  });
+
+  dropdowns.density.setOptions([
+    { value: "comfortable", label: "Comfortable" },
+    { value: "compact", label: "Compact" },
+  ]);
+  dropdowns.textSize.setOptions([
+    { value: "small", label: "Small" },
+    { value: "regular", label: "Regular" },
+    { value: "large", label: "Large" },
+  ]);
+  dropdowns.accent.setOptions([
+    { value: "sky", label: "Sky" },
+    { value: "mint", label: "Mint" },
+    { value: "peach", label: "Peach" },
+    { value: "rose", label: "Rose" },
+    { value: "lavender", label: "Lavender" },
+  ]);
+}
+
 function syncSettingsSelects() {
   const usable = usableProviders();
-  els.providerSelect.innerHTML = usable.map((provider) => `<option value="${escapeHtml(provider.id)}">${escapeHtml(provider.label)}</option>`).join("");
-  els.providerSelect.value = state.currentProvider;
+  dropdowns.provider.setOptions(usable.map((provider) => ({ value: provider.id, label: provider.label })));
+  dropdowns.provider.setValue(state.currentProvider);
   const models = state.modelOptions.filter((option) => option.provider === state.currentProvider && !option.disabled);
-  els.modelSelect.innerHTML = models.map((option) => `<option value="${escapeHtml(option.model)}">${escapeHtml(option.model)}</option>`).join("");
-  els.modelSelect.value = state.currentModel;
+  dropdowns.model.setOptions(models.map((option) => ({ value: option.model, label: option.model })));
+  dropdowns.model.setValue(state.currentModel);
 }
 
 async function refreshStats() {
@@ -1583,9 +1699,9 @@ function applySettings() {
   document.body.dataset.showStats = String(settings.showStats);
   document.body.dataset.reduceMotion = String(settings.reduceMotion);
   els.shell.dataset.sidebar = settings.sidebar;
-  els.densitySelect.value = settings.density;
-  els.textSizeSelect.value = settings.textSize;
-  els.accentSelect.value = settings.accent;
+  if (dropdowns.density) dropdowns.density.setValue(settings.density);
+  if (dropdowns.textSize) dropdowns.textSize.setValue(settings.textSize);
+  if (dropdowns.accent) dropdowns.accent.setValue(settings.accent);
   els.sidebarOpenToggle.checked = settings.sidebar === "open";
   els.reduceMotionToggle.checked = settings.reduceMotion;
   els.enterToSendToggle.checked = settings.enterToSend;
@@ -1639,8 +1755,10 @@ async function loadThemes() {
     }
   }));
   state.themes = [{ name: "default", displayName: "Vanilla UI", description: "Neutral light interface" }, ...results];
-  els.themeSelect.innerHTML = state.themes.map((theme) => `<option value="${escapeHtml(theme.name)}">${escapeHtml(theme.displayName || titleCase(theme.name))}</option>`).join("");
-  els.themeSelect.value = state.settings.theme;
+  if (dropdowns.theme) {
+    dropdowns.theme.setOptions(state.themes.map((theme) => ({ value: theme.name, label: theme.displayName || titleCase(theme.name) })));
+    dropdowns.theme.setValue(state.settings.theme);
+  }
   applySettings();
 }
 
@@ -2043,6 +2161,8 @@ function bindEvents() {
     }
   });
 
+  bindSettingsDropdowns();
+
   els.promptInput.addEventListener("input", resizePrompt);
   els.promptInput.addEventListener("keydown", (event) => {
     if (event.key === "Enter" && !event.shiftKey && state.settings.enterToSend) {
@@ -2070,35 +2190,6 @@ function bindEvents() {
     }
   });
 
-  els.providerSelect.addEventListener("change", () => {
-    state.currentProvider = els.providerSelect.value;
-    const firstModel = state.modelOptions.find((option) => option.provider === state.currentProvider && !option.disabled);
-    if (firstModel) state.currentModel = firstModel.model;
-    updateModelLabel();
-    renderModelOptions();
-  });
-  els.modelSelect.addEventListener("change", () => {
-    state.currentModel = els.modelSelect.value;
-    updateModelLabel();
-    renderModelOptions();
-  });
-
-  els.themeSelect.addEventListener("change", () => {
-    state.settings.theme = els.themeSelect.value;
-    applySettings();
-  });
-  els.densitySelect.addEventListener("change", () => {
-    state.settings.density = els.densitySelect.value;
-    applySettings();
-  });
-  els.textSizeSelect.addEventListener("change", () => {
-    state.settings.textSize = els.textSizeSelect.value;
-    applySettings();
-  });
-  els.accentSelect.addEventListener("change", () => {
-    state.settings.accent = els.accentSelect.value;
-    applySettings();
-  });
   els.sidebarOpenToggle.addEventListener("change", () => {
     state.settings.sidebar = els.sidebarOpenToggle.checked ? "open" : "closed";
     applySettings();

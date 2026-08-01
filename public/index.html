@@ -154,11 +154,27 @@
           <div class="settings-grid">
             <label class="settings-label">
               <span class="label-text">Provider</span>
-              <select id="providerSelect" class="settings-select"></select>
+              <div class="settings-picker" id="providerPicker" data-open="false">
+                <button type="button" class="settings-picker-button" aria-haspopup="listbox" aria-expanded="false">
+                  <span class="settings-picker-label"></span>
+                  <img class="settings-picker-chevron" src="./assets/chevron.svg" alt="">
+                </button>
+                <div class="settings-picker-menu" role="listbox">
+                  <div class="settings-picker-options"></div>
+                </div>
+              </div>
             </label>
             <label class="settings-label">
               <span class="label-text">Model</span>
-              <select id="modelSelect" class="settings-select"></select>
+              <div class="settings-picker" id="settingsModelPicker" data-open="false">
+                <button type="button" class="settings-picker-button" aria-haspopup="listbox" aria-expanded="false">
+                  <span class="settings-picker-label"></span>
+                  <img class="settings-picker-chevron" src="./assets/chevron.svg" alt="">
+                </button>
+                <div class="settings-picker-menu" role="listbox">
+                  <div class="settings-picker-options"></div>
+                </div>
+              </div>
             </label>
           </div>
           <button id="hfInstallButton" class="hf-open-button" type="button">
@@ -191,32 +207,51 @@
           <div class="settings-grid settings-grid-2col">
             <label class="settings-label">
               <span class="label-text">Theme</span>
-              <select id="themeSelect" class="settings-select"></select>
+              <div class="settings-picker" id="themePicker" data-open="false">
+                <button type="button" class="settings-picker-button" aria-haspopup="listbox" aria-expanded="false">
+                  <span class="settings-picker-label"></span>
+                  <img class="settings-picker-chevron" src="./assets/chevron.svg" alt="">
+                </button>
+                <div class="settings-picker-menu" role="listbox">
+                  <div class="settings-picker-options"></div>
+                </div>
+              </div>
             </label>
             <label class="settings-label">
               <span class="label-text">Density</span>
-              <select id="densitySelect" class="settings-select">
-                <option value="comfortable">Comfortable</option>
-                <option value="compact">Compact</option>
-              </select>
+              <div class="settings-picker" id="densityPicker" data-open="false">
+                <button type="button" class="settings-picker-button" aria-haspopup="listbox" aria-expanded="false">
+                  <span class="settings-picker-label"></span>
+                  <img class="settings-picker-chevron" src="./assets/chevron.svg" alt="">
+                </button>
+                <div class="settings-picker-menu" role="listbox">
+                  <div class="settings-picker-options"></div>
+                </div>
+              </div>
             </label>
             <label class="settings-label">
               <span class="label-text">Text size</span>
-              <select id="textSizeSelect" class="settings-select">
-                <option value="small">Small</option>
-                <option value="regular">Regular</option>
-                <option value="large">Large</option>
-              </select>
+              <div class="settings-picker" id="textSizePicker" data-open="false">
+                <button type="button" class="settings-picker-button" aria-haspopup="listbox" aria-expanded="false">
+                  <span class="settings-picker-label"></span>
+                  <img class="settings-picker-chevron" src="./assets/chevron.svg" alt="">
+                </button>
+                <div class="settings-picker-menu" role="listbox">
+                  <div class="settings-picker-options"></div>
+                </div>
+              </div>
             </label>
             <label class="settings-label">
               <span class="label-text">Message accent</span>
-              <select id="accentSelect" class="settings-select">
-                <option value="sky">Sky</option>
-                <option value="mint">Mint</option>
-                <option value="peach">Peach</option>
-                <option value="rose">Rose</option>
-                <option value="lavender">Lavender</option>
-              </select>
+              <div class="settings-picker" id="accentPicker" data-open="false">
+                <button type="button" class="settings-picker-button" aria-haspopup="listbox" aria-expanded="false">
+                  <span class="settings-picker-label"></span>
+                  <img class="settings-picker-chevron" src="./assets/chevron.svg" alt="">
+                </button>
+                <div class="settings-picker-menu" role="listbox">
+                  <div class="settings-picker-options"></div>
+                </div>
+              </div>
             </label>
           </div>
         </div>
