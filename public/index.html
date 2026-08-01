@@ -179,7 +179,7 @@
               <span class="label-text">Custom system prompt</span>
               <span id="customPromptBadge" class="custom-prompt-badge" hidden>Active</span>
             </div>
-            <span class="label-help">Optional instructions to customize the AI's behavior</span>
+            <span class="label-help">Add instructions to customize how the AI responds. Think of this as setting the personality, expertise level, or style you want. Examples: "Be concise and use analogies," "You're a senior developer who prefers functional programming," or "Explain like I'm learning for the first time."</span>
             <textarea id="customPromptInput" class="settings-textarea" rows="4" placeholder="e.g., You are a helpful coding assistant who prefers functional programming..." spellcheck="true"></textarea>
           </label>
         </div>
@@ -224,6 +224,39 @@
         <div class="settings-divider" aria-hidden="true"></div>
         
         <div class="settings-section">
+          <h3>Keyboard shortcuts</h3>
+          <div class="settings-grid">
+            <div class="shortcut-row">
+              <span class="shortcut-label">New chat</span>
+              <kbd class="shortcut-key" data-shortcut="new-chat">⌘+⇧+O</kbd>
+            </div>
+            <div class="shortcut-row">
+              <span class="shortcut-label">Search conversations</span>
+              <kbd class="shortcut-key" data-shortcut="search">⌘+K</kbd>
+            </div>
+            <div class="shortcut-row">
+              <span class="shortcut-label">Open settings</span>
+              <kbd class="shortcut-key">⌘+,</kbd>
+            </div>
+            <div class="shortcut-row">
+              <span class="shortcut-label">Toggle sidebar</span>
+              <kbd class="shortcut-key">⌘+B</kbd>
+            </div>
+            <div class="shortcut-row">
+              <span class="shortcut-label">Focus message input</span>
+              <kbd class="shortcut-key">/</kbd>
+            </div>
+            <div class="shortcut-row">
+              <span class="shortcut-label">Cancel generation</span>
+              <kbd class="shortcut-key">Esc</kbd>
+            </div>
+          </div>
+          <p class="settings-note">Keyboard shortcuts help you navigate Vanilla faster. They adapt to your operating system (Cmd on Mac, Ctrl on Windows/Linux).</p>
+        </div>
+        
+        <div class="settings-divider" aria-hidden="true"></div>
+        
+        <div class="settings-section">
           <h3>Preferences</h3>
           <div class="settings-options">
             <label class="check-row">
@@ -232,38 +265,37 @@
             </label>
             <label class="check-row">
               <input id="reduceMotionToggle" type="checkbox">
-              <span>Reduce motion</span>
+              <span>Reduce motion and animations</span>
             </label>
             <label class="check-row">
               <input id="enterToSendToggle" type="checkbox">
-              <span>Press Enter to send</span>
+              <span>Press Enter to send (Shift+Enter for new line)</span>
             </label>
             <label class="check-row">
               <input id="showStatsToggle" type="checkbox">
-              <span>Show system stats</span>
+              <span>Show system stats in the top bar</span>
             </label>
             <label class="check-row">
               <input id="autoNameToggle" type="checkbox">
-              <span>Auto-name chats</span>
+              <span>Auto-name chats with AI</span>
             </label>
           </div>
-          <p class="settings-note">When enabled, Vanilla automatically generates a short title right after the first response. Uses a small local model (~350&nbsp;MB) downloaded through Ollama. You can always manually rename any chat using the button in the sidebar.</p>
+          <p class="settings-note">When auto-naming is enabled, Vanilla generates smart titles right after your first exchange. It uses a small local model (~350&nbsp;MB) downloaded through Ollama. You can always rename any chat manually using the button in the sidebar.</p>
         </div>
         
         <div class="settings-divider" aria-hidden="true"></div>
         
         <div class="settings-section settings-danger-zone">
           <h3>Uninstall</h3>
-          <p class="settings-note">Removes Vanilla Chat from this computer — including your chats and the downloaded Ollama runtime. This cannot be undone.</p>
+          <p class="settings-note">This removes Vanilla Chat completely from your computer—including all your conversations, settings, and the downloaded Ollama runtime. There's no undo button. If you're sure, go ahead.</p>
           <button id="uninstallButton" class="uninstall-button" type="button">Uninstall Vanilla Chat…</button>
         </div>
         
         <div class="settings-divider" aria-hidden="true"></div>
         
         <div class="settings-footer">
-          <p class="settings-note">Themes are loaded from <code>themes/</code>. Provider and model options come from the configured server.</p>
-          <p class="settings-note">Custom system prompts are applied at the start of each conversation to influence the AI's behavior and responses.</p>
-          <button id="redoSetupButton" class="settings-link-button" type="button">Redo first-time setup</button>
+          <p class="settings-note">Themes live in <code>themes/</code>. Provider and model options come from your configured server. Custom system prompts are applied at the start of each conversation to shape the AI's behavior and tone.</p>
+          <p class="settings-note">Need to start fresh? <button id="redoSetupButton" class="settings-link-button" type="button">Redo the first-time setup</button> and we'll walk you through everything again.</p>
         </div>
       </section>
     </div>
@@ -305,11 +337,11 @@
         <div class="setup-step" data-step="1">
           <div class="setup-hero">
             <img src="./assets/vanilla%20logomark.svg" alt="vanilla." class="setup-logo">
-            <p class="setup-tagline">Your personal AI workspace.</p>
+            <p class="setup-tagline">AI that feels like yours—fast, private, and ridiculously useful.</p>
           </div>
           <div class="setup-body">
-            <h2 id="setupTitle" class="setup-title">What should I call you?</h2>
-            <p class="setup-subtitle">I'll use your name in greetings and around the app.</p>
+            <h2 id="setupTitle" class="setup-title">First things first: what should I call you?</h2>
+            <p class="setup-subtitle">We'll use your name for greetings and the occasional personalized prompt. No pressure—you can always change it later.</p>
             <div class="setup-field">
               <input id="setupNameInput" class="setup-input" type="text" placeholder="Your name" autocomplete="given-name" spellcheck="false">
             </div>
@@ -325,22 +357,22 @@
         <!-- Step 2: AI type -->
         <div class="setup-step" data-step="2" hidden>
           <div class="setup-body">
-            <h2 class="setup-title">How are you running AI?</h2>
-            <p class="setup-subtitle">Vanilla works with local models and cloud providers.</p>
+            <h2 class="setup-title">Where's your AI running?</h2>
+            <p class="setup-subtitle">Vanilla works with local models (think: private, offline, zero latency) or cloud providers (OpenAI, Anthropic, and friends). Pick what fits your vibe.</p>
             <div class="setup-choice-grid">
               <button class="setup-choice" type="button" data-choice="local" aria-pressed="false">
                 <span class="setup-choice-icon">
                   <img src="./assets/local.svg" alt="">
                 </span>
                 <strong>Local AI</strong>
-                <span>Ollama on your machine. Private, fast, offline.</span>
+                <span>Runs on your machine via Ollama. Private, fast, fully offline. Your data never leaves.</span>
               </button>
               <button class="setup-choice" type="button" data-choice="cloud" aria-pressed="false">
                 <span class="setup-choice-icon">
                   <img src="./assets/cloud.svg" alt="">
                 </span>
-                <strong>Cloud provider</strong>
-                <span>OpenAI, Anthropic, or another API service.</span>
+                <strong>Cloud AI</strong>
+                <span>Connect to OpenAI, Anthropic, or another provider. More power, requires an API key.</span>
               </button>
             </div>
           </div>
@@ -356,22 +388,22 @@
         <!-- Step 3: Auto-naming -->
         <div class="setup-step" data-step="3" hidden>
           <div class="setup-body">
-            <h2 class="setup-title">Name your chats automatically?</h2>
-            <p class="setup-subtitle">Vanilla can read each conversation and pick a short title using a tiny local model. It downloads about 350&nbsp;MB through Ollama and never sends your chats anywhere.</p>
+            <h2 class="setup-title">Want your chats named automatically?</h2>
+            <p class="setup-subtitle">Vanilla can generate smart titles for your conversations using a tiny local model (about 350 MB via Ollama). It's quick, private, and runs entirely on your machine. Or skip it—you can always rename chats manually.</p>
             <div class="setup-choice-grid">
               <button class="setup-choice" type="button" data-naming="yes" aria-pressed="false">
                 <span class="setup-choice-icon">
                   <img src="./assets/autoname.svg" alt="">
                 </span>
-                <strong>Yes, auto-name</strong>
-                <span>Download the small model and name each chat for me.</span>
+                <strong>Yes, auto-name for me</strong>
+                <span>Download the model and let Vanilla handle chat titles automatically.</span>
               </button>
               <button class="setup-choice" type="button" data-naming="no" aria-pressed="false">
                 <span class="setup-choice-icon">
                   <img src="./assets/close.svg" alt="">
                 </span>
-                <strong>No, thanks</strong>
-                <span>Skip the download. I'll title chats myself.</span>
+                <strong>Nah, I'll name them</strong>
+                <span>Skip the download. You'll rename chats yourself when you feel like it.</span>
               </button>
             </div>
           </div>
@@ -387,8 +419,8 @@
         <!-- Step 4a: Local AI config -->
         <div class="setup-step" data-step="4a" hidden>
           <div class="setup-body">
-            <h2 class="setup-title">Local AI</h2>
-            <p class="setup-subtitle">Vanilla connects to Ollama at <code>localhost:11434</code> by default. Only change this if you're running on a custom host or port.</p>
+            <h2 class="setup-title">Almost there. Let's check your Ollama setup.</h2>
+            <p class="setup-subtitle">Vanilla connects to Ollama at <code>localhost:11434</code> by default. Only tweak this if you're running Ollama on a custom host or port. (If you're not sure, leave it alone—it's probably right.)</p>
             <div class="setup-field">
               <label class="setup-label" for="setupOllamaHost">Ollama host</label>
               <input id="setupOllamaHost" class="setup-input" type="text" value="http://localhost:11434" spellcheck="false" autocomplete="off">
@@ -403,10 +435,10 @@
         <!-- Step 4b: Cloud provider config -->
         <div class="setup-step" data-step="4b" hidden>
           <div class="setup-body">
-            <h2 class="setup-title">Cloud provider</h2>
-            <p class="setup-subtitle">Pick a provider and paste your API key. You can change this any time in Settings.</p>
+            <h2 class="setup-title">One last thing: your API key.</h2>
+            <p class="setup-subtitle">Pick your cloud provider and drop in your API key. Don't worry—it's stored locally in your browser and never leaves your machine. You can swap providers or update keys anytime in Settings.</p>
             <div class="setup-field">
-              <label class="setup-label" for="setupProviderSelect">Provider</label>
+              <label class="setup-label" for="setupProviderSelect">Cloud provider</label>
               <select id="setupProviderSelect" class="setup-select">
                 <option value="openai">OpenAI</option>
                 <option value="anthropic">Anthropic</option>
