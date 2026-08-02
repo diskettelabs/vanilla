@@ -160,6 +160,35 @@ function register(app) {
     res.status(201).json(conv);
   });
 
+  // Import conversations from exported markdown/JSON files
+  app.post('/api/conversations/import', (req, res) => {
+    const { files } = req.body || {};
+    if (!Array.isArray(files) || !files.length) {
+      return res.status(400).json({
+        error: 'No files provided',
+        action: 'Select at least one markdown or JSON file to import.',
+        recoverable: true,
+      });
+    }
+    try {
+      const created = storage.importConversations(files);
+      if (!created.length) {
+        return res.status(400).json({
+          error: 'No valid conversations found',
+          action: 'The file(s) did not contain a readable conversation.',
+          recoverable: true,
+        });
+      }
+      res.json({ imported: created.length, conversations: created });
+    } catch (e) {
+      console.error('[Import Error]', formatErrorForLog(e, { endpoint: '/api/conversations/import' }));
+      res.status(500).json(formatErrorForClient(e, {
+        userMessage: 'Failed to import conversations',
+        action: 'The file(s) could not be parsed. Try a file exported from Vanilla Chat.',
+      }));
+    }
+  });
+
   app.get('/api/conversations/:id', (req, res) => {
     try {
       const conv = storage.get(req.params.id);
@@ -274,6 +303,53 @@ function register(app) {
     }
   });
 
+  // Toggle pinned state for a conversation
+  app.patch('/api/conversations/:id/pin', (req, res) => {
+    try {
+      const conv = storage.get(req.params.id);
+      if (!conv) {
+        return res.status(404).json({
+          error: 'Conversation not found',
+          action: 'This conversation may have been deleted.',
+          recoverable: false,
+        });
+      }
+      conv.pinned = !conv.pinned;
+      storage.update(conv);
+      res.json({ pinned: Boolean(conv.pinned) });
+    } catch (e) {
+      console.error('[Pin Error]', formatErrorForLog(e, {
+        endpoint: '/api/conversations/:id/pin',
+        conversationId: req.params.id,
+      }));
+      res.status(500).json(formatErrorForClient(e));
+    }
+  });
+
+  // Set the per-conversation custom system prompt ('' clears it)
+  app.patch('/api/conversations/:id/prompt', (req, res) => {
+    try {
+      const conv = storage.get(req.params.id);
+      if (!conv) {
+        return res.status(404).json({
+          error: 'Conversation not found',
+          action: 'This conversation may have been deleted.',
+          recoverable: false,
+        });
+      }
+      const { prompt } = req.body || {};
+      conv.customPrompt = typeof prompt === 'string' ? prompt.trim() : '';
+      storage.update(conv);
+      res.json({ customPrompt: conv.customPrompt });
+    } catch (e) {
+      console.error('[Prompt Error]', formatErrorForLog(e, {
+        endpoint: '/api/conversations/:id/prompt',
+        conversationId: req.params.id,
+      }));
+      res.status(500).json(formatErrorForClient(e));
+    }
+  });
+
   // Erase last assistant response
   app.post('/api/conversations/:id/erase-last-response', (req, res) => {
     try {
@@ -357,6 +433,98 @@ function register(app) {
     }
     controller.abort();
     activeStreams.delete(req.params.conversationId);
+    res.json({ ok: true });
+  });
+
+  // Multi-model comparison: stream the same prompt from several models in parallel.
+  // Events are tagged with an `id` so the client can route tokens to each column.
+  app.post('/api/chat/compare', async (req, res) => {
+    const { id, message, customPrompt, models } = req.body || {};
+    if (!id || !message || !Array.isArray(models) || models.length < 2) {
+      return res.status(400).json({
+        error: 'Missing comparison parameters',
+        action: 'Provide a message and at least two models to compare.',
+        recoverable: true,
+      });
+    }
+
+    res.writeHead(200, {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      Connection: 'keep-alive',
+      'X-Accel-Buffering': 'no',
+    });
+
+    const abortController = new AbortController();
+    activeStreams.set(`compare:${id}`, abortController);
+    const cleanup = () => activeStreams.delete(`compare:${id}`);
+    req.on('close', () => abortController.abort());
+
+    const chatMessages = [];
+    if (customPrompt && customPrompt.trim()) {
+      chatMessages.push({ role: 'system', content: customPrompt.trim() });
+    }
+    chatMessages.push({ role: 'user', content: message });
+
+    const write = (event) => res.write(`data: ${JSON.stringify(event)}\n\n`);
+
+    try {
+      await Promise.all(models.map(async (entry) => {
+        const key = entry.id || `${entry.provider}:${entry.model}`;
+        let provider;
+        try {
+          provider = providers.create(entry.provider, mergeConfig(entry.provider, entry.apiKey));
+        } catch (e) {
+          write({ type: 'error', id: key, error: `Provider "${entry.provider}" is not available` });
+          return;
+        }
+        let full = '';
+        try {
+          await provider.chatStream(
+            chatMessages,
+            entry.model,
+            (token) => {
+              full += token;
+              write({ type: 'token', id: key, content: token });
+            },
+            () => write({ type: 'done', id: key }),
+            (err) => {
+              if (err?.name === 'AbortError' || err?.message === 'Stream aborted by user') {
+                write({ type: 'done', id: key, interrupted: true });
+                return;
+              }
+              const parsed = parseError(err, { provider: entry.provider, model: entry.model });
+              write({ type: 'error', id: key, ...formatErrorForClient(parsed) });
+            },
+            { signal: abortController.signal }
+          );
+        } catch (e) {
+          if (e?.name === 'AbortError' || e?.message === 'Stream aborted by user') {
+            write({ type: 'done', id: key, interrupted: true });
+          } else {
+            const parsed = parseError(e, { provider: entry.provider, model: entry.model });
+            write({ type: 'error', id: key, ...formatErrorForClient(parsed) });
+          }
+        }
+      }));
+    } finally {
+      cleanup();
+      res.end();
+    }
+  });
+
+  // Stop an active comparison
+  app.post('/api/chat/compare-stop/:id', (req, res) => {
+    const controller = activeStreams.get(`compare:${req.params.id}`);
+    if (!controller) {
+      return res.status(404).json({
+        error: 'No active comparison',
+        action: 'The comparison has already completed or was never started.',
+        recoverable: false,
+      });
+    }
+    controller.abort();
+    activeStreams.delete(`compare:${req.params.id}`);
     res.json({ ok: true });
   });
 

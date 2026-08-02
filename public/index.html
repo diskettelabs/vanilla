@@ -102,9 +102,13 @@
                 <img src="./assets/add.svg" alt="">
                 <span>attach file</span>
               </button>
-              <button class="pill-tool" type="button" data-tool="tools">
-                <img src="./assets/tools.svg" alt="">
-                <span>tools</span>
+              <button class="pill-tool" type="button" data-tool="compare">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="18" rx="1.5"/><rect x="14" y="3" width="7" height="18" rx="1.5"/></svg>
+                <span>compare</span>
+              </button>
+              <button class="pill-tool" type="button" data-tool="prompt" title="Set instructions for this chat">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+                <span id="promptPillLabel">prompt</span>
               </button>
               <button id="dictationButton" class="pill-tool" type="button" data-tool="dictation" aria-label="Toggle dictation" title="Voice input">
                 <img src="./assets/dictate.svg" alt="">
@@ -314,8 +318,20 @@
               <input id="autoNameToggle" type="checkbox">
               <span>Auto-name chats with AI</span>
             </label>
+            <label class="check-row">
+              <input id="compareToggle" type="checkbox">
+              <span>Show the compare-models tool</span>
+            </label>
           </div>
           <p class="settings-note">When auto-naming is enabled, Vanilla generates smart titles right after your first exchange. It uses a small local model (~350&nbsp;MB) downloaded through Ollama. You can always rename any chat manually using the button in the sidebar.</p>
+        </div>
+        
+        <div class="settings-divider" aria-hidden="true"></div>
+        
+        <div class="settings-section">
+          <h3>Export</h3>
+          <p class="settings-note">Download the current conversation as Markdown, JSON, or a standalone HTML page. You can also pin or rename chats from the sidebar.</p>
+          <button id="exportChatButton" class="compare-run" type="button">Export current chat…</button>
         </div>
         
         <div class="settings-divider" aria-hidden="true"></div>
@@ -366,6 +382,7 @@
           <span class="setup-dot" data-dot="2"></span>
           <span class="setup-dot" data-dot="3"></span>
           <span class="setup-dot" data-dot="4"></span>
+          <span class="setup-dot" data-dot="5"></span>
         </div>
 
         <!-- Step 1: Name -->
@@ -451,8 +468,44 @@
           </div>
         </div>
 
-        <!-- Step 4a: Local AI config -->
-        <div class="setup-step" data-step="4a" hidden>
+        <!-- Step 4: Import past chats -->
+        <div class="setup-step" data-step="4" hidden>
+          <div class="setup-body">
+            <h2 class="setup-title">Import past chats from markdown?</h2>
+            <p class="setup-subtitle">If you've exported conversations as <code>.md</code> files from Vanilla (or another app), you can bring them right in.</p>
+            <div class="setup-choice-grid">
+              <button class="setup-choice" type="button" data-import="yes" aria-pressed="false">
+                <span class="setup-choice-icon">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m17 8-5-5-5 5"/><path d="M12 3v12"/></svg>
+                </span>
+                <strong>Yes, import chats</strong>
+                <span>Pick one or more exported markdown files to add to your library.</span>
+              </button>
+              <button class="setup-choice" type="button" data-import="no" aria-pressed="false">
+                <span class="setup-choice-icon">
+                  <img src="./assets/close.svg" alt="">
+                </span>
+                <strong>No thanks</strong>
+                <span>Skip it for now — you can always import later.</span>
+              </button>
+            </div>
+            <div id="setupImportWrap" class="setup-field" hidden>
+              <label class="setup-label" for="setupImportInput">Markdown files</label>
+              <input id="setupImportInput" class="setup-input" type="file" accept=".md,.markdown,text/markdown,.json,application/json" multiple spellcheck="false">
+              <p id="setupImportStatus" class="setup-subtitle"></p>
+            </div>
+          </div>
+          <div class="setup-actions setup-actions-split">
+            <button class="setup-back" type="button" data-setup-back>Back</button>
+            <button id="setupImportNext" class="setup-primary" type="button" disabled>
+              Continue
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Step 5a: Local AI config -->
+        <div class="setup-step" data-step="5a" hidden>
           <div class="setup-body">
             <h2 class="setup-title">Almost there. Let's check your Ollama setup.</h2>
             <p class="setup-subtitle">Vanilla connects to Ollama at <code>localhost:11434</code> by default. Only tweak this if you're running Ollama on a custom host or port. (If you're not sure, leave it alone—it's probably right.)</p>
@@ -467,8 +520,8 @@
           </div>
         </div>
 
-        <!-- Step 4b: Cloud provider config -->
-        <div class="setup-step" data-step="4b" hidden>
+        <!-- Step 5b: Cloud provider config -->
+        <div class="setup-step" data-step="5b" hidden>
           <div class="setup-body">
             <h2 class="setup-title">One last thing: your API key.</h2>
             <p class="setup-subtitle">Pick your cloud provider and drop in your API key. Don't worry—it's stored locally in your browser and never leaves your machine. You can swap providers or update keys anytime in Settings.</p>
@@ -527,6 +580,76 @@
             <div id="hfDetail" class="hf-detail" hidden></div>
           </div>
           <div id="hfProgress" class="hf-progress" hidden></div>
+        </div>
+      </section>
+    </div>
+
+    <div id="compareModal" class="modal-backdrop" hidden>
+      <section class="modal compare-modal" role="dialog" aria-modal="true" aria-labelledby="compareTitle">
+        <div class="modal-head">
+          <h2 id="compareTitle">Compare models</h2>
+          <button class="text-button" type="button" data-close-modal>Close</button>
+        </div>
+        <label class="settings-label">
+          <span class="label-text">Prompt</span>
+          <span class="label-help">Every selected model answers the same question. Results stream in side-by-side.</span>
+          <textarea id="comparePrompt" class="settings-textarea" rows="4" placeholder="Ask all selected models the same question…"></textarea>
+        </label>
+        <div class="compare-picker-head">
+          <span class="label-text">Models</span>
+          <span id="compareCount" class="compare-count">0 of 4 selected</span>
+        </div>
+        <div id="compareModelList" class="compare-model-list"></div>
+        <div class="compare-actions">
+          <button id="compareRunButton" class="compare-run" type="button">Compare</button>
+          <button id="compareStopButton" class="compare-stop" type="button" hidden>Stop</button>
+        </div>
+        <div id="compareResults" class="compare-results" hidden></div>
+      </section>
+    </div>
+
+    <div id="exportModal" class="modal-backdrop" hidden>
+      <section class="modal export-modal" role="dialog" aria-modal="true" aria-labelledby="exportTitle">
+        <div class="modal-head">
+          <h2 id="exportTitle">Export chat</h2>
+          <button class="text-button" type="button" data-close-modal>Close</button>
+        </div>
+        <p id="exportConversationName" class="settings-note"></p>
+        <div class="export-options">
+          <label class="export-option">
+            <input type="radio" name="exportFormat" value="markdown" checked>
+            <span class="export-option-body"><strong>Markdown</strong><small>Readable .md transcript</small></span>
+          </label>
+          <label class="export-option">
+            <input type="radio" name="exportFormat" value="json">
+            <span class="export-option-body"><strong>JSON</strong><small>Structured machine-readable data</small></span>
+          </label>
+          <label class="export-option">
+            <input type="radio" name="exportFormat" value="html">
+            <span class="export-option-body"><strong>HTML</strong><small>Standalone styled page</small></span>
+          </label>
+        </div>
+        <div class="compare-actions">
+          <button id="exportDownloadButton" class="compare-run" type="button">Download</button>
+          <button id="exportCopyButton" class="compare-run compare-run-secondary" type="button">Copy</button>
+        </div>
+      </section>
+    </div>
+
+    <div id="promptModal" class="modal-backdrop" hidden>
+      <section class="modal prompt-modal" role="dialog" aria-modal="true" aria-labelledby="promptTitle">
+        <div class="modal-head">
+          <h2 id="promptTitle">Chat instructions</h2>
+          <button class="text-button" type="button" data-close-modal>Close</button>
+        </div>
+        <label class="settings-label">
+          <span class="label-text">System prompt for this chat</span>
+          <span class="label-help">Only affects this conversation. Leave blank to fall back to your global custom prompt in Settings.</span>
+          <textarea id="conversationPromptInput" class="settings-textarea" rows="5" placeholder="Instructions for this chat only…"></textarea>
+        </label>
+        <div class="compare-actions">
+          <button id="conversationPromptSave" class="compare-run" type="button">Save</button>
+          <button id="conversationPromptClear" class="text-button" type="button">Clear</button>
         </div>
       </section>
     </div>

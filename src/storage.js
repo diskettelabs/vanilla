@@ -29,6 +29,8 @@ function convFromJson(fp) {
     model: raw.model || '',
     provider: raw.provider || undefined,
     autoTitle: Boolean(raw.autoTitle),
+    pinned: Boolean(raw.pinned),
+    customPrompt: raw.customPrompt || '',
     messages: raw.messages || [],
     createdAt: raw.createdAt || new Date().toISOString(),
     updatedAt: raw.updatedAt || new Date().toISOString(),
@@ -45,6 +47,8 @@ function convToMarkdown(conv) {
   lines.push(`- **Created:** ${conv.createdAt}`);
   lines.push(`- **Updated:** ${conv.updatedAt}`);
   lines.push(`- **AutoTitle:** ${conv.autoTitle ? 'true' : 'false'}`);
+  lines.push(`- **Pinned:** ${conv.pinned ? 'true' : 'false'}`);
+  if (conv.customPrompt) lines.push(`- **Prompt:** ${JSON.stringify(conv.customPrompt)}`);
   lines.push('');
   lines.push('---');
   lines.push('');
@@ -60,8 +64,7 @@ function convToMarkdown(conv) {
   return lines.join('\n');
 }
 
-function convFromMarkdown(fp) {
-  const text = fs.readFileSync(fp, 'utf-8');
+function parseConversationMarkdown(text) {
   const lines = text.split('\n');
 
   const conv = {
@@ -69,6 +72,8 @@ function convFromMarkdown(fp) {
     title: '',
     model: '',
     autoTitle: false,
+    pinned: false,
+    customPrompt: '',
     messages: [],
     createdAt: '',
     updatedAt: '',
@@ -97,6 +102,14 @@ function convFromMarkdown(fp) {
         else if (key === 'Created') conv.createdAt = val;
         else if (key === 'Updated') conv.updatedAt = val;
         else if (key === 'AutoTitle') conv.autoTitle = val === 'true';
+        else if (key === 'Pinned') conv.pinned = val === 'true';
+        else if (key === 'Prompt') {
+          try {
+            conv.customPrompt = JSON.parse(val);
+          } catch {
+            conv.customPrompt = val;
+          }
+        }
         continue;
       }
 
@@ -146,6 +159,64 @@ function convFromMarkdown(fp) {
   return conv;
 }
 
+function convFromMarkdown(fp) {
+  return parseConversationMarkdown(fs.readFileSync(fp, 'utf-8'));
+}
+
+function importConversations(files) {
+  const created = [];
+  for (const file of files || []) {
+    const content = file?.content || '';
+    if (!content || !content.trim()) continue;
+    let conv;
+    try {
+      if (content.trim().startsWith('{')) {
+        const raw = JSON.parse(content);
+        conv = {
+          id: raw.id || '',
+          title: raw.title || '',
+          model: raw.model || '',
+          provider: raw.provider || undefined,
+          autoTitle: Boolean(raw.autoTitle),
+          pinned: Boolean(raw.pinned),
+          customPrompt: raw.customPrompt || '',
+          messages: raw.messages || [],
+          createdAt: raw.createdAt || '',
+          updatedAt: raw.updatedAt || '',
+        };
+      } else {
+        conv = parseConversationMarkdown(content);
+      }
+    } catch {
+      continue;
+    }
+
+    if (!conv.id) conv.id = uuid();
+    if (!conv.title) conv.title = (file.name || 'Imported chat').replace(/\.(md|markdown|json)$/i, '').trim() || 'Imported chat';
+    if (!conv.createdAt) conv.createdAt = new Date().toISOString();
+    if (!conv.updatedAt) conv.updatedAt = conv.createdAt;
+    if (!conv.model) conv.model = '';
+    conv.autoTitle = Boolean(conv.autoTitle);
+    conv.pinned = Boolean(conv.pinned);
+    conv.customPrompt = conv.customPrompt || '';
+    conv.messages = Array.isArray(conv.messages) ? conv.messages : [];
+
+    fs.writeFileSync(filePath(conv.id), convToMarkdown(conv));
+    created.push({
+      id: conv.id,
+      title: conv.title,
+      model: conv.model,
+      provider: conv.provider,
+      autoTitle: conv.autoTitle,
+      pinned: conv.pinned,
+      messageCount: conv.messages.length,
+      createdAt: conv.createdAt,
+      updatedAt: conv.updatedAt,
+    });
+  }
+  return created;
+}
+
 function list() {
   const files = fs.readdirSync(DATA_DIR);
   const convs = [];
@@ -167,6 +238,7 @@ function list() {
         model: conv.model,
         provider: conv.provider,
         autoTitle: conv.autoTitle,
+        pinned: Boolean(conv.pinned),
         messageCount: conv.messages.length,
         createdAt: conv.createdAt,
         updatedAt: conv.updatedAt,
@@ -176,7 +248,10 @@ function list() {
     }
   }
 
-  return convs.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+  return convs.sort((a, b) => {
+    if (Boolean(a.pinned) !== Boolean(b.pinned)) return a.pinned ? -1 : 1;
+    return new Date(b.updatedAt) - new Date(a.updatedAt);
+  });
 }
 
 function create(title = 'New Conversation', model = 'llama2', provider, { autoTitle } = {}) {
@@ -461,4 +536,4 @@ function search(query) {
   return results;
 }
 
-module.exports = { init, list, create, get, update, remove, addMessage, eraseLastAssistant, replaceLastUserMessage: replaceUserMessageAndTruncate, search, DATA_DIR };
+module.exports = { init, list, create, get, update, remove, addMessage, eraseLastAssistant, replaceLastUserMessage: replaceUserMessageAndTruncate, importConversations, search, DATA_DIR };

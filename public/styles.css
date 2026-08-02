@@ -66,6 +66,10 @@
   box-sizing: border-box;
 }
 
+[hidden] {
+  display: none !important;
+}
+
 html,
 body {
   width: 100%;
@@ -391,6 +395,37 @@ button img,
   cursor: not-allowed;
 }
 
+.conversation-pin {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  margin-right: 2px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #a5a5a5;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 150ms ease, background 150ms ease, color 150ms ease;
+}
+
+.conversation-pin:hover {
+  background: rgba(0, 0, 0, 0.06);
+  color: #307ab1;
+}
+
+.conversation-pin.is-pinned {
+  opacity: 1;
+  color: #307ab1;
+}
+
+.conversation-row.is-pinned .conversation-open {
+  font-weight: 600;
+}
+
 .conversation-rename-input {
   flex: 1;
   min-width: 0;
@@ -422,7 +457,8 @@ button img,
 }
 
 .conversation-row:hover .conversation-delete,
-.conversation-row:hover .conversation-rename {
+.conversation-row:hover .conversation-rename,
+.conversation-row:hover .conversation-pin {
   opacity: 1;
 }
 
@@ -596,6 +632,11 @@ button img,
 .settings-button img {
   width: 31px;
   height: 30px;
+  transition: transform 0.45s ease;
+}
+
+.settings-button:hover img {
+  transform: rotate(45deg);
 }
 
 .model-menu {
@@ -1335,11 +1376,20 @@ button img,
   width: 16px;
   height: 16px;
   opacity: 0.5;
-  transition: opacity 150ms ease;
+  transition: opacity 150ms ease, transform 180ms ease;
+}
+
+.pill-tool svg {
+  transition: transform 180ms ease;
 }
 
 .pill-tool:hover img {
   opacity: 0.7;
+}
+
+.pill-tool:hover img,
+.pill-tool:hover svg {
+  transform: translateY(-1px);
 }
 
 .pill-tool[data-active="true"] {
@@ -1352,6 +1402,12 @@ button img,
 .pill-tool[data-active="true"] img {
   opacity: 1;
   filter: brightness(0) invert(1);
+}
+
+.pill-tool.is-custom {
+  border-color: rgba(48, 122, 177, 0.45);
+  background: rgba(48, 122, 177, 0.07);
+  color: #307ab1;
 }
 
 @keyframes pulse-recording {
@@ -1374,6 +1430,7 @@ button img,
   justify-self: end;
   grid-column: 2;
   grid-row: 2;
+  transition: background 150ms ease, transform 120ms ease;
 }
 
 @keyframes composer-expand {
@@ -1393,6 +1450,11 @@ button img,
 
 .submit-button:not([disabled]):hover {
   background: #18191a;
+  transform: scale(1.06);
+}
+
+.submit-button:not([disabled]):active {
+  transform: scale(0.97);
 }
 
 .submit-button img {
@@ -2856,6 +2918,15 @@ body[data-reduce-motion="true"] *::after {
   width: 100%;
 }
 
+#setupImportWrap {
+  margin-top: 6px;
+}
+
+#setupImportStatus {
+  margin-top: 2px;
+  min-height: 18px;
+}
+
 .setup-label {
   font-size: 14px;
   font-weight: 700;
@@ -3258,4 +3329,237 @@ body[data-reduce-motion="true"] *::after {
     min-width: auto;
     max-width: none;
   }
+}
+
+/* ─── Compare modal ─────────────────────────────────────────────────────── */
+
+.compare-modal {
+  width: min(900px, calc(100vw - 32px));
+  overflow-y: auto;
+}
+
+.compare-picker-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 16px 0 8px;
+}
+
+.compare-count {
+  font-size: 13px;
+  font-weight: 600;
+  color: #999;
+}
+
+.compare-model-list {
+  display: grid;
+  gap: 4px;
+  max-height: 200px;
+  overflow: auto;
+  padding: 4px 2px;
+}
+
+.compare-model-group {
+  margin: 10px 4px 2px;
+  color: #999;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+}
+
+.compare-model {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 15px;
+  transition: background 150ms ease;
+}
+
+.compare-model:hover {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.compare-model input {
+  width: 16px;
+  height: 16px;
+  accent-color: #307ab1;
+  flex-shrink: 0;
+}
+
+.compare-model input:disabled {
+  opacity: 0.35;
+}
+
+.compare-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.compare-run {
+  border: 0;
+  border-radius: 10px;
+  background: #307ab1;
+  color: #fff;
+  cursor: pointer;
+  padding: 10px 18px;
+  font-size: 15px;
+  font-weight: 700;
+  font-family: inherit;
+  transition: background 150ms ease, transform 100ms ease;
+}
+
+.compare-run:hover {
+  background: #2a6da0;
+}
+
+.compare-run:active {
+  transform: scale(0.98);
+}
+
+.compare-run:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.compare-run-secondary {
+  background: #fff;
+  color: #307ab1;
+  border: 1px solid rgba(48, 122, 177, 0.4);
+}
+
+.compare-run-secondary:hover {
+  background: rgba(48, 122, 177, 0.08);
+}
+
+.compare-stop {
+  border: 1px solid #e1e1df;
+  border-radius: 10px;
+  background: #fff;
+  color: #b0332c;
+  cursor: pointer;
+  padding: 10px 18px;
+  font-size: 15px;
+  font-weight: 700;
+  font-family: inherit;
+  transition: background 150ms ease;
+}
+
+.compare-stop:hover {
+  background: rgba(176, 51, 44, 0.08);
+}
+
+.compare-results {
+  display: grid;
+  grid-auto-columns: minmax(0, 1fr);
+  grid-auto-flow: column;
+  gap: 10px;
+  margin-top: 18px;
+  overflow-x: auto;
+  align-items: start;
+}
+
+.compare-col {
+  min-width: 0;
+  border: 1px solid #e1e1df;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #fff;
+}
+
+.compare-col-head {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 12px;
+  border-bottom: 1px solid #eee;
+  background: rgba(0, 0, 0, 0.02);
+}
+
+.compare-col-provider {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: #999;
+}
+
+.compare-col-model {
+  font-size: 14px;
+  font-weight: 700;
+  color: #222;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.compare-col-body {
+  min-height: 120px;
+  max-height: 420px;
+  overflow: auto;
+  padding: 12px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.compare-col-body .typing-loader {
+  padding: 4px 0;
+}
+
+/* ─── Export modal ──────────────────────────────────────────────────────── */
+
+.export-options {
+  display: grid;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.export-option {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid #e1e1df;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: border-color 150ms ease, background 150ms ease;
+}
+
+.export-option:hover {
+  border-color: rgba(48, 122, 177, 0.4);
+  background: rgba(48, 122, 177, 0.04);
+}
+
+.export-option:has(input:checked) {
+  border-color: rgba(48, 122, 177, 0.55);
+  background: rgba(48, 122, 177, 0.08);
+}
+
+.export-option input {
+  width: 16px;
+  height: 16px;
+  accent-color: #307ab1;
+  flex-shrink: 0;
+}
+
+.export-option-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.export-option-body strong {
+  font-size: 15px;
+  color: #222;
+}
+
+.export-option-body small {
+  font-size: 13px;
+  color: #999;
 }

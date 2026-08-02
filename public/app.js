@@ -45,6 +45,7 @@ const els = {
   reduceMotionToggle: document.querySelector("#reduceMotionToggle"),
   enterToSendToggle: document.querySelector("#enterToSendToggle"),
   showStatsToggle: document.querySelector("#showStatsToggle"),
+  compareToggle: document.querySelector("#compareToggle"),
   customPromptInput: document.querySelector("#customPromptInput"),
   customPromptBadge: document.querySelector("#customPromptBadge"),
   cpuStat: document.querySelector("#cpuStat"),
@@ -55,6 +56,23 @@ const els = {
   searchInput: document.querySelector("#searchInput"),
   searchResults: document.querySelector("#searchResults"),
   settingsButton: document.querySelector("#settingsButton"),
+  exportChatButton: document.querySelector("#exportChatButton"),
+  exportModal: document.querySelector("#exportModal"),
+  exportConversationName: document.querySelector("#exportConversationName"),
+  exportDownloadButton: document.querySelector("#exportDownloadButton"),
+  exportCopyButton: document.querySelector("#exportCopyButton"),
+  compareModal: document.querySelector("#compareModal"),
+  comparePrompt: document.querySelector("#comparePrompt"),
+  compareModelList: document.querySelector("#compareModelList"),
+  compareCount: document.querySelector("#compareCount"),
+  compareRunButton: document.querySelector("#compareRunButton"),
+  compareStopButton: document.querySelector("#compareStopButton"),
+  compareResults: document.querySelector("#compareResults"),
+  promptModal: document.querySelector("#promptModal"),
+  conversationPromptInput: document.querySelector("#conversationPromptInput"),
+  conversationPromptSave: document.querySelector("#conversationPromptSave"),
+  conversationPromptClear: document.querySelector("#conversationPromptClear"),
+  promptPillLabel: document.querySelector("#promptPillLabel"),
   installModal: document.querySelector("#installModal"),
   hfInstallButton: document.querySelector("#hfInstallButton"),
   hfSearchInput: document.querySelector("#hfSearchInput"),
@@ -108,6 +126,7 @@ const state = {
     reduceMotion: localStorage.getItem("vanilla-reduce-motion") === "true",
     enterToSend: localStorage.getItem("vanilla-enter-to-send") !== "false",
     showStats: localStorage.getItem("vanilla-show-stats") !== "false",
+    showCompare: localStorage.getItem("vanilla-show-compare") === "true",
     autoName: localStorage.getItem("vanilla-auto-name") !== "false",
     userName: localStorage.getItem("vanilla-user-name") || "",
     customPrompt: localStorage.getItem("vanilla-custom-prompt") || "",
@@ -530,6 +549,7 @@ function renderConversationList() {
     row.className = "conversation-row";
     row.setAttribute("role", "listitem");
     row.setAttribute("aria-current", state.activeConversation?.id === conv.id ? "true" : "false");
+    row.classList.toggle("is-pinned", Boolean(conv.pinned));
 
     const openButton = document.createElement("button");
     openButton.type = "button";
@@ -537,6 +557,18 @@ function renderConversationList() {
     openButton.textContent = conv.title || "Untitled";
     openButton.title = conv.title || "Untitled";
     openButton.addEventListener("click", () => loadConversation(conv.id));
+
+    const pinButton = document.createElement("button");
+    pinButton.type = "button";
+    pinButton.className = "conversation-pin";
+    pinButton.title = conv.pinned ? "Unpin chat" : "Pin chat";
+    pinButton.setAttribute("aria-label", conv.pinned ? "Unpin chat" : "Pin chat");
+    pinButton.classList.toggle("is-pinned", Boolean(conv.pinned));
+    pinButton.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 17v5"/><path d="M9 10.8 7 8.5V5h10v3.5l-2 2.3V17"/><path d="M9 17h6"/></svg>`;
+    pinButton.addEventListener("click", (event) => {
+      event.stopPropagation();
+      togglePin(conv.id);
+    });
 
     const renameButton = document.createElement("button");
     renameButton.type = "button";
@@ -572,8 +604,19 @@ function renderConversationList() {
       }, 2500);
     });
 
-    row.append(openButton, renameButton, deleteButton);
+    row.append(openButton, pinButton, renameButton, deleteButton);
     els.conversationList.append(row);
+  }
+}
+
+async function togglePin(id) {
+  try {
+    const data = await api(`/api/conversations/${encodeURIComponent(id)}/pin`, { method: "PATCH" });
+    if (state.activeConversation?.id === id) state.activeConversation.pinned = data.pinned;
+    await refreshConversations();
+    showNotification(data.pinned ? "Chat pinned" : "Chat unpinned", "success");
+  } catch (error) {
+    showNotification(error.action || error.message || "Failed to update pin", "error");
   }
 }
 
@@ -987,6 +1030,7 @@ async function loadConversation(id) {
     updateModelLabel();
     renderMessages(conv);
     renderConversationList();
+    updatePromptPill();
   } catch (error) {
     showNotification(error.action || error.message || "Failed to load conversation", "error");
   }
@@ -1007,6 +1051,7 @@ async function ensureConversation(message) {
   state.activeConversation = conv;
   await refreshConversations();
   renderConversationList();
+  updatePromptPill();
   return conv;
 }
 
@@ -1019,6 +1064,7 @@ async function newChat() {
   els.promptInput.value = "";
   resizePrompt();
   els.promptInput.focus();
+  updatePromptPill();
 }
 
 async function submitPrompt(event) {
@@ -1163,9 +1209,14 @@ async function streamChat(conversationId, message) {
   state.activeAssistant = assistant.querySelector(".assistant-body");
   state.tokenQueue = "";
   state.tokenText = "";
-  
+
   state.activeAssistant.textContent = "Loading model...";
   pumpTokens();
+
+  const convPrompt = state.activeConversation?.customPrompt?.trim()
+    ? state.activeConversation.customPrompt
+    : "";
+  const customPrompt = convPrompt || (state.settings.customPrompt || undefined);
 
   const controller = new AbortController();
   state.streamAbort = controller;
@@ -1180,7 +1231,7 @@ async function streamChat(conversationId, message) {
         model: state.currentModel,
         provider: state.currentProvider,
         apiKey: getApiKey(state.currentProvider) || undefined,
-        customPrompt: state.settings.customPrompt || undefined,
+        customPrompt,
       }),
       signal: controller.signal,
     });
@@ -1706,6 +1757,7 @@ function applySettings() {
   els.reduceMotionToggle.checked = settings.reduceMotion;
   els.enterToSendToggle.checked = settings.enterToSend;
   els.showStatsToggle.checked = settings.showStats;
+  if (els.compareToggle) els.compareToggle.checked = settings.showCompare;
   if (els.autoNameToggle) els.autoNameToggle.checked = settings.autoName;
   if (els.displayNameInput && document.activeElement !== els.displayNameInput) {
     els.displayNameInput.value = settings.userName || "";
@@ -1739,9 +1791,16 @@ function applySettings() {
   localStorage.setItem("vanilla-reduce-motion", String(settings.reduceMotion));
   localStorage.setItem("vanilla-enter-to-send", String(settings.enterToSend));
   localStorage.setItem("vanilla-show-stats", String(settings.showStats));
+  localStorage.setItem("vanilla-show-compare", String(settings.showCompare));
   localStorage.setItem("vanilla-auto-name", String(settings.autoName));
   localStorage.setItem("vanilla-user-name", settings.userName || "");
   localStorage.setItem("vanilla-custom-prompt", settings.customPrompt || "");
+  applyCompareVisibility();
+}
+
+function applyCompareVisibility() {
+  const comparePill = document.querySelector('[data-tool="compare"]');
+  if (comparePill) comparePill.hidden = !state.settings.showCompare;
 }
 
 async function loadThemes() {
@@ -1772,6 +1831,9 @@ function closeModals() {
   els.settingsModal.hidden = true;
   els.installModal.hidden = true;
   els.uninstallModal.hidden = true;
+  if (els.exportModal) els.exportModal.hidden = true;
+  if (els.compareModal) els.compareModal.hidden = true;
+  if (els.promptModal) els.promptModal.hidden = true;
 }
 
 // Helper function to find and highlight fuzzy matches
@@ -2138,6 +2200,15 @@ function bindEvents() {
     button.addEventListener("click", () => openModal(els.searchModal));
   });
   els.settingsButton.addEventListener("click", () => openModal(els.settingsModal));
+  els.exportChatButton.addEventListener("click", openExportModal);
+  els.exportDownloadButton.addEventListener("click", exportConversation);
+  els.exportCopyButton.addEventListener("click", copyExport);
+  document.querySelector('[data-tool="compare"]')?.addEventListener("click", openCompareModal);
+  els.compareRunButton.addEventListener("click", runCompare);
+  els.compareStopButton.addEventListener("click", stopCompare);
+  document.querySelector('[data-tool="prompt"]')?.addEventListener("click", openPromptModal);
+  els.conversationPromptSave.addEventListener("click", saveConversationPrompt);
+  els.conversationPromptClear.addEventListener("click", clearConversationPrompt);
   els.uninstallButton.addEventListener("click", uninstallApp);
   els.uninstallConfirmButton.addEventListener("click", doUninstall);
   document.querySelectorAll("[data-close-modal]").forEach((button) => button.addEventListener("click", closeModals));
@@ -2206,6 +2277,12 @@ function bindEvents() {
     state.settings.showStats = els.showStatsToggle.checked;
     applySettings();
   });
+  if (els.compareToggle) {
+    els.compareToggle.addEventListener("change", () => {
+      state.settings.showCompare = els.compareToggle.checked;
+      applySettings();
+    });
+  }
   if (els.autoNameToggle) {
     els.autoNameToggle.addEventListener("change", () => {
       state.settings.autoName = els.autoNameToggle.checked;
@@ -2240,6 +2317,14 @@ function bindEvents() {
       const namingNext = els.setupModal?.querySelector("#setupNamingNext");
       if (namingNext) { namingNext.disabled = true; delete namingNext.dataset.naming; }
       els.setupModal?.querySelectorAll(".setup-choice").forEach((b) => b.setAttribute("aria-pressed", "false"));
+      const importWrap = els.setupModal?.querySelector("#setupImportWrap");
+      const importNext = els.setupModal?.querySelector("#setupImportNext");
+      const importInput = els.setupModal?.querySelector("#setupImportInput");
+      const importStatus = els.setupModal?.querySelector("#setupImportStatus");
+      if (importWrap) importWrap.hidden = true;
+      if (importNext) importNext.disabled = true;
+      if (importInput) { importInput.disabled = false; importInput.value = ""; }
+      if (importStatus) importStatus.textContent = "";
       showSetupStep("1");
       els.setupModal.hidden = false;
       requestAnimationFrame(() => els.setupModal.querySelector("#setupNameInput")?.focus());
@@ -2371,6 +2456,399 @@ function addUploadedMessage(content) {
   scrollToBottom();
 }
 
+function updatePromptPill() {
+  if (!els.promptPillLabel) return;
+  const hasPrompt = Boolean(state.activeConversation?.customPrompt?.trim());
+  els.promptPillLabel.textContent = hasPrompt ? "prompt ✓" : "prompt";
+  els.promptPillLabel.closest("[data-tool='prompt']")?.classList.toggle("is-custom", hasPrompt);
+  els.promptPillLabel.closest("[data-tool='prompt']")?.setAttribute("aria-label", hasPrompt ? "Chat instructions set" : "Set chat instructions");
+}
+
+function openPromptModal() {
+  if (!state.activeConversation?.id) {
+    showNotification("Start a chat first to set its instructions", "warning");
+    return;
+  }
+  if (els.conversationPromptInput) els.conversationPromptInput.value = state.activeConversation.customPrompt || "";
+  openModal(els.promptModal);
+}
+
+async function saveConversationPrompt() {
+  if (!state.activeConversation?.id) return;
+  const prompt = els.conversationPromptInput.value.trim();
+  try {
+    const data = await api(`/api/conversations/${encodeURIComponent(state.activeConversation.id)}/prompt`, {
+      method: "PATCH",
+      body: JSON.stringify({ prompt }),
+    });
+    state.activeConversation.customPrompt = data.customPrompt;
+    updatePromptPill();
+    closeModals();
+    showNotification(prompt ? "Chat instructions saved" : "Chat instructions cleared", "success");
+  } catch (error) {
+    showNotification(error.action || error.message || "Failed to save instructions", "error");
+  }
+}
+
+function clearConversationPrompt() {
+  if (els.conversationPromptInput) els.conversationPromptInput.value = "";
+  saveConversationPrompt();
+}
+
+function openExportModal() {
+  if (!state.activeConversation) {
+    showNotification("Open a chat to export it", "warning");
+    return;
+  }
+  els.exportConversationName.textContent = `Exporting: ${state.activeConversation.title}`;
+  openModal(els.exportModal);
+}
+
+function buildExport(conv, format) {
+  const title = conv.title || "Untitled";
+  const messages = conv.messages || [];
+  if (format === "json") {
+    const data = {
+      title,
+      provider: conv.provider || "",
+      model: conv.model || "",
+      customPrompt: conv.customPrompt || "",
+      createdAt: conv.createdAt,
+      updatedAt: conv.updatedAt,
+      messages: messages.map((m) => ({
+        role: m.role,
+        content: m.content,
+        model: m.model || "",
+        timestamp: m.timestamp,
+      })),
+    };
+    return { content: JSON.stringify(data, null, 2), mime: "application/json", ext: "json" };
+  }
+  if (format === "html") {
+    const body = messages.map((m) => {
+      const cls = m.role === "user" ? "user" : "assistant";
+      return `<div class="msg ${cls}"><div class="msg-label">${escapeHtml(m.role)}${m.model ? ` · ${escapeHtml(m.model)}` : ""}</div><div class="msg-body">${escapeHtml(m.content).replace(/\n/g, "<br>")}</div></div>`;
+    }).join("\n");
+    return { content: exportHtmlDoc(title, body), mime: "text/html", ext: "html" };
+  }
+  const lines = [`# ${title}`, ""];
+  if (conv.provider) lines.push(`- **Provider:** ${conv.provider}`);
+  lines.push(`- **Model:** ${conv.model || "unknown"}`, `- **Created:** ${conv.createdAt}`, "", "---", "");
+  for (const m of messages) {
+    lines.push(`## ${m.role}${m.model ? ` (${m.model})` : ""}`, "", m.content, "");
+  }
+  return { content: lines.join("\n"), mime: "text/markdown", ext: "md" };
+}
+
+function exportHtmlDoc(title, body) {
+  return `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>${escapeHtml(title)}</title>
+<style>
+  body { margin: 0; padding: 32px 16px; background: #fafaf9; color: #222; font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+  main { max-width: 720px; margin: 0 auto; }
+  h1 { font-size: 26px; }
+  .msg { border-radius: 12px; padding: 14px 16px; margin: 12px 0; }
+  .msg.user { background: #eef2f7; }
+  .msg.assistant { background: #fff; border: 1px solid #e5e5e4; }
+  .msg-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: #999; margin-bottom: 6px; }
+  code { background: #f0f0ef; padding: 1px 5px; border-radius: 4px; }
+  pre { background: #1e1e1e; color: #eee; padding: 12px; border-radius: 8px; overflow-x: auto; }
+  pre code { background: transparent; }
+</style>
+</head>
+<body><main>
+<h1>${escapeHtml(title)}</h1>
+${body}
+</main></body>
+</html>`;
+}
+
+function exportConversation() {
+  const conv = state.activeConversation;
+  if (!conv) return;
+  const format = document.querySelector('input[name="exportFormat"]:checked')?.value || "markdown";
+  const { content, mime, ext } = buildExport(conv, format);
+  const blob = new Blob([content], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const base = (conv.title || "conversation").toLowerCase().replace(/[^\w\- ]+/g, "").trim().replace(/\s+/g, "-");
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `${base || "conversation"}.${ext}`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+  showNotification("Chat exported", "success");
+}
+
+async function copyExport() {
+  const conv = state.activeConversation;
+  if (!conv) return;
+  const format = document.querySelector('input[name="exportFormat"]:checked')?.value || "markdown";
+  const { content } = buildExport(conv, format);
+  const button = els.exportCopyButton;
+  const original = button.textContent;
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(content);
+    } else {
+      const textarea = document.createElement("textarea");
+      textarea.value = content;
+      textarea.style.position = "fixed";
+      textarea.style.opacity = "0";
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand("copy");
+      textarea.remove();
+    }
+    button.textContent = "Copied!";
+    setTimeout(() => {
+      if (button.isConnected) button.textContent = original;
+    }, 1600);
+  } catch {
+    showNotification("Could not copy to clipboard", "error");
+  }
+}
+
+async function importMarkdownFiles(fileList) {
+  const files = Array.from(fileList || []).filter((f) =>
+    /\.(md|markdown|json)$/i.test(f.name) || ["text/markdown", "application/json"].includes(f.type)
+  );
+  if (!files.length) return 0;
+  const contents = [];
+  for (const f of files) {
+    contents.push({ name: f.name, content: await f.text() });
+  }
+  const data = await api("/api/conversations/import", {
+    method: "POST",
+    body: JSON.stringify({ files: contents }),
+  });
+  return data.imported || 0;
+}
+
+// ─── Multi-model comparison ─────────────────────────────────────────────────
+
+const compareState = {
+  id: null,
+  running: false,
+  abort: null,
+  results: {},
+  pump: null,
+};
+
+function openCompareModal() {
+  const usable = state.modelOptions.filter((option) => !option.disabled);
+  if (usable.length < 2) {
+    showNotification("Need at least two available models to compare", "warning");
+    return;
+  }
+  compareState.running = false;
+  compareState.results = {};
+  els.compareResults.hidden = true;
+  els.compareResults.innerHTML = "";
+  els.compareStopButton.hidden = true;
+  els.compareRunButton.disabled = false;
+  renderCompareModels();
+  openModal(els.compareModal);
+  if (els.comparePrompt) els.comparePrompt.focus();
+}
+
+function renderCompareModels() {
+  els.compareModelList.innerHTML = "";
+  let lastProvider = "";
+  const options = state.modelOptions.filter((option) => !option.disabled);
+  for (const option of options) {
+    if (option.provider !== lastProvider) {
+      const group = document.createElement("div");
+      group.className = "compare-model-group";
+      group.textContent = option.providerLabel;
+      els.compareModelList.append(group);
+      lastProvider = option.provider;
+    }
+    const label = document.createElement("label");
+    label.className = "compare-model";
+    const input = document.createElement("input");
+    input.type = "checkbox";
+    input.dataset.provider = option.provider;
+    input.dataset.model = option.model;
+    input.dataset.label = option.providerLabel;
+    input.addEventListener("change", updateCompareCount);
+    const span = document.createElement("span");
+    span.textContent = option.model;
+    label.append(input, span);
+    els.compareModelList.append(label);
+  }
+  updateCompareCount();
+}
+
+function updateCompareCount() {
+  const checked = els.compareModelList.querySelectorAll("input:checked");
+  if (els.compareCount) els.compareCount.textContent = `${checked.length} of 4 selected`;
+  els.compareModelList.querySelectorAll("input:not(:checked)").forEach((input) => {
+    input.disabled = checked.length >= 4;
+  });
+}
+
+function pumpCompare() {
+  if (!compareState.running) return;
+  for (const key of Object.keys(compareState.results)) {
+    const r = compareState.results[key];
+    if (r.queue) {
+      r.text += r.queue;
+      r.queue = "";
+      r.el.innerHTML = renderMarkdown(r.text, { streaming: true });
+      attachCodeCopy(r.el);
+    }
+  }
+  compareState.pump = requestAnimationFrame(pumpCompare);
+}
+
+function flushCompare(key) {
+  const r = compareState.results[key];
+  if (!r || r.error) return;
+  if (r.queue) {
+    r.text += r.queue;
+    r.queue = "";
+  }
+  const loader = r.el.querySelector(".typing-loader");
+  if (loader) loader.remove();
+  if (r.text) {
+    r.el.innerHTML = renderMarkdown(r.text);
+    attachCodeCopy(r.el);
+  } else if (!r.error) {
+    r.el.innerHTML = '<p class="muted-note">No response</p>';
+  }
+}
+
+function handleComparePart(part) {
+  for (const line of part.split("\n")) {
+    const trimmed = line.trim();
+    if (!trimmed.startsWith("data:")) continue;
+    let event;
+    try {
+      event = JSON.parse(trimmed.slice(5).trim());
+    } catch {
+      continue;
+    }
+    if (!event.id) continue;
+    const r = compareState.results[event.id];
+    if (!r) continue;
+    if (event.type === "token") {
+      r.queue += event.content || "";
+    } else if (event.type === "done") {
+      flushCompare(event.id);
+    } else if (event.type === "error") {
+      r.error = true;
+      r.el.innerHTML = `<div class="error-message"><p><strong>${escapeHtml(event.error || "Stream failed")}</strong></p>${event.action ? `<p class="error-action">${escapeHtml(event.action)}</p>` : ""}</div>`;
+    }
+  }
+}
+
+async function runCompare() {
+  const message = els.comparePrompt.value.trim();
+  if (!message) {
+    showNotification("Enter a prompt to compare", "warning");
+    return;
+  }
+  const selected = [...els.compareModelList.querySelectorAll("input:checked")].map((input) => ({
+    id: `${input.dataset.provider}::${input.dataset.model}`,
+    provider: input.dataset.provider,
+    model: input.dataset.model,
+    providerLabel: input.dataset.label,
+  }));
+  if (selected.length < 2) {
+    showNotification("Select at least 2 models", "warning");
+    return;
+  }
+
+  compareState.id = crypto.randomUUID();
+  compareState.running = true;
+  compareState.results = {};
+  els.compareResults.hidden = false;
+  els.compareResults.innerHTML = "";
+
+  selected.forEach((m) => {
+    const key = m.id;
+    const col = document.createElement("div");
+    col.className = "compare-col";
+    col.innerHTML = `<div class="compare-col-head"><span class="compare-col-provider">${escapeHtml(m.providerLabel || m.provider)}</span><span class="compare-col-model">${escapeHtml(m.model)}</span></div><div class="compare-col-body"><div class="typing-loader"><span></span><span></span><span></span></div></div>`;
+    els.compareResults.append(col);
+    compareState.results[key] = { el: col.querySelector(".compare-col-body"), text: "", queue: "", error: false };
+  });
+
+  els.compareRunButton.disabled = true;
+  els.compareStopButton.hidden = false;
+  pumpCompare();
+
+  const controller = new AbortController();
+  compareState.abort = controller;
+
+  try {
+    const response = await fetch("/api/chat/compare", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        id: compareState.id,
+        message,
+        customPrompt: state.settings.customPrompt || undefined,
+        models: selected.map((m) => ({
+          id: m.id,
+          provider: m.provider,
+          model: m.model,
+          apiKey: getApiKey(m.provider) || undefined,
+        })),
+      }),
+      signal: controller.signal,
+    });
+    if (!response.ok || !response.body) {
+      let detail = `${response.status} ${response.statusText}`;
+      try {
+        detail = (await response.json()).error || detail;
+      } catch {}
+      throw new Error(detail);
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+    let done = false;
+    while (!done) {
+      const chunk = await reader.read();
+      done = chunk.done;
+      buffer += decoder.decode(chunk.value || new Uint8Array(), { stream: !done });
+      const parts = buffer.split("\n\n");
+      buffer = parts.pop() || "";
+      for (const part of parts) handleComparePart(part);
+    }
+    if (buffer.trim()) handleComparePart(buffer);
+  } catch (error) {
+    if (error.name !== "AbortError") {
+      showNotification(error.message || "Comparison failed", "error");
+    }
+  } finally {
+    compareState.running = false;
+    if (compareState.pump) cancelAnimationFrame(compareState.pump);
+    compareState.pump = null;
+    Object.keys(compareState.results).forEach((key) => flushCompare(key));
+    els.compareRunButton.disabled = false;
+    els.compareStopButton.hidden = true;
+  }
+}
+
+async function stopCompare() {
+  if (!compareState.id) return;
+  try {
+    await api(`/api/chat/compare-stop/${encodeURIComponent(compareState.id)}`, { method: "POST" });
+  } catch (error) {
+    // Stream may have already completed
+  }
+  compareState.abort?.abort();
+}
+
 async function boot() {
   setShortcuts();
   chooseGreeting();
@@ -2408,7 +2886,7 @@ function finishSetup() {
 }
 
 function updateSetupDots(stepAttr) {
-  const stepNum = stepAttr === "1" ? 1 : stepAttr === "2" ? 2 : stepAttr === "3" ? 3 : 4;
+  const stepNum = stepAttr === "1" ? 1 : stepAttr === "2" ? 2 : stepAttr === "3" ? 3 : stepAttr === "4" ? 4 : 5;
   els.setupModal.querySelectorAll(".setup-dot").forEach((dot) => {
     const n = Number(dot.dataset.dot);
     dot.dataset.state = n < stepNum ? "done" : n === stepNum ? "active" : "idle";
@@ -2515,12 +2993,59 @@ function bindSetupFlow() {
     if (naming !== "yes" && naming !== "no") return;
     state.settings.autoName = naming === "yes";
     applySettings();
-    const choice = aiNext.dataset.choice;
-    if (choice === "local") showSetupStep("4a");
-    else if (choice === "cloud") showSetupStep("4b");
+    showSetupStep("4");
   });
 
-  // Step 4a: local AI done
+  // Step 4: markdown import preference
+  const importButtons = els.setupModal.querySelectorAll(".setup-choice[data-import]");
+  const importInput = els.setupModal.querySelector("#setupImportInput");
+  const importStatus = els.setupModal.querySelector("#setupImportStatus");
+  const importWrap = els.setupModal.querySelector("#setupImportWrap");
+  const importNext = els.setupModal.querySelector("#setupImportNext");
+
+  importButtons.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      importButtons.forEach((b) => b.setAttribute("aria-pressed", "false"));
+      btn.setAttribute("aria-pressed", "true");
+      if (btn.dataset.import === "yes") {
+        importWrap.hidden = false;
+        importNext.disabled = false;
+        requestAnimationFrame(() => importInput?.focus());
+      } else {
+        importWrap.hidden = true;
+        importNext.disabled = false;
+      }
+    });
+  });
+
+  if (importInput) {
+    importInput.addEventListener("change", async () => {
+      const files = Array.from(importInput.files || []);
+      if (!files.length) return;
+      importStatus.textContent = "Importing…";
+      try {
+        const imported = await importMarkdownFiles(files);
+        if (imported > 0) {
+          importStatus.textContent = `Imported ${imported} chat${imported === 1 ? "" : "s"}.`;
+          importInput.disabled = true;
+        } else {
+          importStatus.textContent = "No readable chats found in those files.";
+        }
+      } catch (error) {
+        importStatus.textContent = error.action || error.message || "Import failed.";
+      }
+    });
+  }
+
+  if (importNext) {
+    importNext.addEventListener("click", () => {
+      const choice = aiNext.dataset.choice;
+      if (choice === "local") showSetupStep("5a");
+      else if (choice === "cloud") showSetupStep("5b");
+    });
+  }
+
+  // Step 5a: local AI done
   localDone.addEventListener("click", () => {
     const host = ollamaHost.value.trim();
     if (host) localStorage.setItem("vanilla-ollama-host", host);
@@ -2528,7 +3053,7 @@ function bindSetupFlow() {
     finishSetup();
   });
 
-  // Step 4b: cloud provider done
+  // Step 5b: cloud provider done
   cloudDone.addEventListener("click", async () => {
     const provider = providerSelect.value;
     const key = apiKeyInput.value.trim();
@@ -2550,7 +3075,8 @@ function bindSetupFlow() {
       const currentStep = els.setupModal.querySelector(".setup-step:not([hidden])")?.dataset.step;
       if (currentStep === "2") showSetupStep("1");
       if (currentStep === "3") showSetupStep("2");
-      if (currentStep === "4a" || currentStep === "4b") showSetupStep("3");
+      if (currentStep === "4") showSetupStep("3");
+      if (currentStep === "5a" || currentStep === "5b") showSetupStep("4");
     });
   });
 }
