@@ -1,6 +1,10 @@
 /* Generative background music via Web Audio (no audio assets).
- * A small engine with 4 selectable "tracks" — warm lo-fi grooves that
- * evolve forever: Vanilla Haze, Golden Hour, Midnight Lo-Fi, Rainy Day. */
+ * A small engine with 4 distinct generative "tracks":
+ *   Vanilla Haze   – warm sine pads, triangle arp, brushed rhythm
+ *   Golden Hour    – glassy triangle pads, long sustained lead, shaker
+ *   Midnight Lo-Fi – dark synth keys over a soft kick/hat groove + drone
+ *   Rainy Day      – sparse felt piano, no percussion, gentle rain texture
+ */
 const Ambience = (() => {
   let ctx = null;
   let master = null;
@@ -9,14 +13,21 @@ const Ambience = (() => {
   let bassBus = null;
   let percBus = null;
   let filter = null;
+  let padWet = null;
+  let padDry = null;
   let reverb = null;
   let scheduler = null;
   let noiseBuffer = null;
   let enabled = false;
   let ducked = false;
+  let droneNodes = null;
+  let rainNodes = null;
+  let audioEl = null;
+  let audioSrc = null;
 
   const TRACKS = {
     vanilla: {
+      name: "Vanilla Haze",
       bpm: 72,
       chordBeats: 8,
       chords: [
@@ -25,14 +36,19 @@ const Ambience = (() => {
         ["F3", "A3", "C4", "E4"], // Fmaj7
         ["G3", "B3", "D4", "E4"], // G6
       ],
-      pad: true,
+      pad: { type: "sine", volume: 0.013 },
+      bright: 1.0,
+      reverb: 0.25,
+      dry: 0.3,
       bass: true,
-      melody: "arp",
+      melody: { style: "arp", type: "triangle", volume: 0.055 },
+      arp: [0, 1, 2, 3, 4, 3, 2, 1],
       percussion: "brush",
       sparkle: 0.15,
     },
     golden: {
-      bpm: 66,
+      name: "Golden Hour",
+      bpm: 64,
       chordBeats: 8,
       chords: [
         ["C4", "E4", "G4", "B4"], // Cmaj7
@@ -40,29 +56,40 @@ const Ambience = (() => {
         ["A3", "C4", "E4", "G4"], // Am7
         ["F3", "A3", "C4", "E4"], // Fmaj7
       ],
-      pad: true,
+      pad: { type: "triangle", volume: 0.015 },
+      bright: 1.7,
+      reverb: 0.4,
+      dry: 0.22,
       bass: true,
-      melody: "sustained",
+      melody: { style: "sustained", type: "sine", volume: 0.055 },
+      arp: null,
       percussion: "shaker",
-      sparkle: 0,
+      sparkle: 0.3,
     },
     midnight: {
+      name: "Midnight Lo-Fi",
       bpm: 78,
       chordBeats: 8,
       chords: [
         ["A3", "C4", "E4", "G4"], // Am7
         ["F3", "A3", "C4", "E4"], // Fmaj7
         ["C4", "E4", "G4", "B4"], // Cmaj7
-        ["G3", "B3", "D4", "E4"], // G6
+        ["E3", "G3", "B3", "D4"], // Em7
       ],
-      pad: true,
+      pad: { type: "sine", volume: 0.012 },
+      bright: 0.7,
+      reverb: 0.35,
+      dry: 0.26,
       bass: true,
-      melody: "arp",
+      drone: "A2",
+      melody: { style: "arp", type: "saw", volume: 0.045 },
+      arp: [0, 1, 2, 1, 0, 3, 2, 1],
       percussion: "kickhat",
       sparkle: 0.1,
     },
     rainy: {
-      bpm: 58,
+      name: "Rainy Day",
+      bpm: 56,
       chordBeats: 12,
       chords: [
         ["C4", "E4", "G4", "B4"], // Cmaj7
@@ -70,9 +97,14 @@ const Ambience = (() => {
         ["F3", "A3", "C4", "E4"], // Fmaj7
         ["D3", "F3", "A3", "C4"], // Dm7
       ],
-      pad: true,
+      pad: { type: "sine", volume: 0.008 },
+      bright: 0.55,
+      reverb: 0.5,
+      dry: 0.18,
       bass: false,
-      melody: "piano",
+      rain: true,
+      melody: { style: "piano", type: "piano", volume: 0.05 },
+      arp: null,
       percussion: "none",
       sparkle: 0,
     },
@@ -141,10 +173,8 @@ const Ambience = (() => {
 
     padBus = ctx.createGain();
     padBus.connect(filter);
-    const padWet = ctx.createGain();
-    padWet.gain.value = 0.25;
-    const padDry = ctx.createGain();
-    padDry.gain.value = 0.3;
+    padWet = ctx.createGain();
+    padDry = ctx.createGain();
     filter.connect(padWet);
     filter.connect(padDry);
     padWet.connect(reverb);
@@ -188,41 +218,112 @@ const Ambience = (() => {
     document.addEventListener("keydown", unlock);
   }
 
-  function padEnv(g, t0, peak, hold) {
-    g.gain.setValueAtTime(0.0001, t0);
-    g.gain.linearRampToValueAtTime(peak, t0 + 3.5);
-    g.gain.setValueAtTime(peak, t0 + hold);
-    g.gain.linearRampToValueAtTime(0.0001, t0 + hold + 4);
+  function stopDrone() {
+    if (droneNodes) {
+      try {
+        droneNodes.forEach((n) => {
+          n.osc.stop();
+          n.gain.disconnect();
+          n.osc.disconnect();
+        });
+      } catch (e) { /* already stopped */ }
+      droneNodes = null;
+    }
+  }
+
+  function startDrone() {
+    stopDrone();
+    if (!track.drone) return;
+    const osc = ctx.createOscillator();
+    osc.type = "sine";
+    osc.frequency.value = nf(track.drone);
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.0001, ctx.currentTime);
+    gain.gain.linearRampToValueAtTime(0.05, ctx.currentTime + 3);
+    osc.connect(gain);
+    gain.connect(padBus);
+    osc.start();
+    droneNodes = [{ osc, gain }];
+  }
+
+  function stopRain() {
+    if (rainNodes) {
+      try {
+        rainNodes.forEach((n) => {
+          n.src.stop();
+          n.gain.disconnect();
+          n.lp.disconnect();
+          n.src.disconnect();
+        });
+      } catch (e) { /* already stopped */ }
+      rainNodes = null;
+    }
+  }
+
+  function startRain() {
+    stopRain();
+    if (!track.rain) return;
+    const src = ctx.createBufferSource();
+    src.buffer = noiseBuffer;
+    src.loop = true;
+    const lp = ctx.createBiquadFilter();
+    lp.type = "lowpass";
+    lp.frequency.value = 900;
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.0001, ctx.currentTime);
+    gain.gain.linearRampToValueAtTime(0.007, ctx.currentTime + 4);
+    src.connect(lp);
+    lp.connect(gain);
+    gain.connect(master);
+    src.start();
+    rainNodes = [{ src, lp, gain }];
+  }
+
+  function applyTrack() {
+    if (!ctx) return;
+    const t = ctx.currentTime;
+    filter.frequency.cancelScheduledValues(t);
+    filter.frequency.setTargetAtTime(1200 * track.bright, t, 0.8);
+    padWet.gain.setTargetAtTime(track.reverb, t, 0.6);
+    padDry.gain.setTargetAtTime(track.dry, t, 0.6);
+    if (enabled) {
+      startDrone();
+      startRain();
+    }
   }
 
   function playPad(chord, when) {
     const voice = (freq, detune, volume, offset) => {
       const osc = ctx.createOscillator();
-      osc.type = "sine";
+      osc.type = track.pad.type;
       osc.frequency.value = freq;
       if (detune) osc.detune.value = detune;
       const g = ctx.createGain();
       const t0 = when + offset;
-      padEnv(g, t0, volume, chordDur());
+      g.gain.setValueAtTime(0.0001, t0);
+      g.gain.linearRampToValueAtTime(volume, t0 + 3.5);
+      g.gain.setValueAtTime(volume, t0 + chordDur());
+      g.gain.linearRampToValueAtTime(0.0001, t0 + chordDur() + 4);
       osc.connect(g);
       g.connect(padBus);
       osc.start(t0);
       osc.stop(t0 + chordDur() + 4.2);
     };
+    const spread = track.pad.type === "sine" ? 6 : 4;
     for (const note of chord) {
       const f = nf(note);
-      voice(f, 0, 0.013, 0);
-      voice(f, 6, 0.009, 0);
-      voice(f, -6, 0.007, 0.6);
+      voice(f, 0, track.pad.volume, 0);
+      voice(f, spread, track.pad.volume * 0.7, 0);
+      voice(f, -spread, track.pad.volume * 0.55, 0.6);
     }
     if (Math.random() < track.sparkle) {
-      voice(nf(chord[chord.length - 1]) * 2, 0, 0.011, chordDur() / 2);
+      voice(nf(chord[chord.length - 1]) * 2, 0, track.pad.volume * 0.85, chordDur() / 2);
     }
   }
 
   function playBass(freq, when) {
     const osc = ctx.createOscillator();
-    osc.type = "triangle";
+    osc.type = track.bassType || "triangle";
     osc.frequency.value = freq;
     const g = ctx.createGain();
     const t0 = when;
@@ -237,25 +338,26 @@ const Ambience = (() => {
   }
 
   function playNote(freq, when, opts = {}) {
-    const {
-      type = "triangle",
-      volume = 0.055,
-      decay = 1.1,
-      lowpass = 0,
-    } = opts;
+    const { volume = 0.055, decay = 1.1, style } = opts;
+    const t0 = when;
+    if (style === "piano" || track.melody.style === "piano") {
+      playPiano(freq, t0, volume);
+      return;
+    }
+    const oscType = style || track.melody.type;
     const osc = ctx.createOscillator();
-    osc.type = type;
+    osc.type = oscType === "saw" ? "sawtooth" : oscType;
     osc.frequency.value = freq;
     const g = ctx.createGain();
-    const t0 = when;
     g.gain.setValueAtTime(0.0001, t0);
     g.gain.exponentialRampToValueAtTime(volume, t0 + 0.012);
     g.gain.exponentialRampToValueAtTime(0.0001, t0 + decay);
     let out = g;
-    if (lowpass) {
+    if (oscType === "saw") {
       const lp = ctx.createBiquadFilter();
       lp.type = "lowpass";
-      lp.frequency.value = lowpass;
+      lp.frequency.value = 1600;
+      lp.Q.value = 0.5;
       g.connect(lp);
       out = lp;
     }
@@ -263,6 +365,33 @@ const Ambience = (() => {
     out.connect(pluckBus);
     osc.start(t0);
     osc.stop(t0 + decay + 0.2);
+  }
+
+  function playPiano(freq, when, volume = 0.05) {
+    const t0 = when;
+    const lp = ctx.createBiquadFilter();
+    lp.type = "lowpass";
+    lp.frequency.value = 2400;
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(volume, t0 + 0.008);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + 2.0);
+    g.connect(lp);
+    lp.connect(pluckBus);
+    const voices = [
+      { type: "triangle", mul: 1, det: 0 },
+      { type: "sine", mul: 2, det: 0 },
+      { type: "triangle", mul: 1, det: 7 },
+    ];
+    voices.forEach((v) => {
+      const osc = ctx.createOscillator();
+      osc.type = v.type;
+      osc.frequency.value = freq * v.mul;
+      if (v.det) osc.detune.value = v.det;
+      osc.connect(g);
+      osc.start(t0);
+      osc.stop(t0 + 2.2);
+    });
   }
 
   function playKick(when) {
@@ -315,23 +444,23 @@ const Ambience = (() => {
   }
 
   function playMelody(beat, chord, t, pos) {
-    if (track.melody === "arp") {
+    const style = track.melody.style;
+    const beatDur = 60 / track.bpm;
+    if (style === "arp") {
       if (Math.random() < 0.82) {
-        const seq = [0, 1, 2, 3, 4, 3, 2, 1];
-        const idx = seq[pos];
+        const idx = track.arp[pos];
         let f = idx === 4 ? nf(chord[3]) * 2 : nf(chord[idx]);
         if (Math.random() < track.sparkle) f *= 2;
         playNote(f, t + 0.01);
-        if (Math.random() < 0.25 && pos < 7) {
-          playNote(nf(SCALE[Math.floor(Math.random() * SCALE.length)]), t + (60 / track.bpm) * 0.5, { volume: 0.03 });
+        if (Math.random() < 0.25 && pos < track.chordBeats - 1) {
+          playNote(nf(SCALE[Math.floor(Math.random() * SCALE.length)]), t + beatDur * 0.5, { volume: 0.03 });
         }
       }
-    } else if (track.melody === "sustained") {
-      const beatDur = 60 / track.bpm;
+    } else if (style === "sustained") {
       if (pos === 0) {
-        playNote(nf(chord[3]) * 2, t + 0.01, { type: "sine", volume: 0.05, decay: chordDur() * 0.8 });
+        playNote(nf(chord[3]) * 2, t + 0.01, { volume: 0.05, decay: chordDur() * 0.8 });
       } else if (pos === 4) {
-        playNote(nf(chord[1]) * 2, t + 0.01, { type: "sine", volume: 0.035, decay: beatDur * 3 });
+        playNote(nf(chord[1]) * 2, t + 0.01, { volume: 0.035, decay: beatDur * 3 });
       }
     }
     void beat;
@@ -364,14 +493,14 @@ const Ambience = (() => {
       nextBeat++;
     }
 
-    if (track.melody === "piano") {
+    if (track.melody.style === "piano") {
       while (nextPianoTime < now + 8) {
         const f = nf(SCALE[Math.floor(Math.random() * SCALE.length)]);
-        playNote(f, nextPianoTime, { type: "triangle", volume: 0.05, decay: 1.6, lowpass: 2200 });
+        playNote(f, nextPianoTime, { style: "piano", volume: 0.05 });
         if (Math.random() < 0.3) {
-          playNote(f / 2, nextPianoTime + 0.25, { type: "sine", volume: 0.03, decay: 2.4 });
+          playNote(f / 2, nextPianoTime + 0.25, { style: "piano", volume: 0.03, decay: 2.4 });
         }
-        nextPianoTime += 1.8 + Math.random() * 2.4;
+        nextPianoTime += 1.8 + Math.random() * 2.6;
       }
     }
   }
@@ -383,9 +512,46 @@ const Ambience = (() => {
     master.gain.setTargetAtTime(target, ctx.currentTime, 0.6);
   }
 
+  function audioNameFor(name) {
+    return name && name.startsWith("audio:") ? name.slice(6) : null;
+  }
+
+  function setAudioVolume() {
+    if (!audioEl) return;
+    audioEl.volume = enabled ? (ducked ? 0.12 : 0.5) : 0;
+  }
+
+  function tryPlayAudio() {
+    if (!audioSrc) return;
+    if (!audioEl) {
+      audioEl = new Audio();
+      audioEl.loop = true;
+      audioEl.preload = "auto";
+    }
+    audioEl.src = "./music/" + audioSrc;
+    const attempt = () => {
+      const p = audioEl.play();
+      if (p) p.catch(() => {});
+    };
+    attempt();
+    const unlock = () => {
+      attempt();
+      document.removeEventListener("pointerdown", unlock);
+      document.removeEventListener("keydown", unlock);
+    };
+    document.addEventListener("pointerdown", unlock);
+    document.addEventListener("keydown", unlock);
+  }
+
   return {
     setEnabled(value) {
       enabled = Boolean(value);
+      if (audioSrc) {
+        if (enabled) tryPlayAudio();
+        else if (audioEl) audioEl.pause();
+        setAudioVolume();
+        return;
+      }
       if (!ctx) build();
       if (!ctx) return;
       if (enabled) {
@@ -395,24 +561,45 @@ const Ambience = (() => {
         nextPianoTime = startTime + 2;
         if (scheduler) clearInterval(scheduler);
         scheduler = setInterval(scheduleChunk, 1000);
+        applyTrack();
         setMaster();
       } else {
         if (scheduler) clearInterval(scheduler);
         scheduler = null;
+        stopDrone();
+        stopRain();
         setMaster();
       }
     },
     setTrack(name) {
-      if (TRACKS[name]) track = TRACKS[name];
-      if (enabled && ctx) {
-        startTime = ctx.currentTime + 0.5;
-        nextBeat = 0;
-        nextPianoTime = startTime + 2;
+      const audioName = audioNameFor(name);
+      if (audioName) {
+        audioSrc = audioName;
+      } else {
+        audioSrc = null;
+        if (TRACKS[name]) track = TRACKS[name];
+      }
+      if (!ctx) return;
+      if (audioName) {
+        if (scheduler) clearInterval(scheduler);
+        scheduler = null;
+        stopDrone();
+        stopRain();
+        if (enabled) tryPlayAudio();
+      } else {
+        if (audioEl) audioEl.pause();
+        applyTrack();
+        if (enabled) {
+          startTime = ctx.currentTime + 0.5;
+          nextBeat = 0;
+          nextPianoTime = startTime + 2;
+        }
       }
     },
     setDucked(value) {
       ducked = Boolean(value);
       setMaster();
+      setAudioVolume();
     },
     isEnabled() {
       return enabled;

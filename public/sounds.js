@@ -70,6 +70,18 @@ const Sounds = (() => {
     newChat() {
       tone({ freq: 620, freqEnd: 820, duration: 0.14, type: "sine", volume: 0.1 });
     },
+    switchChat() {
+      chord([
+        { freq: 540, duration: 0.07, type: "triangle", volume: 0.08 },
+        { freq: 720, time: 0.06, duration: 0.09, type: "triangle", volume: 0.08 },
+      ]);
+    },
+    pin() {
+      tone({ freq: 760, duration: 0.05, type: "triangle", volume: 0.09 });
+    },
+    rename() {
+      tone({ freq: 480, freqEnd: 640, duration: 0.08, type: "triangle", volume: 0.08 });
+    },
 
     // Status feedback
     send() {
@@ -101,6 +113,22 @@ const Sounds = (() => {
         { freq: 520, duration: 0.09, type: "sine", volume: 0.09 },
         { freq: 780, time: 0.08, duration: 0.12, type: "sine", volume: 0.09 },
       ]);
+    },
+    attachmentRemove() {
+      tone({ freq: 560, freqEnd: 400, duration: 0.07, type: "triangle", volume: 0.08 });
+    },
+    export() {
+      chord([
+        { freq: 520, duration: 0.08, type: "sine", volume: 0.08 },
+        { freq: 780, time: 0.06, duration: 0.08, type: "sine", volume: 0.08 },
+        { freq: 1040, time: 0.12, duration: 0.1, type: "sine", volume: 0.08 },
+      ]);
+    },
+    stop() {
+      tone({ freq: 280, freqEnd: 180, duration: 0.09, type: "triangle", volume: 0.1 });
+    },
+    clear() {
+      tone({ freq: 420, freqEnd: 300, duration: 0.08, type: "triangle", volume: 0.08 });
     },
 
     // Dictation

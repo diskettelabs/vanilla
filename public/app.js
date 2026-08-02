@@ -596,6 +596,7 @@ function renderConversationList() {
     pinButton.innerHTML = `<img src="${ASSET.pin}" alt="">`;
     pinButton.addEventListener("click", (event) => {
       event.stopPropagation();
+      Sounds.pin();
       togglePin(conv.id);
     });
 
@@ -607,6 +608,7 @@ function renderConversationList() {
     renameButton.innerHTML = `<img src="${ASSET.edit}" alt="">`;
     renameButton.addEventListener("click", (event) => {
       event.stopPropagation();
+      Sounds.rename();
       showRenameInput(conv.id, conv.title, row, openButton);
     });
 
@@ -1057,6 +1059,7 @@ async function refreshConversations() {
 }
 
 async function loadConversation(id) {
+  Sounds.switchChat();
   try {
     const conv = await api(`/api/conversations/${encodeURIComponent(id)}`);
     state.activeConversation = conv;
@@ -1394,6 +1397,7 @@ function finishStream() {
 async function stopStream() {
   const id = state.runningConversationId;
   if (!id) return;
+  Sounds.stop();
   try {
     await api(`/api/chat/stop/${encodeURIComponent(id)}`, { method: "POST" });
   } catch (error) {
@@ -1904,6 +1908,12 @@ function bindSettingsDropdowns() {
     { value: "golden", label: "Golden Hour" },
     { value: "midnight", label: "Midnight Lo-Fi" },
     { value: "rainy", label: "Rainy Day" },
+    { value: "audio:2-am-debug-loop.mp3", label: "2 AM Debug Loop" },
+    { value: "audio:coffee-ring-notebook.mp3", label: "Coffee Ring Notebook" },
+    { value: "audio:porchlight-golden-hour.mp3", label: "Porchlight Golden Hour" },
+    { value: "audio:terminal-rain.mp3", label: "Terminal Rain" },
+    { value: "audio:paper-lantern-rain.mp3", label: "Paper Lantern Rain" },
+    { value: "audio:dust-on-the-morning-keys.mp3", label: "Dust on the Morning Keys" },
   ]);
 }
 
@@ -2767,6 +2777,7 @@ function renderAttachmentPreview() {
 }
 
 function clearAttachment() {
+  Sounds.attachmentRemove();
   state.pendingAttachment = null;
   renderAttachmentPreview();
   resizePrompt();
@@ -2827,6 +2838,7 @@ async function saveConversationPrompt() {
 }
 
 function clearConversationPrompt() {
+  Sounds.clear();
   if (els.conversationPromptInput) els.conversationPromptInput.value = "";
   saveConversationPrompt();
 }
@@ -2906,6 +2918,7 @@ ${body}
 function exportConversation() {
   const conv = state.activeConversation;
   if (!conv) return;
+  Sounds.export();
   const format = document.querySelector('input[name="exportFormat"]:checked')?.value || "markdown";
   const { content, mime, ext } = buildExport(conv, format);
   const blob = new Blob([content], { type: mime });
@@ -2942,6 +2955,7 @@ async function copyExport() {
       textarea.remove();
     }
     button.textContent = "Copied!";
+    Sounds.copy();
     setTimeout(() => {
       if (button.isConnected) button.textContent = original;
     }, 1600);
