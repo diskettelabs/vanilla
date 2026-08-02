@@ -358,6 +358,26 @@
               <span>Show system stats in the top bar</span>
             </label>
             <label class="check-row">
+              <input id="soundEffectsToggle" type="checkbox">
+              <span>Play UI sound effects</span>
+            </label>
+            <label class="check-row">
+              <input id="ambientToggle" type="checkbox">
+              <span>Play ambient background music</span>
+            </label>
+            <label class="settings-label">
+              <span class="label-text">Music track</span>
+              <div class="settings-picker" id="musicTrackPicker" data-open="false">
+                <button type="button" class="settings-picker-button" aria-haspopup="listbox" aria-expanded="false">
+                  <span class="settings-picker-label"></span>
+                  <img class="settings-picker-chevron" src="./assets/chevron.svg" alt="">
+                </button>
+                <div class="settings-picker-menu" role="listbox">
+                  <div class="settings-picker-options"></div>
+                </div>
+              </div>
+            </label>
+            <label class="check-row">
               <input id="autoNameToggle" type="checkbox">
               <span>Auto-name chats with AI</span>
             </label>
@@ -701,6 +721,8 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/line-numbers/prism-line-numbers.min.js"></script>
     <script src="/node_modules/vosk-browser/dist/vosk.js"></script>
+    <script src="./sounds.js" defer></script>
+    <script src="./ambience.js" defer></script>
     <script src="./app.js" defer></script>
   </body>
 </html>
