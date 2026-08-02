@@ -2509,6 +2509,15 @@ body[data-assistant-logo="top"] .assistant-mark {
   min-width: 0;
 }
 
+.settings-picker[data-disabled="true"] {
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+.settings-picker[data-disabled="true"] .settings-picker-button {
+  cursor: default;
+}
+
 .settings-picker-button {
   display: flex;
   width: 100%;

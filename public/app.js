@@ -47,6 +47,9 @@ const els = {
   reduceMotionToggle: document.querySelector("#reduceMotionToggle"),
   enterToSendToggle: document.querySelector("#enterToSendToggle"),
   showStatsToggle: document.querySelector("#showStatsToggle"),
+  soundEffectsToggle: document.querySelector("#soundEffectsToggle"),
+  ambientToggle: document.querySelector("#ambientToggle"),
+  musicTrackPicker: document.querySelector("#musicTrackPicker"),
   compareToggle: document.querySelector("#compareToggle"),
   lmStudioToggle: document.querySelector("#lmStudioToggle"),
   lmStudioSetupHint: document.querySelector("#lmStudioSetupHint"),
@@ -135,6 +138,9 @@ const state = {
     reduceMotion: localStorage.getItem("vanilla-reduce-motion") === "true",
     enterToSend: localStorage.getItem("vanilla-enter-to-send") !== "false",
     showStats: localStorage.getItem("vanilla-show-stats") !== "false",
+    soundEffects: localStorage.getItem("vanilla-sound-effects") !== "false",
+    ambientMusic: localStorage.getItem("vanilla-ambient-music") === "true",
+    musicTrack: localStorage.getItem("vanilla-ambient-track") || "vanilla",
     showCompare: localStorage.getItem("vanilla-show-compare") === "true",
     showLmStudio: localStorage.getItem("vanilla-show-lmstudio") === "true",
     showAider: localStorage.getItem("vanilla-show-aider") !== "false",
@@ -654,6 +660,7 @@ async function deleteConversation(id) {
     }
     await refreshConversations();
     showNotification("Chat deleted");
+    Sounds.delete();
   } catch (error) {
     showNotification(error.action || error.message || "Failed to delete chat", "error");
   }
@@ -868,6 +875,7 @@ async function copyText(text) {
     document.execCommand("copy");
     area.remove();
   }
+  Sounds.copy();
 }
 
 async function editPrompt(content, id) {
@@ -909,6 +917,8 @@ async function toggleDictation() {
 async function startDictation() {
   try {
     state.isRecording = true;
+    Sounds.recordStart();
+    Ambience.setDucked(true);
     
     els.dictationButton.dataset.active = 'true';
     els.dictationLabel.textContent = 'loading...';
@@ -1004,6 +1014,8 @@ async function startDictation() {
 
 function stopDictation() {
   state.isRecording = false;
+  Sounds.recordStop();
+  Ambience.setDucked(false);
   
   // Remove the recognizer
   if (state.voskRecognizer) {
@@ -1079,6 +1091,7 @@ async function ensureConversation(message) {
 }
 
 async function newChat() {
+  Sounds.newChat();
   state.activeConversation = null;
   els.messages.innerHTML = "";
   els.emptyState.hidden = false;
@@ -1128,6 +1141,7 @@ async function submitPrompt(event) {
       // New message - just add it
       addUserMessage(message);
     }
+    Sounds.send();
     await streamChat(conv.id, message);
   } catch (error) {
     showAssistantError(error);
@@ -1155,7 +1169,10 @@ async function handleAttachmentUpload(message) {
       };
 
       xhr.onload = () => {
-        if (xhr.status === 201) return resolve(JSON.parse(xhr.responseText));
+        if (xhr.status === 201) {
+          Sounds.upload();
+          return resolve(JSON.parse(xhr.responseText));
+        }
         try {
           const err = JSON.parse(xhr.responseText);
           const error = new Error(err.error || `Upload failed (${xhr.status})`);
@@ -1323,6 +1340,7 @@ function handleSsePart(part) {
         state.tokenQueue += event.content || "";
       } else if (event.type === "done") {
         state.streamComplete = true;
+        Sounds.receive();
       } else if (event.type === "error") {
         const error = new Error(event.error || "Stream failed");
         error.action = event.action || null;
@@ -1394,6 +1412,7 @@ function setRunning(conversationId, running) {
 }
 
 function showAssistantError(error, existingMessage) {
+  Sounds.error();
   const wrap = existingMessage || addAssistantMessage("", { done: true });
   const body = wrap.classList?.contains("assistant-message") ? wrap.querySelector(".assistant-body") : wrap;
   
@@ -1468,6 +1487,9 @@ function showNotification(message, type = "info", duration = 3000) {
   `;
   
   document.body.appendChild(notification);
+  
+  if (type === "success") Sounds.success();
+  else if (type === "warning") Sounds.warning();
   
   // Trigger animation
   requestAnimationFrame(() => {
@@ -1772,6 +1794,7 @@ function createSettingsDropdown(root, onChange) {
 
   button.addEventListener("click", (event) => {
     event.stopPropagation();
+    if (root.dataset.disabled === "true") return;
     const open = root.dataset.open !== "true";
     root.dataset.open = open ? "true" : "false";
     button.setAttribute("aria-expanded", String(open));
@@ -1817,6 +1840,7 @@ function createSettingsDropdown(root, onChange) {
 
 function bindSettingsDropdowns() {
   dropdowns.provider = createSettingsDropdown(els.providerPicker, () => {
+    Sounds.click();
     state.currentProvider = dropdowns.provider.value;
     const firstModel = state.modelOptions.find((option) => option.provider === state.currentProvider && !option.disabled);
     if (firstModel) state.currentModel = firstModel.model;
@@ -1824,6 +1848,7 @@ function bindSettingsDropdowns() {
     renderModelOptions();
   });
   dropdowns.model = createSettingsDropdown(els.settingsModelPicker, () => {
+    Sounds.click();
     state.currentModel = dropdowns.model.value;
     updateModelLabel();
     renderModelOptions();
@@ -1848,6 +1873,11 @@ function bindSettingsDropdowns() {
     state.settings.assistantLogo = dropdowns.logoPosition.value;
     applySettings();
   });
+  dropdowns.musicTrack = createSettingsDropdown(els.musicTrackPicker, () => {
+    Sounds.click();
+    state.settings.musicTrack = dropdowns.musicTrack.value;
+    applySettings();
+  });
 
   dropdowns.density.setOptions([
     { value: "comfortable", label: "Comfortable" },
@@ -1868,6 +1898,12 @@ function bindSettingsDropdowns() {
   dropdowns.logoPosition.setOptions([
     { value: "side", label: "Beside text" },
     { value: "top", label: "Above text" },
+  ]);
+  dropdowns.musicTrack.setOptions([
+    { value: "vanilla", label: "Vanilla Haze" },
+    { value: "golden", label: "Golden Hour" },
+    { value: "midnight", label: "Midnight Lo-Fi" },
+    { value: "rainy", label: "Rainy Day" },
   ]);
 }
 
@@ -1922,6 +1958,13 @@ function applySettings() {
   els.reduceMotionToggle.checked = settings.reduceMotion;
   els.enterToSendToggle.checked = settings.enterToSend;
   els.showStatsToggle.checked = settings.showStats;
+  if (els.soundEffectsToggle) els.soundEffectsToggle.checked = settings.soundEffects;
+  Sounds.setEnabled(settings.soundEffects);
+  if (els.ambientToggle) els.ambientToggle.checked = settings.ambientMusic;
+  if (dropdowns.musicTrack) dropdowns.musicTrack.setValue(settings.musicTrack);
+  if (els.musicTrackPicker) els.musicTrackPicker.dataset.disabled = String(!settings.ambientMusic);
+  Ambience.setTrack(settings.musicTrack);
+  Ambience.setEnabled(settings.ambientMusic);
   if (els.compareToggle) els.compareToggle.checked = settings.showCompare;
   if (els.lmStudioToggle) els.lmStudioToggle.checked = settings.showLmStudio;
   if (els.lmStudioSetupHint) els.lmStudioSetupHint.hidden = !settings.showLmStudio;
@@ -1961,6 +2004,9 @@ function applySettings() {
   localStorage.setItem("vanilla-reduce-motion", String(settings.reduceMotion));
   localStorage.setItem("vanilla-enter-to-send", String(settings.enterToSend));
   localStorage.setItem("vanilla-show-stats", String(settings.showStats));
+  localStorage.setItem("vanilla-sound-effects", String(settings.soundEffects));
+  localStorage.setItem("vanilla-ambient-music", String(settings.ambientMusic));
+  localStorage.setItem("vanilla-ambient-track", settings.musicTrack);
   localStorage.setItem("vanilla-show-compare", String(settings.showCompare));
   localStorage.setItem("vanilla-show-lmstudio", String(settings.showLmStudio));
   localStorage.setItem("vanilla-show-aider", String(settings.showAider));
@@ -1998,10 +2044,12 @@ async function loadThemes() {
 
 function openModal(modal) {
   modal.hidden = false;
+  Sounds.open();
   requestAnimationFrame(() => modal.querySelector("input, select, button")?.focus());
 }
 
 function closeModals() {
+  Sounds.close();
   els.searchModal.hidden = true;
   els.settingsModal.hidden = true;
   els.installModal.hidden = true;
@@ -2431,6 +2479,7 @@ async function doUninstall() {
 
 function bindEvents() {
   const toggleSidebar = () => {
+    Sounds.toggle();
     const next = els.shell.dataset.sidebar === "open" ? "closed" : "open";
     state.settings.sidebar = next;
     applySettings();
@@ -2522,6 +2571,19 @@ function bindEvents() {
     state.settings.showStats = els.showStatsToggle.checked;
     applySettings();
   });
+  if (els.soundEffectsToggle) {
+    els.soundEffectsToggle.addEventListener("change", () => {
+      state.settings.soundEffects = els.soundEffectsToggle.checked;
+      applySettings();
+      if (state.settings.soundEffects) Sounds.toggle();
+    });
+  }
+  if (els.ambientToggle) {
+    els.ambientToggle.addEventListener("change", () => {
+      state.settings.ambientMusic = els.ambientToggle.checked;
+      applySettings();
+    });
+  }
   if (els.compareToggle) {
     els.compareToggle.addEventListener("change", () => {
       state.settings.showCompare = els.compareToggle.checked;
@@ -2588,6 +2650,8 @@ function bindEvents() {
       if (aiNext) { aiNext.disabled = true; delete aiNext.dataset.choice; }
       const namingNext = els.setupModal?.querySelector("#setupNamingNext");
       if (namingNext) { namingNext.disabled = true; delete namingNext.dataset.naming; }
+      const musicNext = els.setupModal?.querySelector("#setupMusicNext");
+      if (musicNext) { musicNext.disabled = true; delete musicNext.dataset.music; }
       els.setupModal?.querySelectorAll(".setup-choice").forEach((b) => b.setAttribute("aria-pressed", "false"));
       const importWrap = els.setupModal?.querySelector("#setupImportWrap");
       const importNext = els.setupModal?.querySelector("#setupImportNext");
@@ -3158,7 +3222,12 @@ function finishSetup() {
 }
 
 function updateSetupDots(stepAttr) {
-  const stepNum = stepAttr === "1" ? 1 : stepAttr === "2" ? 2 : stepAttr === "3" ? 3 : stepAttr === "4" ? 4 : 5;
+  const stepNum =
+    stepAttr === "1" ? 1 :
+    stepAttr === "2" ? 2 :
+    stepAttr === "3" ? 3 :
+    stepAttr === "4" ? 4 :
+    stepAttr === "5" ? 5 : 6;
   els.setupModal.querySelectorAll(".setup-dot").forEach((dot) => {
     const n = Number(dot.dataset.dot);
     dot.dataset.state = n < stepNum ? "done" : n === stepNum ? "active" : "idle";
@@ -3311,13 +3380,38 @@ function bindSetupFlow() {
 
   if (importNext) {
     importNext.addEventListener("click", () => {
-      const choice = aiNext.dataset.choice;
-      if (choice === "local") showSetupStep("5a");
-      else if (choice === "cloud") showSetupStep("5b");
+      showSetupStep("5");
     });
   }
 
-  // Step 5a: local AI done
+  // Step 5: background music preference
+  const musicButtons = els.setupModal.querySelectorAll(".setup-choice[data-music]");
+  const musicNext = els.setupModal.querySelector("#setupMusicNext");
+
+  musicButtons.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      musicButtons.forEach((b) => b.setAttribute("aria-pressed", "false"));
+      btn.setAttribute("aria-pressed", "true");
+      musicNext.disabled = false;
+      musicNext.dataset.music = btn.dataset.music;
+    });
+  });
+
+  musicNext.addEventListener("click", () => {
+    const music = musicNext.dataset.music;
+    if (music === "none") {
+      state.settings.ambientMusic = false;
+    } else if (music) {
+      state.settings.ambientMusic = true;
+      state.settings.musicTrack = music;
+    }
+    applySettings();
+    const choice = aiNext.dataset.choice;
+    if (choice === "local") showSetupStep("6a");
+    else if (choice === "cloud") showSetupStep("6b");
+  });
+
+  // Step 6a: local AI done
   localDone.addEventListener("click", () => {
     const host = ollamaHost.value.trim();
     if (host) localStorage.setItem("vanilla-ollama-host", host);
@@ -3348,7 +3442,8 @@ function bindSetupFlow() {
       if (currentStep === "2") showSetupStep("1");
       if (currentStep === "3") showSetupStep("2");
       if (currentStep === "4") showSetupStep("3");
-      if (currentStep === "5a" || currentStep === "5b") showSetupStep("4");
+      if (currentStep === "5") showSetupStep("4");
+      if (currentStep === "6a" || currentStep === "6b") showSetupStep("5");
     });
   });
 }

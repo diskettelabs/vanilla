@@ -358,6 +358,26 @@
               <span>Show system stats in the top bar</span>
             </label>
             <label class="check-row">
+              <input id="soundEffectsToggle" type="checkbox">
+              <span>Play UI sound effects</span>
+            </label>
+            <label class="check-row">
+              <input id="ambientToggle" type="checkbox">
+              <span>Play ambient background music</span>
+            </label>
+            <label class="settings-label">
+              <span class="label-text">Music track</span>
+              <div class="settings-picker" id="musicTrackPicker" data-open="false">
+                <button type="button" class="settings-picker-button" aria-haspopup="listbox" aria-expanded="false">
+                  <span class="settings-picker-label"></span>
+                  <img class="settings-picker-chevron" src="./assets/chevron.svg" alt="">
+                </button>
+                <div class="settings-picker-menu" role="listbox">
+                  <div class="settings-picker-options"></div>
+                </div>
+              </div>
+            </label>
+            <label class="check-row">
               <input id="autoNameToggle" type="checkbox">
               <span>Auto-name chats with AI</span>
             </label>
@@ -426,6 +446,7 @@
           <span class="setup-dot" data-dot="3"></span>
           <span class="setup-dot" data-dot="4"></span>
           <span class="setup-dot" data-dot="5"></span>
+          <span class="setup-dot" data-dot="6"></span>
         </div>
 
         <!-- Step 1: Name -->
@@ -547,8 +568,60 @@
           </div>
         </div>
 
-        <!-- Step 5a: Local AI config -->
-        <div class="setup-step" data-step="5a" hidden>
+        <!-- Step 5: Background music -->
+        <div class="setup-step" data-step="5" hidden>
+          <div class="setup-body">
+            <h2 class="setup-title">Want some background music?</h2>
+            <p class="setup-subtitle">Vanilla can play a soft, generative soundtrack while you chat. Pick a vibe — or skip it. You can change this anytime in Settings.</p>
+            <div class="setup-choice-grid">
+              <button class="setup-choice" type="button" data-music="vanilla" aria-pressed="false">
+                <span class="setup-choice-icon">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+                </span>
+                <strong>Vanilla Haze</strong>
+                <span>Soft arps and brushed rhythm — the classic.</span>
+              </button>
+              <button class="setup-choice" type="button" data-music="golden" aria-pressed="false">
+                <span class="setup-choice-icon">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+                </span>
+                <strong>Golden Hour</strong>
+                <span>Slow, dreamy leads over warm chords.</span>
+              </button>
+              <button class="setup-choice" type="button" data-music="midnight" aria-pressed="false">
+                <span class="setup-choice-icon">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+                </span>
+                <strong>Midnight Lo-Fi</strong>
+                <span>Mellow keys over a soft kick and hats.</span>
+              </button>
+              <button class="setup-choice" type="button" data-music="rainy" aria-pressed="false">
+                <span class="setup-choice-icon">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+                </span>
+                <strong>Rainy Day</strong>
+                <span>Sparse felt piano with gentle pads.</span>
+              </button>
+              <button class="setup-choice" type="button" data-music="none" aria-pressed="false">
+                <span class="setup-choice-icon">
+                  <img src="./assets/close.svg" alt="">
+                </span>
+                <strong>Keep it quiet</strong>
+                <span>No music — just you and your chats.</span>
+              </button>
+            </div>
+          </div>
+          <div class="setup-actions setup-actions-split">
+            <button class="setup-back" type="button" data-setup-back>Back</button>
+            <button id="setupMusicNext" class="setup-primary" type="button" disabled>
+              Continue
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Step 6a: Local AI config -->
+        <div class="setup-step" data-step="6a" hidden>
           <div class="setup-body">
             <h2 class="setup-title">Almost there. Let's check your Ollama setup.</h2>
             <p class="setup-subtitle">Vanilla connects to Ollama at <code>localhost:11434</code> by default. Only tweak this if you're running Ollama on a custom host or port. (If you're not sure, leave it alone—it's probably right.)</p>
@@ -563,8 +636,8 @@
           </div>
         </div>
 
-        <!-- Step 5b: Cloud provider config -->
-        <div class="setup-step" data-step="5b" hidden>
+        <!-- Step 6b: Cloud provider config -->
+        <div class="setup-step" data-step="6b" hidden>
           <div class="setup-body">
             <h2 class="setup-title">One last thing: your API key.</h2>
             <p class="setup-subtitle">Pick your cloud provider and drop in your API key. Don't worry—it's stored locally in your browser and never leaves your machine. You can swap providers or update keys anytime in Settings.</p>
@@ -701,6 +774,8 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/line-numbers/prism-line-numbers.min.js"></script>
     <script src="/node_modules/vosk-browser/dist/vosk.js"></script>
+    <script src="./sounds.js" defer></script>
+    <script src="./ambience.js" defer></script>
     <script src="./app.js" defer></script>
   </body>
 </html>
