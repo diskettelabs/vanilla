@@ -5,3 +5,4 @@ data/uploads/
 .DS_Store
 build/
 dist/
+data/

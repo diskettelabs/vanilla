@@ -458,7 +458,7 @@ function register(app) {
     const abortController = new AbortController();
     activeStreams.set(`compare:${id}`, abortController);
     const cleanup = () => activeStreams.delete(`compare:${id}`);
-    req.on('close', () => abortController.abort());
+    res.on('close', () => abortController.abort());
 
     const chatMessages = [];
     if (customPrompt && customPrompt.trim()) {

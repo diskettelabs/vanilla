@@ -75,7 +75,7 @@ async function searchModels(query, limit = 24) {
 }
 
 async function listModelFiles(repo) {
-  const url = `${HF_API}/models/${sanitizeRepo(repo)}/tree/main?recursive=false`;
+  const url = `${HF_API}/models/${sanitizeRepo(repo)}/tree/main?recursive=true`;
   const res = await _request(url);
   const data = await _readJson(res);
   return (data || [])

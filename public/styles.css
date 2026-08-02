@@ -873,8 +873,7 @@ button img,
 
 .assistant-message {
   display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  grid-template-rows: auto auto;
+  grid-template-columns: 34px minmax(0, 1fr);
   gap: 12px;
   align-items: start;
   width: 100%;
@@ -884,9 +883,17 @@ button img,
 .assistant-mark {
   width: 28px;
   height: 28px;
-  object-fit: cover;
+  object-fit: contain;
   object-position: left center;
   overflow: visible;
+}
+
+body[data-assistant-logo="top"] .assistant-message {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+body[data-assistant-logo="top"] .assistant-mark {
+  margin-bottom: 4px;
 }
 
 .assistant-body {
@@ -1807,9 +1814,18 @@ button img,
   white-space: nowrap;
 }
 
+.hf-repo-org {
+  color: var(--muted, #999);
+  font-weight: 500;
+}
+
+.hf-repo-name {
+  font-weight: 700;
+}
+
 .hf-repo-meta {
   flex-shrink: 0;
-  color: #999;
+  color: var(--muted, #999);
   font-size: 13px;
   white-space: nowrap;
 }
@@ -1900,14 +1916,41 @@ button img,
   cursor: default;
 }
 
+.hf-install-btn.is-installing {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: default;
+}
+
+.hf-install-btn.is-installing::before {
+  content: "";
+  width: 12px;
+  height: 12px;
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: hf-spin 0.8s linear infinite;
+}
+
+@keyframes hf-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.hf-install-btn:disabled.is-installing {
+  opacity: 1;
+}
+
 .hf-progress {
   display: none;
   grid-template-rows: auto auto auto;
   gap: 10px;
-  border: 1px solid #dbdbda;
+  border: 1px solid var(--line, #dbdbda);
   border-radius: 12px;
   padding: 14px 16px;
-  background: rgba(255, 255, 255, 0.5);
+  background: var(--soft, rgba(255, 255, 255, 0.5));
   backdrop-filter: blur(8px);
 }
 
@@ -1915,9 +1958,38 @@ button img,
   display: grid;
 }
 
-.hf-progress-status {
+.hf-progress-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.hf-progress-title {
   font-size: 14px;
   font-weight: 500;
+  color: var(--text, #141414);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hf-progress-title strong {
+  font-weight: 700;
+}
+
+.hf-progress-pct {
+  flex-shrink: 0;
+  font-size: 13px;
+  color: var(--muted, #999);
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+
+.hf-progress-status {
+  font-size: 13px;
+  color: var(--muted, #666);
+  line-height: 1.45;
 }
 
 .hf-track {
@@ -1936,11 +2008,47 @@ button img,
   box-shadow: 0 0 8px rgba(52, 53, 55, 0.3);
 }
 
-.hf-progress-pct {
-  font-size: 12px;
-  color: #999;
-  font-variant-numeric: tabular-nums;
+.hf-progress.is-error .hf-track {
+  background: rgba(220, 38, 38, 0.12);
+}
+
+.hf-progress.is-error .hf-bar {
+  background: linear-gradient(90deg, #dc2626 0%, #b91c1c 100%);
+  box-shadow: 0 0 8px rgba(220, 38, 38, 0.3);
+}
+
+.hf-progress.is-error .hf-progress-pct {
+  color: #dc2626;
+}
+
+.hf-progress.is-done .hf-track {
+  background: rgba(30, 142, 78, 0.12);
+}
+
+.hf-progress.is-done .hf-bar {
+  background: linear-gradient(90deg, #1e8e4e 0%, #145f33 100%);
+  box-shadow: 0 0 8px rgba(30, 142, 78, 0.3);
+}
+
+.hf-progress.is-done .hf-progress-pct {
+  color: #1e8e4e;
+}
+
+.hf-done-btn {
+  justify-self: start;
+  border: 0;
+  border-radius: 10px;
+  background: #1e8e4e;
+  color: #fff;
+  cursor: pointer;
+  font-size: 14px;
   font-weight: 600;
+  padding: 9px 20px;
+  transition: background 180ms ease;
+}
+
+.hf-done-btn:hover {
+  background: #16693a;
 }
 
 /* Provider API keys */
@@ -1974,6 +2082,69 @@ button img,
   padding: 4px 8px;
   vertical-align: 2px;
   text-transform: uppercase;
+}
+
+.settings-sub-label {
+  margin: 16px 0 4px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted, #999);
+}
+
+.lmstudio-hint {
+  display: grid;
+  gap: 8px;
+  margin: 12px 0 16px;
+  padding: 14px 16px;
+  border: 1px solid var(--line, #dbdbda);
+  border-radius: 12px;
+  background: var(--soft, rgba(255, 255, 255, 0.5));
+}
+
+.lmstudio-hint p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text, #141414);
+}
+
+.lmstudio-hint ol {
+  margin: 0;
+  padding-left: 20px;
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--text, #141414);
+}
+
+.lmstudio-hint code {
+  padding: 2px 6px;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.07);
+  font-size: 12px;
+}
+
+.lmstudio-check-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 2px;
+}
+
+.lmstudio-status {
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.45;
+}
+
+.lmstudio-status.ok {
+  color: #1e8e4e;
+}
+
+.lmstudio-status.bad {
+  color: #dc2626;
 }
 
 .api-key-input-wrap {

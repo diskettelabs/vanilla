@@ -76,7 +76,7 @@ class OpenAIProvider extends Provider {
       throw err;
     }
     
-    const url = new URL('/chat/completions', this.baseUrl);
+    const url = this._buildUrl('/chat/completions');
     const body = JSON.stringify({
       model: model || this.defaultModel,
       messages,
@@ -84,6 +84,28 @@ class OpenAIProvider extends Provider {
     });
 
     return new Promise((resolve, reject) => {
+      let buffer = '';
+      let hasReceivedData = false;
+      let completed = false;
+
+      const complete = (err) => {
+        if (completed) return;
+        completed = true;
+        if (signal) signal.removeEventListener('abort', onAbort);
+        if (err) {
+          onError(err);
+          reject(err);
+        } else {
+          onDone();
+          resolve();
+        }
+      };
+
+      const onAbort = () => {
+        req.destroy();
+        complete(new Error('Stream aborted by user'));
+      };
+
       const req = this._httpModule.request(
         url,
         {
@@ -92,95 +114,69 @@ class OpenAIProvider extends Provider {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${this.apiKey}`,
           },
+          timeout: this.timeout,
         },
         (res) => {
           // Check for error status codes
           if (res.statusCode === 401) {
             req.destroy();
-            const err = new OpenAIError('Invalid API key', {
+            complete(new OpenAIError('Invalid API key', {
               userMessage: 'OpenAI API key is invalid',
               action: 'Check your API key in config/default.json. Get a valid key from platform.openai.com/api-keys',
               statusCode: 401,
-            });
-            onError(err);
-            reject(err);
+            }));
             return;
           }
           
           if (res.statusCode === 429) {
             req.destroy();
-            const err = new OpenAIError('Rate limit exceeded', {
+            complete(new OpenAIError('Rate limit exceeded', {
               userMessage: 'OpenAI rate limit exceeded',
               action: 'You\'ve made too many requests. Wait a minute and try again, or upgrade your OpenAI plan.',
               statusCode: 429,
-            });
-            onError(err);
-            reject(err);
+            }));
             return;
           }
           
           if (res.statusCode === 402 || res.statusCode === 403) {
             req.destroy();
-            const err = new OpenAIError('Quota exceeded', {
+            complete(new OpenAIError('Quota exceeded', {
               userMessage: 'OpenAI quota exceeded',
               action: 'Your OpenAI account has reached its usage limit. Add credits at platform.openai.com/account/billing',
               statusCode: res.statusCode,
               recoverable: false,
-            });
-            onError(err);
-            reject(err);
+            }));
             return;
           }
           
           if (res.statusCode === 404) {
             req.destroy();
-            const err = new OpenAIError(`Model not found`, {
+            complete(new OpenAIError(`Model not found`, {
               userMessage: `Model "${model}" not available`,
               action: 'This model is not available in your OpenAI account. Choose a different model from the picker.',
               statusCode: 404,
-            });
-            onError(err);
-            reject(err);
+            }));
             return;
           }
           
           if (res.statusCode >= 500) {
             req.destroy();
-            const err = new OpenAIError('Server error', {
+            complete(new OpenAIError('Server error', {
               userMessage: 'OpenAI server error',
               action: 'OpenAI is experiencing issues. Wait a moment and try again.',
               statusCode: res.statusCode,
-            });
-            onError(err);
-            reject(err);
+            }));
             return;
           }
           
           if (res.statusCode >= 400) {
             req.destroy();
-            const err = new OpenAIError(`HTTP ${res.statusCode}`, {
+            complete(new OpenAIError(`HTTP ${res.statusCode}`, {
               userMessage: 'OpenAI returned an error',
               action: 'Check your request and try again. If the problem persists, check OpenAI status.',
               statusCode: res.statusCode,
-            });
-            onError(err);
-            reject(err);
+            }));
             return;
-          }
-          
-          let buffer = '';
-          let hasReceivedData = false;
-          
-          const onAbort = () => {
-            req.destroy();
-            const e = new Error('Stream aborted by user');
-            onError(e);
-            reject(e);
-          };
-          
-          if (signal) {
-            if (signal.aborted) { onAbort(); return; }
-            signal.addEventListener('abort', onAbort, { once: true });
           }
           
           res.on('data', (chunk) => {
@@ -195,8 +191,7 @@ class OpenAIProvider extends Provider {
               const payload = trimmed.slice(6);
               
               if (payload === '[DONE]') {
-                onDone();
-                resolve();
+                complete();
                 return;
               }
               
@@ -205,17 +200,15 @@ class OpenAIProvider extends Provider {
                 
                 // Check for error in stream
                 if (parsed.error) {
-                  const err = this._parseApiError(parsed.error);
-                  onError(err);
-                  reject(err);
+                  complete(this._parseApiError(parsed.error));
                   return;
                 }
                 
                 const content = parsed.choices?.[0]?.delta?.content || '';
                 if (content) onToken(content);
                 if (parsed.choices?.[0]?.finish_reason) {
-                  onDone();
-                  resolve();
+                  complete();
+                  return;
                 }
               } catch {
                 // skip malformed lines
@@ -225,39 +218,36 @@ class OpenAIProvider extends Provider {
           
           res.on('end', () => {
             if (!hasReceivedData) {
-              const err = new OpenAIError('No response', {
+              complete(new OpenAIError('No response', {
                 userMessage: 'No response from OpenAI',
                 action: 'Check your internet connection and try again.',
-              });
-              onError(err);
-              reject(err);
+              }));
               return;
             }
-            resolve();
+            complete();
           });
           
           res.on('error', (e) => {
-            const enhanced = this._enhanceError(e, 'stream');
-            onError(enhanced);
-            reject(enhanced);
+            complete(this._enhanceError(e, 'stream'));
           });
         }
       );
+
+      if (signal) {
+        if (signal.aborted) { onAbort(); return; }
+        signal.addEventListener('abort', onAbort, { once: true });
+      }
       
       req.on('error', (e) => {
-        const enhanced = this._enhanceError(e, 'connect');
-        onError(enhanced);
-        reject(enhanced);
+        complete(this._enhanceError(e, 'connect'));
       });
       
       req.on('timeout', () => {
         req.destroy();
-        const err = new OpenAIError('Request timeout', {
+        complete(new OpenAIError('Request timeout', {
           userMessage: 'OpenAI took too long to respond',
           action: 'Check your internet connection and try again.',
-        });
-        onError(err);
-        reject(err);
+        }));
       });
       
       req.write(body);
@@ -265,8 +255,12 @@ class OpenAIProvider extends Provider {
     });
   }
 
+  _buildUrl(path) {
+    return new URL(String(path).replace(/^\/+/, ''), this.baseUrl + '/');
+  }
+
   _request(path, options = {}) {
-    const url = new URL(path, this.baseUrl);
+    const url = this._buildUrl(path);
     return new Promise((resolve, reject) => {
       const req = this._httpModule.request(
         url,

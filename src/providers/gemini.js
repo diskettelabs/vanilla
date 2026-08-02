@@ -22,7 +22,7 @@ class GeminiProvider extends OpenAIProvider {
     if (!this.apiKey) return [];
     const data = await this._request('/models', { method: 'GET' });
     return (data.data || [])
-      .filter((m) => m.id.startsWith('gemini'))
+      .filter((m) => m.id.startsWith('gemini') && !m.id.toLowerCase().includes('embedding'))
       .map((m) => ({ name: m.id, size: 0 }));
   }
 
@@ -30,7 +30,7 @@ class GeminiProvider extends OpenAIProvider {
     if (!this.apiKey) return [this.defaultModel];
     const data = await this._request('/models', { method: 'GET' });
     return (data.data || [])
-      .filter((m) => m.id.startsWith('gemini'))
+      .filter((m) => m.id.startsWith('gemini') && !m.id.toLowerCase().includes('embedding'))
       .map((m) => m.id);
   }
 }

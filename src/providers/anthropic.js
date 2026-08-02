@@ -52,6 +52,7 @@ class AnthropicProvider extends Provider {
             'x-api-key': this.apiKey,
             'anthropic-version': '2023-06-01',
           },
+          timeout: this.timeout,
         },
         (res) => {
           let buffer = '';

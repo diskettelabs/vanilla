@@ -30,6 +30,10 @@
       "requestTimeout": 120000,
       "defaultModel": "gemini-2.5-flash"
     },
+    "lmstudio": {
+      "baseUrl": "http://localhost:1234/v1",
+      "requestTimeout": 120000
+    },
     "opencode": {
       "command": "opencode",
       "defaultModel": "default"

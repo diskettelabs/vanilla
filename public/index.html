@@ -190,10 +190,41 @@
         <div class="settings-section">
           <h3>Providers &amp; API keys</h3>
           <p class="settings-note">Keys are stored in your browser. Providers without a key are hidden from the model picker.</p>
+          <label class="check-row">
+            <input id="lmStudioToggle" type="checkbox">
+            <span>Enable LM Studio (Local)</span>
+          </label>
+          <div id="lmStudioSetupHint" class="lmstudio-hint" hidden>
+            <p>To use LM Studio models:</p>
+            <ol>
+              <li>Open <strong>LM Studio</strong>.</li>
+              <li>Go to the <strong>Developer</strong> tab in the left sidebar.</li>
+              <li>In the <strong>Local Server</strong> section, click <strong>Start Server</strong>.</li>
+            </ol>
+            <p>The local API server runs at <code>http://localhost:1234/v1</code>. Load a model in LM Studio, then check the connection below.</p>
+            <div class="lmstudio-check-row">
+              <button id="lmStudioCheckButton" class="compare-run" type="button">Check connection</button>
+              <span id="lmStudioStatus" class="lmstudio-status" hidden></span>
+            </div>
+          </div>
+          <p class="settings-sub-label">Local &amp; CLI tools</p>
+          <label class="check-row">
+            <input id="aiderToggle" type="checkbox">
+            <span>Enable Aider CLI</span>
+          </label>
+          <label class="check-row">
+            <input id="gooseToggle" type="checkbox">
+            <span>Enable Goose CLI</span>
+          </label>
+          <label class="check-row">
+            <input id="openCodeToggle" type="checkbox">
+            <span>Enable OpenCode CLI</span>
+          </label>
           <div id="apiKeysList" class="api-keys-list"></div>
         </div>
         
         <div class="settings-section">
+          <h3>Chat</h3>
           <label class="settings-label">
             <div class="label-row">
               <span class="label-text">Custom system prompt</span>
@@ -207,7 +238,7 @@
         <div class="settings-divider" aria-hidden="true"></div>
         
         <div class="settings-section">
-          <h3>Appearance</h3>
+          <h3>UI</h3>
           <div class="settings-grid settings-grid-2col">
             <label class="settings-label">
               <span class="label-text">Theme</span>
@@ -248,6 +279,18 @@
             <label class="settings-label">
               <span class="label-text">Message accent</span>
               <div class="settings-picker" id="accentPicker" data-open="false">
+                <button type="button" class="settings-picker-button" aria-haspopup="listbox" aria-expanded="false">
+                  <span class="settings-picker-label"></span>
+                  <img class="settings-picker-chevron" src="./assets/chevron.svg" alt="">
+                </button>
+                <div class="settings-picker-menu" role="listbox">
+                  <div class="settings-picker-options"></div>
+                </div>
+              </div>
+            </label>
+            <label class="settings-label">
+              <span class="label-text">Assistant logo</span>
+              <div class="settings-picker" id="logoPositionPicker" data-open="false">
                 <button type="button" class="settings-picker-button" aria-haspopup="listbox" aria-expanded="false">
                   <span class="settings-picker-label"></span>
                   <img class="settings-picker-chevron" src="./assets/chevron.svg" alt="">

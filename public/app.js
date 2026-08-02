@@ -41,11 +41,19 @@ const els = {
   densityPicker: document.querySelector("#densityPicker"),
   textSizePicker: document.querySelector("#textSizePicker"),
   accentPicker: document.querySelector("#accentPicker"),
+  logoPositionPicker: document.querySelector("#logoPositionPicker"),
   sidebarOpenToggle: document.querySelector("#sidebarOpenToggle"),
   reduceMotionToggle: document.querySelector("#reduceMotionToggle"),
   enterToSendToggle: document.querySelector("#enterToSendToggle"),
   showStatsToggle: document.querySelector("#showStatsToggle"),
   compareToggle: document.querySelector("#compareToggle"),
+  lmStudioToggle: document.querySelector("#lmStudioToggle"),
+  lmStudioSetupHint: document.querySelector("#lmStudioSetupHint"),
+  lmStudioCheckButton: document.querySelector("#lmStudioCheckButton"),
+  lmStudioStatus: document.querySelector("#lmStudioStatus"),
+  aiderToggle: document.querySelector("#aiderToggle"),
+  gooseToggle: document.querySelector("#gooseToggle"),
+  openCodeToggle: document.querySelector("#openCodeToggle"),
   customPromptInput: document.querySelector("#customPromptInput"),
   customPromptBadge: document.querySelector("#customPromptBadge"),
   cpuStat: document.querySelector("#cpuStat"),
@@ -127,7 +135,12 @@ const state = {
     enterToSend: localStorage.getItem("vanilla-enter-to-send") !== "false",
     showStats: localStorage.getItem("vanilla-show-stats") !== "false",
     showCompare: localStorage.getItem("vanilla-show-compare") === "true",
+    showLmStudio: localStorage.getItem("vanilla-show-lmstudio") === "true",
+    showAider: localStorage.getItem("vanilla-show-aider") !== "false",
+    showGoose: localStorage.getItem("vanilla-show-goose") !== "false",
+    showOpenCode: localStorage.getItem("vanilla-show-opencode") !== "false",
     autoName: localStorage.getItem("vanilla-auto-name") !== "false",
+    assistantLogo: localStorage.getItem("vanilla-assistant-logo") || "side",
     userName: localStorage.getItem("vanilla-user-name") || "",
     customPrompt: localStorage.getItem("vanilla-custom-prompt") || "",
   },
@@ -235,7 +248,16 @@ function setApiKey(provider, key) {
   else localStorage.removeItem(`vanilla-api-key-${provider}`);
 }
 
+const TOGGLE_GATED_PROVIDERS = {
+  lmstudio: "showLmStudio",
+  aider: "showAider",
+  goose: "showGoose",
+  opencode: "showOpenCode",
+};
+
 function isProviderUsable(provider) {
+  const settingKey = TOGGLE_GATED_PROVIDERS[provider.id];
+  if (settingKey) return state.settings[settingKey] === true;
   if (!provider.requiresKey) return true;
   return Boolean(provider.hasKey || getApiKey(provider.id));
 }
@@ -1501,6 +1523,31 @@ async function loadProvidersAndModels() {
   updateModelLabel();
 }
 
+async function checkLmStudio() {
+  if (!els.lmStudioStatus) return;
+  const status = els.lmStudioStatus;
+  status.hidden = false;
+  status.className = "lmstudio-status";
+  status.textContent = "Checking…";
+  els.lmStudioCheckButton.disabled = true;
+  try {
+    const models = await api("/api/models?provider=lmstudio", { timeoutMs: 5000 });
+    if (Array.isArray(models) && models.length) {
+      const preview = models.slice(0, 3).join(", ");
+      status.textContent = `Connected — ${models.length} model${models.length === 1 ? "" : "s"} available (${preview}${models.length > 3 ? "…" : ""}).`;
+      status.classList.add("ok");
+    } else {
+      status.textContent = "Connected, but no models are loaded. Load a model in LM Studio, then try again.";
+      status.classList.add("ok");
+    }
+  } catch (error) {
+    status.textContent = error.action || error.message || "Could not connect to LM Studio.";
+    status.classList.add("bad");
+  } finally {
+    els.lmStudioCheckButton.disabled = false;
+  }
+}
+
 function renderApiKeys() {
   if (!els.apiKeysList) return;
   const keyed = state.providers.filter((provider) => provider.requiresKey);
@@ -1689,6 +1736,10 @@ function bindSettingsDropdowns() {
     state.settings.accent = dropdowns.accent.value;
     applySettings();
   });
+  dropdowns.logoPosition = createSettingsDropdown(els.logoPositionPicker, () => {
+    state.settings.assistantLogo = dropdowns.logoPosition.value;
+    applySettings();
+  });
 
   dropdowns.density.setOptions([
     { value: "comfortable", label: "Comfortable" },
@@ -1705,6 +1756,10 @@ function bindSettingsDropdowns() {
     { value: "peach", label: "Peach" },
     { value: "rose", label: "Rose" },
     { value: "lavender", label: "Lavender" },
+  ]);
+  dropdowns.logoPosition.setOptions([
+    { value: "side", label: "Beside text" },
+    { value: "top", label: "Above text" },
   ]);
 }
 
@@ -1747,17 +1802,24 @@ function applySettings() {
   document.body.dataset.density = settings.density;
   document.body.dataset.textSize = settings.textSize;
   document.body.dataset.accent = settings.accent;
+  document.body.dataset.assistantLogo = settings.assistantLogo;
   document.body.dataset.showStats = String(settings.showStats);
   document.body.dataset.reduceMotion = String(settings.reduceMotion);
   els.shell.dataset.sidebar = settings.sidebar;
   if (dropdowns.density) dropdowns.density.setValue(settings.density);
   if (dropdowns.textSize) dropdowns.textSize.setValue(settings.textSize);
   if (dropdowns.accent) dropdowns.accent.setValue(settings.accent);
+  if (dropdowns.logoPosition) dropdowns.logoPosition.setValue(settings.assistantLogo);
   els.sidebarOpenToggle.checked = settings.sidebar === "open";
   els.reduceMotionToggle.checked = settings.reduceMotion;
   els.enterToSendToggle.checked = settings.enterToSend;
   els.showStatsToggle.checked = settings.showStats;
   if (els.compareToggle) els.compareToggle.checked = settings.showCompare;
+  if (els.lmStudioToggle) els.lmStudioToggle.checked = settings.showLmStudio;
+  if (els.lmStudioSetupHint) els.lmStudioSetupHint.hidden = !settings.showLmStudio;
+  if (els.aiderToggle) els.aiderToggle.checked = settings.showAider;
+  if (els.gooseToggle) els.gooseToggle.checked = settings.showGoose;
+  if (els.openCodeToggle) els.openCodeToggle.checked = settings.showOpenCode;
   if (els.autoNameToggle) els.autoNameToggle.checked = settings.autoName;
   if (els.displayNameInput && document.activeElement !== els.displayNameInput) {
     els.displayNameInput.value = settings.userName || "";
@@ -1792,7 +1854,12 @@ function applySettings() {
   localStorage.setItem("vanilla-enter-to-send", String(settings.enterToSend));
   localStorage.setItem("vanilla-show-stats", String(settings.showStats));
   localStorage.setItem("vanilla-show-compare", String(settings.showCompare));
+  localStorage.setItem("vanilla-show-lmstudio", String(settings.showLmStudio));
+  localStorage.setItem("vanilla-show-aider", String(settings.showAider));
+  localStorage.setItem("vanilla-show-goose", String(settings.showGoose));
+  localStorage.setItem("vanilla-show-opencode", String(settings.showOpenCode));
   localStorage.setItem("vanilla-auto-name", String(settings.autoName));
+  localStorage.setItem("vanilla-assistant-logo", settings.assistantLogo);
   localStorage.setItem("vanilla-user-name", settings.userName || "");
   localStorage.setItem("vanilla-custom-prompt", settings.customPrompt || "");
   applyCompareVisibility();
@@ -1976,14 +2043,19 @@ function renderHfResults(results) {
     els.hfResults.innerHTML = '<p class="muted-note">No GGUF models found. Try another search.</p>';
     return;
   }
-  els.hfResults.innerHTML = results.map((repo) => `
-    <button class="hf-repo" type="button" data-repo="${escapeHtml(repo.id)}">
+  els.hfResults.innerHTML = results.map((repo) => {
+    const slash = repo.id.indexOf("/");
+    const org = slash > 0 ? repo.id.slice(0, slash) : "";
+    const name = slash > 0 ? repo.id.slice(slash + 1) : repo.id;
+    return `
+    <button class="hf-repo" type="button" data-repo="${escapeHtml(repo.id)}" aria-label="Show files for ${escapeHtml(repo.id)}">
       <div class="hf-repo-info">
-        <span class="hf-repo-id">${escapeHtml(repo.id)}</span>
+        <span class="hf-repo-id">${org ? `<span class="hf-repo-org">${escapeHtml(org)}</span>/<span class="hf-repo-name">${escapeHtml(name)}</span>` : escapeHtml(repo.id)}</span>
       </div>
       <span class="hf-repo-meta">${formatCount(repo.downloads)} downloads${repo.gated ? " · gated" : ""}</span>
     </button>
-  `).join("");
+  `;
+  }).join("");
   els.hfResults.querySelectorAll("[data-repo]").forEach((button) => {
     button.addEventListener("click", () => {
       const repo = button.dataset.repo;
@@ -2032,7 +2104,8 @@ function renderHfFiles(repo, files) {
   const downloads = modelInfo?.downloads || 0;
   const likes = modelInfo?.likes || 0;
   const gated = modelInfo?.gated || false;
-  
+  const totalSize = files.reduce((sum, f) => sum + (f.size || 0), 0);
+
   els.hfDetail.innerHTML = `
     <div class="hf-detail-header">
       <h3>${escapeHtml(repo)}</h3>
@@ -2044,7 +2117,7 @@ function renderHfFiles(repo, files) {
       </div>
     </div>
     <div class="hf-detail-body">
-      <p class="hf-detail-label">Available quantizations (${files.length}):</p>
+      <p class="hf-detail-label">${files.length} quantization${files.length === 1 ? "" : "s"} · ${formatBytes(totalSize)} total</p>
       <div class="hf-files">
         ${files.map((file) => `
           <div class="hf-file" data-file="${escapeHtml(file.filename)}">
@@ -2065,14 +2138,48 @@ function renderHfFiles(repo, files) {
   });
 }
 
+function resetHfInstallButtons() {
+  els.hfDetail.querySelectorAll(".hf-install-btn").forEach((btn) => {
+    btn.disabled = false;
+    btn.classList.remove("is-installing");
+    btn.textContent = "Install";
+  });
+}
+
+function resetHfInstaller() {
+  resetHfInstallButtons();
+  els.hfProgress.classList.remove("is-error", "is-done");
+  els.hfProgress.innerHTML = "";
+  els.hfProgress.hidden = true;
+}
+
+function formatEta(seconds) {
+  if (!Number.isFinite(seconds) || seconds <= 0) return "";
+  if (seconds < 60) return `${Math.round(seconds)}s`;
+  const m = Math.floor(seconds / 60);
+  const s = Math.round(seconds % 60);
+  return `${m}m ${s}s`;
+}
+
 function installHfModel(repo, file, button) {
+  const row = button.closest(".hf-file");
+  const quant = (row?.querySelector(".hf-file-quant")?.textContent || "").trim() || "default";
+  const modelName = `${repo}:${quant}`;
+  const hfCtx = { speed: 0, lastBytes: 0, lastAt: Date.now() };
+
   els.hfDetail.querySelectorAll(".hf-install-btn").forEach((btn) => { btn.disabled = true; });
+  button.classList.add("is-installing");
   button.textContent = "Installing…";
+
+  els.hfProgress.classList.remove("is-error", "is-done");
   els.hfProgress.hidden = false;
   els.hfProgress.innerHTML = `
+    <div class="hf-progress-head">
+      <span class="hf-progress-title">Installing <strong>${escapeHtml(modelName)}</strong></span>
+      <span class="hf-progress-pct">0%</span>
+    </div>
+    <div class="hf-track"><div class="hf-bar"></div></div>
     <div class="hf-progress-status">Starting…</div>
-    <div class="hf-track"><div class="hf-bar" style="width:0%"></div></div>
-    <div class="hf-progress-pct">0%</div>
   `;
 
   fetch("/api/hf/install", {
@@ -2098,38 +2205,68 @@ function installHfModel(repo, file, button) {
         } catch {
           continue;
         }
-        updateHfProgress(event);
+        if (event.type === "progress") {
+          const now = Date.now();
+          const dt = Math.max(1, now - hfCtx.lastAt);
+          const db = event.downloaded - hfCtx.lastBytes;
+          if (db >= 0 && dt > 0) {
+            const instant = (db / dt) * 1000;
+            hfCtx.speed = hfCtx.speed ? hfCtx.speed * 0.6 + instant * 0.4 : instant;
+          }
+          hfCtx.lastBytes = event.downloaded;
+          hfCtx.lastAt = now;
+        }
+        updateHfProgress(event, hfCtx);
       }
     }
   }).catch((error) => {
-    updateHfProgress({ type: "error", error: error.message });
+    updateHfProgress({ type: "error", error: error.message }, hfCtx);
   });
 }
 
-function updateHfProgress(event) {
-  const status = els.hfProgress.querySelector(".hf-progress-status");
-  const bar = els.hfProgress.querySelector(".hf-bar");
-  const pct = els.hfProgress.querySelector(".hf-progress-pct");
-  if (!status) return;
+function updateHfProgress(event, ctx = {}) {
+  const box = els.hfProgress;
+  const statusEl = box.querySelector(".hf-progress-status");
+  const barEl = box.querySelector(".hf-bar");
+  const pctEl = box.querySelector(".hf-progress-pct");
+  if (!statusEl || !barEl || !pctEl) return;
+
   if (event.type === "progress" && event.total > 0) {
     const p = Math.min(100, Math.round((event.downloaded / event.total) * 100));
-    bar.style.width = `${p}%`;
-    pct.textContent = `${p}%`;
-    status.textContent = `Downloading ${formatBytes(event.downloaded)} of ${formatBytes(event.total)}`;
+    barEl.style.width = `${p}%`;
+    pctEl.textContent = `${p}%`;
+    let msg = `Downloading ${formatBytes(event.downloaded)} of ${formatBytes(event.total)}`;
+    if (ctx.speed > 0) msg += ` · ${formatBytes(ctx.speed)}/s`;
+    const remaining = Math.max(0, event.total - event.downloaded);
+    const eta = ctx.speed > 0 ? remaining / ctx.speed : 0;
+    if (eta > 0) msg += ` · ${formatEta(eta)} left`;
+    statusEl.textContent = msg;
   } else if (event.type === "status") {
-    status.textContent = event.message;
+    statusEl.textContent = event.message;
   } else if (event.type === "error") {
-    bar.style.width = "0%";
-    status.textContent = event.error;
-    pct.textContent = "Failed";
-    els.hfFiles.querySelectorAll(".hf-install-btn").forEach((btn) => {
-      btn.disabled = false;
-      btn.textContent = "Install";
-    });
+    box.classList.add("is-error");
+    barEl.style.width = "0%";
+    pctEl.textContent = "Failed";
+    statusEl.textContent = event.error;
+    resetHfInstallButtons();
   } else if (event.type === "done") {
-    bar.style.width = "100%";
-    pct.textContent = "Done";
-    status.textContent = `Installed ${event.model}. Refreshing models…`;
+    box.classList.add("is-done");
+    barEl.style.width = "100%";
+    pctEl.textContent = "Done";
+    statusEl.textContent = `Installed ${event.model}. You can now select it from the model picker.`;
+    let doneBtn = box.querySelector(".hf-done-btn");
+    if (!doneBtn) {
+      doneBtn = document.createElement("button");
+      doneBtn.className = "hf-done-btn";
+      doneBtn.type = "button";
+      doneBtn.textContent = "Done";
+      doneBtn.addEventListener("click", () => {
+        closeModals();
+        resetHfInstaller();
+      });
+      box.appendChild(doneBtn);
+    }
+    resetHfInstallButtons();
     refreshModelsAfterInstall(event.model);
   }
 }
@@ -2146,7 +2283,7 @@ function bindHuggingFace() {
   els.hfInstallButton.addEventListener("click", () => {
     closeModals();
     showHfList();
-    els.hfProgress.hidden = true;
+    resetHfInstaller();
     els.hfSearchInput.value = "";
     openModal(els.installModal);
     searchHuggingFace("");
@@ -2283,6 +2420,33 @@ function bindEvents() {
       applySettings();
     });
   }
+  if (els.lmStudioToggle) {
+    els.lmStudioToggle.addEventListener("change", () => {
+      state.settings.showLmStudio = els.lmStudioToggle.checked;
+      applySettings();
+      if (state.settings.showLmStudio) {
+        showNotification("LM Studio enabled — start the local server in LM Studio to connect", "info", 5000);
+      }
+      loadProvidersAndModels();
+    });
+  }
+  if (els.lmStudioCheckButton) {
+    els.lmStudioCheckButton.addEventListener("click", checkLmStudio);
+  }
+  const bindCliToggle = (toggle, key, label) => {
+    if (!toggle) return;
+    toggle.addEventListener("change", () => {
+      state.settings[key] = toggle.checked;
+      applySettings();
+      if (toggle.checked) {
+        showNotification(`${label} enabled — make sure it is installed and on your PATH`, "info", 5000);
+      }
+      loadProvidersAndModels();
+    });
+  };
+  bindCliToggle(els.aiderToggle, "showAider", "Aider CLI");
+  bindCliToggle(els.gooseToggle, "showGoose", "Goose CLI");
+  bindCliToggle(els.openCodeToggle, "showOpenCode", "OpenCode CLI");
   if (els.autoNameToggle) {
     els.autoNameToggle.addEventListener("change", () => {
       state.settings.autoName = els.autoNameToggle.checked;
