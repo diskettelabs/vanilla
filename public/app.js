@@ -48,6 +48,7 @@ const els = {
   showStatsToggle: document.querySelector("#showStatsToggle"),
   soundEffectsToggle: document.querySelector("#soundEffectsToggle"),
   ambientToggle: document.querySelector("#ambientToggle"),
+  musicTrackPicker: document.querySelector("#musicTrackPicker"),
   compareToggle: document.querySelector("#compareToggle"),
   lmStudioToggle: document.querySelector("#lmStudioToggle"),
   lmStudioSetupHint: document.querySelector("#lmStudioSetupHint"),
@@ -138,6 +139,7 @@ const state = {
     showStats: localStorage.getItem("vanilla-show-stats") !== "false",
     soundEffects: localStorage.getItem("vanilla-sound-effects") !== "false",
     ambientMusic: localStorage.getItem("vanilla-ambient-music") === "true",
+    musicTrack: localStorage.getItem("vanilla-ambient-track") || "vanilla",
     showCompare: localStorage.getItem("vanilla-show-compare") === "true",
     showLmStudio: localStorage.getItem("vanilla-show-lmstudio") === "true",
     showAider: localStorage.getItem("vanilla-show-aider") !== "false",
@@ -1684,6 +1686,7 @@ function createSettingsDropdown(root, onChange) {
 
   button.addEventListener("click", (event) => {
     event.stopPropagation();
+    if (root.dataset.disabled === "true") return;
     const open = root.dataset.open !== "true";
     root.dataset.open = open ? "true" : "false";
     button.setAttribute("aria-expanded", String(open));
@@ -1763,6 +1766,7 @@ function bindSettingsDropdowns() {
     applySettings();
   });
   dropdowns.musicTrack = createSettingsDropdown(els.musicTrackPicker, () => {
+    Sounds.click();
     state.settings.musicTrack = dropdowns.musicTrack.value;
     applySettings();
   });
@@ -1786,6 +1790,12 @@ function bindSettingsDropdowns() {
   dropdowns.logoPosition.setOptions([
     { value: "side", label: "Beside text" },
     { value: "top", label: "Above text" },
+  ]);
+  dropdowns.musicTrack.setOptions([
+    { value: "vanilla", label: "Vanilla Haze" },
+    { value: "golden", label: "Golden Hour" },
+    { value: "midnight", label: "Midnight Lo-Fi" },
+    { value: "rainy", label: "Rainy Day" },
   ]);
 }
 
@@ -1843,6 +1853,9 @@ function applySettings() {
   if (els.soundEffectsToggle) els.soundEffectsToggle.checked = settings.soundEffects;
   Sounds.setEnabled(settings.soundEffects);
   if (els.ambientToggle) els.ambientToggle.checked = settings.ambientMusic;
+  if (dropdowns.musicTrack) dropdowns.musicTrack.setValue(settings.musicTrack);
+  if (els.musicTrackPicker) els.musicTrackPicker.dataset.disabled = String(!settings.ambientMusic);
+  Ambience.setTrack(settings.musicTrack);
   Ambience.setEnabled(settings.ambientMusic);
   if (els.compareToggle) els.compareToggle.checked = settings.showCompare;
   if (els.lmStudioToggle) els.lmStudioToggle.checked = settings.showLmStudio;
@@ -1885,6 +1898,7 @@ function applySettings() {
   localStorage.setItem("vanilla-show-stats", String(settings.showStats));
   localStorage.setItem("vanilla-sound-effects", String(settings.soundEffects));
   localStorage.setItem("vanilla-ambient-music", String(settings.ambientMusic));
+  localStorage.setItem("vanilla-ambient-track", settings.musicTrack);
   localStorage.setItem("vanilla-show-compare", String(settings.showCompare));
   localStorage.setItem("vanilla-show-lmstudio", String(settings.showLmStudio));
   localStorage.setItem("vanilla-show-aider", String(settings.showAider));
@@ -2528,6 +2542,8 @@ function bindEvents() {
       if (aiNext) { aiNext.disabled = true; delete aiNext.dataset.choice; }
       const namingNext = els.setupModal?.querySelector("#setupNamingNext");
       if (namingNext) { namingNext.disabled = true; delete namingNext.dataset.naming; }
+      const musicNext = els.setupModal?.querySelector("#setupMusicNext");
+      if (musicNext) { musicNext.disabled = true; delete musicNext.dataset.music; }
       els.setupModal?.querySelectorAll(".setup-choice").forEach((b) => b.setAttribute("aria-pressed", "false"));
       const importWrap = els.setupModal?.querySelector("#setupImportWrap");
       const importNext = els.setupModal?.querySelector("#setupImportNext");
@@ -3098,7 +3114,12 @@ function finishSetup() {
 }
 
 function updateSetupDots(stepAttr) {
-  const stepNum = stepAttr === "1" ? 1 : stepAttr === "2" ? 2 : stepAttr === "3" ? 3 : stepAttr === "4" ? 4 : 5;
+  const stepNum =
+    stepAttr === "1" ? 1 :
+    stepAttr === "2" ? 2 :
+    stepAttr === "3" ? 3 :
+    stepAttr === "4" ? 4 :
+    stepAttr === "5" ? 5 : 6;
   els.setupModal.querySelectorAll(".setup-dot").forEach((dot) => {
     const n = Number(dot.dataset.dot);
     dot.dataset.state = n < stepNum ? "done" : n === stepNum ? "active" : "idle";
@@ -3251,13 +3272,38 @@ function bindSetupFlow() {
 
   if (importNext) {
     importNext.addEventListener("click", () => {
-      const choice = aiNext.dataset.choice;
-      if (choice === "local") showSetupStep("5a");
-      else if (choice === "cloud") showSetupStep("5b");
+      showSetupStep("5");
     });
   }
 
-  // Step 5a: local AI done
+  // Step 5: background music preference
+  const musicButtons = els.setupModal.querySelectorAll(".setup-choice[data-music]");
+  const musicNext = els.setupModal.querySelector("#setupMusicNext");
+
+  musicButtons.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      musicButtons.forEach((b) => b.setAttribute("aria-pressed", "false"));
+      btn.setAttribute("aria-pressed", "true");
+      musicNext.disabled = false;
+      musicNext.dataset.music = btn.dataset.music;
+    });
+  });
+
+  musicNext.addEventListener("click", () => {
+    const music = musicNext.dataset.music;
+    if (music === "none") {
+      state.settings.ambientMusic = false;
+    } else if (music) {
+      state.settings.ambientMusic = true;
+      state.settings.musicTrack = music;
+    }
+    applySettings();
+    const choice = aiNext.dataset.choice;
+    if (choice === "local") showSetupStep("6a");
+    else if (choice === "cloud") showSetupStep("6b");
+  });
+
+  // Step 6a: local AI done
   localDone.addEventListener("click", () => {
     const host = ollamaHost.value.trim();
     if (host) localStorage.setItem("vanilla-ollama-host", host);
@@ -3288,7 +3334,8 @@ function bindSetupFlow() {
       if (currentStep === "2") showSetupStep("1");
       if (currentStep === "3") showSetupStep("2");
       if (currentStep === "4") showSetupStep("3");
-      if (currentStep === "5a" || currentStep === "5b") showSetupStep("4");
+      if (currentStep === "5") showSetupStep("4");
+      if (currentStep === "6a" || currentStep === "6b") showSetupStep("5");
     });
   });
 }
