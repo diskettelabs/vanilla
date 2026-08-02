@@ -173,9 +173,17 @@ button img,
   text-decoration: none;
 }
 
-.brand img {
+.brand-logo {
   width: 117px;
   height: auto;
+  display: block;
+  animation: mascot-float 5s ease-in-out infinite;
+  transition: transform 220ms ease;
+}
+
+.brand:hover .brand-logo {
+  animation-duration: 2.4s;
+  transform: scale(1.03) rotate(-1deg);
 }
 
 .icon-button {
@@ -312,6 +320,83 @@ button img,
   flex-shrink: 0;
 }
 
+.conversation-empty {
+  display: grid;
+  place-items: center;
+  gap: 6px;
+  margin-top: 34px;
+  padding: 0 18px;
+  text-align: center;
+  color: #a5a5a5;
+  pointer-events: none;
+}
+
+.conversation-empty .mascot {
+  width: 34px;
+  height: 34px;
+  color: #141414;
+  animation: mascot-breathe 3.4s ease-in-out infinite;
+  transform-origin: center bottom;
+}
+
+.conversation-empty .mascot.is-napping {
+  animation: mascot-nap 5.5s ease-in-out infinite;
+}
+
+.conversation-empty .mascot.is-napping .mascot-eye {
+  animation: none;
+  transform: scaleY(0.06);
+}
+
+.conversation-empty .mascot-zzz {
+  opacity: 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: #b9b0a0;
+  transform: translate(2px, 0);
+  transition: opacity 700ms ease, transform 700ms ease;
+}
+
+.conversation-empty .mascot-zzz.show {
+  opacity: 1;
+  transform: translate(6px, -5px);
+}
+
+.conversation-empty-text {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+@keyframes mascot-breathe {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    transform: translateY(-3px) scale(1.04);
+  }
+}
+
+@keyframes mascot-nap {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  8% {
+    transform: translateY(-3px) rotate(-6deg);
+  }
+  16% {
+    transform: translateY(-1px) rotate(5deg);
+  }
+  24% {
+    transform: translateY(0) rotate(0deg);
+  }
+  55% {
+    transform: translateY(0) scale(0.98);
+  }
+}
+
 .conversation-row {
   position: relative;
   display: flex;
@@ -434,6 +519,15 @@ button img,
   width: 14px;
   height: 14px;
   filter: invert(60%) sepia(0%) saturate(0%) hue-rotate(0deg);
+  transition: transform 180ms ease;
+}
+
+.conversation-pin:hover img {
+  transform: rotate(-12deg);
+}
+
+.conversation-pin.is-pinned:hover img {
+  transform: rotate(28deg);
 }
 
 .conversation-pin:hover {
@@ -523,11 +617,36 @@ button img,
   width: 14px;
   height: 14px;
   filter: invert(60%) sepia(0%) saturate(0%) hue-rotate(0deg);
+  transition: transform 180ms ease;
+}
+
+.conversation-delete:hover img {
+  transform: rotate(-9deg) translateY(1px);
 }
 
 .conversation-row:hover,
 .conversation-row[aria-current="true"] {
   background: rgba(0, 0, 0, 0.04);
+}
+
+.conversation-row.is-glowing {
+  animation: row-glow 1.4s ease;
+  border-radius: 8px;
+}
+
+@keyframes row-glow {
+  0% {
+    box-shadow: 0 0 0 0 rgba(48, 122, 177, 0);
+    background: rgba(48, 122, 177, 0);
+  }
+  35% {
+    box-shadow: 0 0 0 3px rgba(48, 122, 177, 0.28);
+    background: rgba(48, 122, 177, 0.12);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(48, 122, 177, 0);
+    background: rgba(48, 122, 177, 0);
+  }
 }
 
 .conversation-row:hover .conversation-delete,
@@ -887,19 +1006,43 @@ button img,
 .empty-state {
   position: absolute;
   inset: 0;
-  display: grid;
-  place-items: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
   padding: 26px;
   pointer-events: none;
 }
 .empty-state[hidden] { display: none !important; }
 
+.empty-state .empty-mascot {
+  width: clamp(56px, 6vw, 84px);
+  height: auto;
+  color: #141414;
+  transform-origin: center bottom;
+  animation: mascot-bob 4.2s ease-in-out infinite;
+}
+
 .empty-state p {
-  margin: 0 0 78px;
+  margin: 0 0 58px;
   color: #9c9c9c;
   font-size: clamp(21px, 1.65vw, 27px);
   font-weight: 400;
   text-align: center;
+}
+
+@keyframes mascot-bob {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  25% {
+    transform: translateY(-6px) rotate(-1.2deg);
+  }
+  75% {
+    transform: translateY(0) rotate(1.2deg);
+  }
 }
 
 .messages {
@@ -1004,10 +1147,81 @@ button img,
 
 .assistant-mark {
   width: 28px;
-  height: 28px;
-  object-fit: contain;
-  object-position: left center;
+  height: auto;
+  display: block;
   overflow: visible;
+  animation: mascot-float 4.2s ease-in-out infinite;
+}
+
+.mascot-svg .mascot-eye,
+.brand-eye {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: mascot-blink 3.6s ease-in-out infinite;
+}
+
+.mascot-gaze {
+  animation: mascot-gaze 12s ease-in-out infinite;
+}
+
+.brand-gaze {
+  animation-name: brand-gaze;
+}
+
+@keyframes mascot-gaze {
+  0%,
+  28%,
+  70%,
+  100% {
+    transform: translateX(0);
+  }
+  40% {
+    transform: translateX(3.4px);
+  }
+  56% {
+    transform: translateX(-3.4px);
+  }
+}
+
+@keyframes brand-gaze {
+  0%,
+  28%,
+  70%,
+  100% {
+    transform: translateX(0);
+  }
+  40% {
+    transform: translateX(1.3px);
+  }
+  56% {
+    transform: translateX(-1.3px);
+  }
+}
+
+.conversation-empty .mascot.is-napping .mascot-gaze {
+  animation-play-state: paused;
+}
+
+@keyframes mascot-blink {
+  0%,
+  88%,
+  100% {
+    transform: scaleY(1);
+  }
+  92%,
+  94% {
+    transform: scaleY(0.06);
+  }
+}
+
+@keyframes mascot-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
 }
 
 body[data-assistant-logo="top"] .assistant-message {
@@ -1265,7 +1479,7 @@ body[data-assistant-logo="top"] .assistant-mark {
   font-size: 19px;
 }
 
-.typing-loader span {
+.typing-loader span:not(.loader-msg) {
   width: 9px;
   height: 9px;
   border-radius: 99px;
@@ -1279,6 +1493,12 @@ body[data-assistant-logo="top"] .assistant-mark {
 
 .typing-loader span:nth-child(3) {
   animation-delay: 260ms;
+}
+
+.loader-msg {
+  margin-left: 10px;
+  font-size: 13px;
+  color: #a8a8a8;
 }
 
 .composer {

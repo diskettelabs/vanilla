@@ -79,6 +79,13 @@ const Sounds = (() => {
     pin() {
       tone({ freq: 760, duration: 0.05, type: "triangle", volume: 0.09 });
     },
+    sparkle() {
+      chord([
+        { freq: 880, duration: 0.08, type: "sine", volume: 0.09 },
+        { freq: 1174, time: 0.07, duration: 0.08, type: "sine", volume: 0.09 },
+        { freq: 1568, time: 0.14, duration: 0.12, type: "sine", volume: 0.09 },
+      ]);
+    },
     rename() {
       tone({ freq: 480, freqEnd: 640, duration: 0.08, type: "triangle", volume: 0.08 });
     },

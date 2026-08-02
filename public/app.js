@@ -16,6 +16,17 @@ const ASSET = {
   download: "./assets/download.svg",
 };
 
+const MASCOT_SVG = (className = "mascot-svg") => `
+<svg class="${className}" viewBox="-5 -5 58 54" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+  <g fill="currentColor">
+    <path d="M42.361,18.136 C42.361,20.338 41.992,22.493 41.274,24.536 C43.102,26.216 44.187,28.561 44.187,31.091 C44.187,36.143 39.911,40.187 34.696,40.187 C32.046,40.187 29.594,39.136 27.848,37.384 C26.101,39.136 23.649,40.187 21,40.187 C18.351,40.187 15.899,39.136 14.152,37.384 C12.406,39.136 9.954,40.187 7.304,40.187 C2.089,40.187 -2.187,36.143 -2.187,31.091 C-2.187,28.561 -1.102,26.216 0.726,24.536 C0.008,22.493 -0.361,20.338 -0.361,18.136 C-0.361,6.884 9.229,-2.187 21,-2.187 C32.771,-2.187 42.361,6.884 42.361,18.136 Z M4.013,18.136 C4.013,20.308 4.474,22.415 5.359,24.369 C5.815,25.377 5.447,26.567 4.501,27.141 C3.059,28.015 2.187,29.491 2.187,31.091 C2.187,33.671 4.452,35.813 7.304,35.813 C9.49,35.813 11.393,34.539 12.116,32.7 C12.843,30.85 15.46,30.85 16.187,32.699 C16.911,34.539 18.814,35.813 21,35.813 C23.186,35.813 25.089,34.539 25.812,32.7 C26.538,30.85 29.156,30.85 29.883,32.699 C30.606,34.539 32.51,35.813 34.696,35.813 C37.548,35.813 39.813,33.671 39.813,31.091 C39.813,29.491 38.941,28.015 37.499,27.141 C36.553,26.567 36.185,25.377 36.641,24.369 C37.526,22.415 37.987,20.308 37.987,18.136 C37.987,9.356 30.408,2.187 21,2.187 C11.592,2.187 4.013,9.356 4.013,18.136 Z" fill-rule="nonzero"/>
+  </g>
+  <g class="mascot-gaze">
+    <g transform="translate(16.98,17.93)"><rect class="mascot-eye" x="-2.09" y="-5.68" width="4.18" height="11.36" rx="2.09" fill="#000000"/></g>
+    <g transform="translate(25.73,17.93)"><rect class="mascot-eye mascot-eye-r" x="-2.09" y="-5.68" width="4.18" height="11.36" rx="2.09" fill="#000000"/></g>
+  </g>
+</svg>`;
+
 const els = {
   shell: document.querySelector(".app-shell"),
   sidebarToggle: document.querySelector(".sidebar-toggle"),
@@ -558,10 +569,13 @@ function groupLabel(dateString) {
 function renderConversationList() {
   els.conversationList.innerHTML = "";
   if (!state.conversations.length) {
-    const empty = document.createElement("p");
-    empty.className = "date-heading";
-    empty.textContent = "no chats yet";
+    const empty = document.createElement("div");
+    empty.className = "conversation-empty";
+    empty.innerHTML = `${MASCOT_SVG("mascot mascot-svg")}
+      <span class="mascot-zzz" aria-hidden="true">z&thinsp;Z</span>
+      <p class="conversation-empty-text">No chats yet — start one, it's on the house.</p>`;
     els.conversationList.append(empty);
+    armMascotNap(empty.querySelector(".mascot"));
     return;
   }
   let lastGroup = "";
@@ -640,12 +654,30 @@ function renderConversationList() {
   }
 }
 
+let mascotNapTimer = null;
+
+function armMascotNap(mascot) {
+  if (mascotNapTimer) clearTimeout(mascotNapTimer);
+  mascotNapTimer = setTimeout(() => {
+    if (mascot?.isConnected) {
+      mascot.classList.add("is-napping");
+      mascot.parentElement.querySelector(".mascot-zzz")?.classList.add("show");
+    }
+  }, 30000);
+}
+
 async function togglePin(id) {
   try {
     const data = await api(`/api/conversations/${encodeURIComponent(id)}/pin`, { method: "PATCH" });
     if (state.activeConversation?.id === id) state.activeConversation.pinned = data.pinned;
     await refreshConversations();
-    showNotification(data.pinned ? "Chat pinned" : "Chat unpinned", "success");
+    if (data.pinned && !localStorage.getItem("vanilla-pinned-before")) {
+      localStorage.setItem("vanilla-pinned-before", "1");
+      Sounds.sparkle();
+      showNotification("First pin! It's a keeper.", "success");
+    } else {
+      showNotification(data.pinned ? "Chat pinned" : "Chat unpinned", "success");
+    }
   } catch (error) {
     showNotification(error.action || error.message || "Failed to update pin", "error");
   }
@@ -776,12 +808,16 @@ function renderMessages(conv) {
   els.messages.innerHTML = "";
   const messages = conv?.messages || [];
   els.emptyState.hidden = messages.length > 0;
-  for (const msg of messages) {
+  const staggerStart = Math.max(0, messages.length - 6);
+  for (let i = 0; i < messages.length; i++) {
+    const msg = messages[i];
+    let wrap;
     if (msg.role === "user") {
-      addUserMessage(msg.content, { animate: false, id: msg.id });
+      wrap = addUserMessage(msg.content, { animate: i >= staggerStart, id: msg.id });
     } else {
-      addAssistantMessage(msg.content, { animate: false, id: msg.id, done: true });
+      wrap = addAssistantMessage(msg.content, { animate: i >= staggerStart, id: msg.id, done: true });
     }
+    if (i >= staggerStart) wrap.style.animationDelay = `${(i - staggerStart) * 60}ms`;
   }
   requestAnimationFrame(() => {
     scrollToBottom();
@@ -826,7 +862,7 @@ function addAssistantMessage(content = "", { id = crypto.randomUUID(), animate =
   wrap.dataset.messageId = id;
   if (!animate) wrap.style.animation = "none";
   wrap.innerHTML = `
-    <img class="assistant-mark" src="${ASSET.logo}" alt="">
+    ${MASCOT_SVG("assistant-mark mascot-svg")}
     <div class="assistant-body">${done ? renderMarkdown(content) : loaderHtml()}</div>`;
   els.messages.append(wrap);
   els.emptyState.hidden = true;
@@ -834,8 +870,43 @@ function addAssistantMessage(content = "", { id = crypto.randomUUID(), animate =
   return wrap;
 }
 
+const LOADER_MESSAGES = [
+  "Reticulating splines…",
+  "Consulting the oracle…",
+  "Stirring the vanilla…",
+  "Gathering the good thoughts…",
+  "Polishing the answer…",
+];
+let loaderMessageIndex = 0;
+
 function loaderHtml() {
-  return '<div class="typing-loader" aria-label="Waiting for response"><span></span><span></span><span></span></div>';
+  return '<div class="typing-loader" aria-label="Waiting for response"><span></span><span></span><span></span><span class="loader-msg" data-cycle>Reticulating splines…</span></div>';
+}
+
+function startLoaderRotation() {
+  setInterval(() => {
+    loaderMessageIndex = (loaderMessageIndex + 1) % LOADER_MESSAGES.length;
+    const message = LOADER_MESSAGES[loaderMessageIndex];
+    document.querySelectorAll("[data-cycle]").forEach((el) => {
+      if (el.isConnected) el.textContent = message;
+    });
+  }, 1500);
+}
+
+const PROMPT_PLACEHOLDERS = [
+  "what's up?",
+  "Or ask me something spicy 🌶️",
+  "Ask anything…",
+  "Give me the weird version.",
+  "What needs building?",
+];
+let placeholderIndex = 0;
+
+function startPlaceholderRotation() {
+  setInterval(() => {
+    placeholderIndex = (placeholderIndex + 1) % PROMPT_PLACEHOLDERS.length;
+    els.promptInput.placeholder = PROMPT_PLACEHOLDERS[placeholderIndex];
+  }, 8000);
 }
 
 function attachCodeCopy(root = document) {
@@ -1466,7 +1537,19 @@ async function retryLastMessage() {
   }
 }
 
+const SUCCESS_VARIANTS = {
+  "Chat pinned": ["Chat pinned", "Pinned. Classy.", "It's a keeper now.", "Pinned for later."],
+  "Chat unpinned": ["Chat unpinned", "Unpinned. Free as a bird.", "Let it go."],
+  "Chat renamed": ["Chat renamed", "Renamed. Fits better now.", "New name, who dis?"],
+  "Chat exported": ["Chat exported", "Exported. Precious cargo.", "Saved. Feels good."],
+  "Chat deleted": ["Chat deleted", "Gone. No witnesses.", "Deleted. Fresh air."],
+};
+
 function showNotification(message, type = "info", duration = 3000) {
+  if (type === "success" && SUCCESS_VARIANTS[message]) {
+    const variants = SUCCESS_VARIANTS[message];
+    message = variants[Math.floor(Math.random() * variants.length)];
+  }
   // Create notification element
   const notification = document.createElement("div");
   notification.className = `app-notification app-notification-${type}`;
@@ -2932,6 +3015,13 @@ function exportConversation() {
   a.remove();
   URL.revokeObjectURL(url);
   showNotification("Chat exported", "success");
+  const row = els.conversationList.querySelector('[aria-current="true"]');
+  if (row) {
+    row.classList.remove("is-glowing");
+    void row.offsetWidth;
+    row.classList.add("is-glowing");
+    setTimeout(() => row.classList.remove("is-glowing"), 1400);
+  }
 }
 
 async function copyExport() {
@@ -3125,7 +3215,7 @@ async function runCompare() {
     const key = m.id;
     const col = document.createElement("div");
     col.className = "compare-col";
-    col.innerHTML = `<div class="compare-col-head"><span class="compare-col-provider">${escapeHtml(m.providerLabel || m.provider)}</span><span class="compare-col-model">${escapeHtml(m.model)}</span></div><div class="compare-col-body"><div class="typing-loader"><span></span><span></span><span></span></div></div>`;
+    col.innerHTML = `<div class="compare-col-head"><span class="compare-col-provider">${escapeHtml(m.providerLabel || m.provider)}</span><span class="compare-col-model">${escapeHtml(m.model)}</span></div><div class="compare-col-body"><div class="typing-loader"><span></span><span></span><span></span><span class="loader-msg" data-cycle>Reticulating splines…</span></div></div>`;
     els.compareResults.append(col);
     compareState.results[key] = { el: col.querySelector(".compare-col-body"), text: "", queue: "", error: false };
   });
@@ -3206,6 +3296,8 @@ async function boot() {
   bindSetupFlow();
   bindHuggingFace();
   initDictation();
+  startLoaderRotation();
+  startPlaceholderRotation();
   await Promise.all([loadProvidersAndModels(), refreshConversations(), refreshStats(), loadThemes()]);
   renderApiKeys();
   setInterval(refreshStats, 3000);
