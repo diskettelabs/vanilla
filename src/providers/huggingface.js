@@ -7,7 +7,8 @@ class HuggingFaceProvider extends OpenAIProvider {
   constructor(config) {
     super({
       ...config,
-      baseUrl: (config?.baseUrl || 'https://router.huggingface.co/v1').replace(/\/+$/, ''),
+      // Include trailing slash for proper relative URL resolution
+      baseUrl: (config?.baseUrl || 'https://router.huggingface.co/v1/').replace(/\/+$/, '') + '/',
       defaultModel: config?.defaultModel || 'meta-llama/Llama-3.1-8B-Instruct',
       requestTimeout: config?.requestTimeout || 120000,
     });
@@ -20,15 +21,14 @@ class HuggingFaceProvider extends OpenAIProvider {
 
   async listModels() {
     if (!this.apiKey) return [];
-    const data = await this._request('/models', { method: 'GET' });
-    return Array.from(data.data || [])
-      .map((m) => ({ name: m.id, size: 0 }));
+    const data = await this._request('models', { method: 'GET' });
+    return (data.data || []).map((m) => ({ name: m.id, size: 0 }));
   }
 
   async listChatModels() {
     if (!this.apiKey) return [this.defaultModel];
-    const data = await this._request('/models', { method: 'GET' });
-    return Array.from(data.data || []).map((m) => m.id);
+    const data = await this._request('models', { method: 'GET' });
+    return (data.data || []).map((m) => m.id);
   }
 }
 

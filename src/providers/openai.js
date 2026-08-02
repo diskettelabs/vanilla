@@ -15,7 +15,8 @@ class OpenAIProvider extends Provider {
   constructor(config) {
     super(config);
     this.apiKey = config.apiKey || process.env.OPENAI_API_KEY || '';
-    this.baseUrl = (config.baseUrl || 'https://api.openai.com/v1').replace(/\/+$/, '');
+    // Ensure trailing slash for proper relative URL resolution
+    this.baseUrl = (config.baseUrl || 'https://api.openai.com/v1/').replace(/\/+$/, '') + '/';
     this.timeout = config.requestTimeout || 60000;
     this.defaultModel = config.defaultModel || 'gpt-4o-mini';
     this._httpModule = this.baseUrl.startsWith('http://') ? require('node:http') : require('node:https');
@@ -35,7 +36,7 @@ class OpenAIProvider extends Provider {
     }
     
     try {
-      const data = await this._request('/models', { method: 'GET' });
+      const data = await this._request('models', { method: 'GET' });
       return (data.data || [])
         .filter((m) => m.id.startsWith('gpt') || m.id.startsWith('o'))
         .map((m) => ({ name: m.id, size: 0 }));
@@ -55,7 +56,7 @@ class OpenAIProvider extends Provider {
     }
     
     try {
-      const data = await this._request('/models', { method: 'GET' });
+      const data = await this._request('models', { method: 'GET' });
       return (data.data || [])
         .filter((m) => m.id.startsWith('gpt') || m.id.startsWith('o'))
         .map((m) => m.id);
@@ -76,36 +77,16 @@ class OpenAIProvider extends Provider {
       throw err;
     }
     
-    const url = this._buildUrl('/chat/completions');
+    const url = new URL('chat/completions', this.baseUrl);
+    const requestModel = model || this.defaultModel;
+    console.log(`[${this.constructor.name}] Chat request to ${url.href} with model: ${requestModel}`);
     const body = JSON.stringify({
-      model: model || this.defaultModel,
+      model: requestModel,
       messages,
       stream: true,
     });
 
     return new Promise((resolve, reject) => {
-      let buffer = '';
-      let hasReceivedData = false;
-      let completed = false;
-
-      const complete = (err) => {
-        if (completed) return;
-        completed = true;
-        if (signal) signal.removeEventListener('abort', onAbort);
-        if (err) {
-          onError(err);
-          reject(err);
-        } else {
-          onDone();
-          resolve();
-        }
-      };
-
-      const onAbort = () => {
-        req.destroy();
-        complete(new Error('Stream aborted by user'));
-      };
-
       const req = this._httpModule.request(
         url,
         {
@@ -114,69 +95,95 @@ class OpenAIProvider extends Provider {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${this.apiKey}`,
           },
-          timeout: this.timeout,
         },
         (res) => {
           // Check for error status codes
           if (res.statusCode === 401) {
             req.destroy();
-            complete(new OpenAIError('Invalid API key', {
+            const err = new OpenAIError('Invalid API key', {
               userMessage: 'OpenAI API key is invalid',
               action: 'Check your API key in config/default.json. Get a valid key from platform.openai.com/api-keys',
               statusCode: 401,
-            }));
+            });
+            onError(err);
+            reject(err);
             return;
           }
           
           if (res.statusCode === 429) {
             req.destroy();
-            complete(new OpenAIError('Rate limit exceeded', {
+            const err = new OpenAIError('Rate limit exceeded', {
               userMessage: 'OpenAI rate limit exceeded',
               action: 'You\'ve made too many requests. Wait a minute and try again, or upgrade your OpenAI plan.',
               statusCode: 429,
-            }));
+            });
+            onError(err);
+            reject(err);
             return;
           }
           
           if (res.statusCode === 402 || res.statusCode === 403) {
             req.destroy();
-            complete(new OpenAIError('Quota exceeded', {
+            const err = new OpenAIError('Quota exceeded', {
               userMessage: 'OpenAI quota exceeded',
               action: 'Your OpenAI account has reached its usage limit. Add credits at platform.openai.com/account/billing',
               statusCode: res.statusCode,
               recoverable: false,
-            }));
+            });
+            onError(err);
+            reject(err);
             return;
           }
           
           if (res.statusCode === 404) {
             req.destroy();
-            complete(new OpenAIError(`Model not found`, {
+            const err = new OpenAIError(`Model not found`, {
               userMessage: `Model "${model}" not available`,
               action: 'This model is not available in your OpenAI account. Choose a different model from the picker.',
               statusCode: 404,
-            }));
+            });
+            onError(err);
+            reject(err);
             return;
           }
           
           if (res.statusCode >= 500) {
             req.destroy();
-            complete(new OpenAIError('Server error', {
+            const err = new OpenAIError('Server error', {
               userMessage: 'OpenAI server error',
               action: 'OpenAI is experiencing issues. Wait a moment and try again.',
               statusCode: res.statusCode,
-            }));
+            });
+            onError(err);
+            reject(err);
             return;
           }
           
           if (res.statusCode >= 400) {
             req.destroy();
-            complete(new OpenAIError(`HTTP ${res.statusCode}`, {
+            const err = new OpenAIError(`HTTP ${res.statusCode}`, {
               userMessage: 'OpenAI returned an error',
               action: 'Check your request and try again. If the problem persists, check OpenAI status.',
               statusCode: res.statusCode,
-            }));
+            });
+            onError(err);
+            reject(err);
             return;
+          }
+          
+          let buffer = '';
+          let hasReceivedData = false;
+          
+          const onAbort = () => {
+            req.destroy();
+            const e = new Error('Stream aborted by user');
+            onError(e);
+            reject(e);
+          };
+          
+          if (signal) {
+            if (signal.aborted) { onAbort(); return; }
+            signal.addEventListener('abort', onAbort, { once: true });
           }
           
           res.on('data', (chunk) => {
@@ -191,7 +198,8 @@ class OpenAIProvider extends Provider {
               const payload = trimmed.slice(6);
               
               if (payload === '[DONE]') {
-                complete();
+                onDone();
+                resolve();
                 return;
               }
               
@@ -200,15 +208,17 @@ class OpenAIProvider extends Provider {
                 
                 // Check for error in stream
                 if (parsed.error) {
-                  complete(this._parseApiError(parsed.error));
+                  const err = this._parseApiError(parsed.error);
+                  onError(err);
+                  reject(err);
                   return;
                 }
                 
                 const content = parsed.choices?.[0]?.delta?.content || '';
                 if (content) onToken(content);
                 if (parsed.choices?.[0]?.finish_reason) {
-                  complete();
-                  return;
+                  onDone();
+                  resolve();
                 }
               } catch {
                 // skip malformed lines
@@ -218,36 +228,39 @@ class OpenAIProvider extends Provider {
           
           res.on('end', () => {
             if (!hasReceivedData) {
-              complete(new OpenAIError('No response', {
+              const err = new OpenAIError('No response', {
                 userMessage: 'No response from OpenAI',
                 action: 'Check your internet connection and try again.',
-              }));
+              });
+              onError(err);
+              reject(err);
               return;
             }
-            complete();
+            resolve();
           });
           
           res.on('error', (e) => {
-            complete(this._enhanceError(e, 'stream'));
+            const enhanced = this._enhanceError(e, 'stream');
+            onError(enhanced);
+            reject(enhanced);
           });
         }
       );
-
-      if (signal) {
-        if (signal.aborted) { onAbort(); return; }
-        signal.addEventListener('abort', onAbort, { once: true });
-      }
       
       req.on('error', (e) => {
-        complete(this._enhanceError(e, 'connect'));
+        const enhanced = this._enhanceError(e, 'connect');
+        onError(enhanced);
+        reject(enhanced);
       });
       
       req.on('timeout', () => {
         req.destroy();
-        complete(new OpenAIError('Request timeout', {
+        const err = new OpenAIError('Request timeout', {
           userMessage: 'OpenAI took too long to respond',
           action: 'Check your internet connection and try again.',
-        }));
+        });
+        onError(err);
+        reject(err);
       });
       
       req.write(body);
@@ -255,12 +268,8 @@ class OpenAIProvider extends Provider {
     });
   }
 
-  _buildUrl(path) {
-    return new URL(String(path).replace(/^\/+/, ''), this.baseUrl + '/');
-  }
-
   _request(path, options = {}) {
-    const url = this._buildUrl(path);
+    const url = new URL(path, this.baseUrl);
     return new Promise((resolve, reject) => {
       const req = this._httpModule.request(
         url,

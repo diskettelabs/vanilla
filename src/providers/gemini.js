@@ -7,7 +7,8 @@ class GeminiProvider extends OpenAIProvider {
   constructor(config) {
     super({
       ...config,
-      baseUrl: (config?.baseUrl || 'https://generativelanguage.googleapis.com/v1beta/openai').replace(/\/+$/, ''),
+      // Include trailing slash so relative paths append correctly
+      baseUrl: (config?.baseUrl || 'https://generativelanguage.googleapis.com/v1beta/openai/').replace(/\/+$/, '') + '/',
       defaultModel: config?.defaultModel || 'gemini-2.5-flash',
       requestTimeout: config?.requestTimeout || 120000,
     });
@@ -20,18 +21,35 @@ class GeminiProvider extends OpenAIProvider {
 
   async listModels() {
     if (!this.apiKey) return [];
-    const data = await this._request('/models', { method: 'GET' });
+    const data = await this._request('models', { method: 'GET' });
     return (data.data || [])
-      .filter((m) => m.id.startsWith('gemini') && !m.id.toLowerCase().includes('embedding'))
-      .map((m) => ({ name: m.id, size: 0 }));
+      .filter((m) => m.id.includes('gemini'))
+      .map((m) => ({ 
+        // Strip 'models/' prefix if present
+        name: m.id.replace(/^models\//, ''), 
+        size: 0 
+      }));
   }
 
   async listChatModels() {
     if (!this.apiKey) return [this.defaultModel];
-    const data = await this._request('/models', { method: 'GET' });
-    return (data.data || [])
-      .filter((m) => m.id.startsWith('gemini') && !m.id.toLowerCase().includes('embedding'))
-      .map((m) => m.id);
+    try {
+      const data = await this._request('models', { method: 'GET' });
+      console.log('[Gemini] API response:', JSON.stringify(data).slice(0, 500));
+      const models = (data.data || [])
+        .filter((m) => m.id.includes('gemini'))
+        .map((m) => m.id.replace(/^models\//, '')); // Strip 'models/' prefix
+      console.log('[Gemini] Filtered models:', models);
+      if (models.length === 0) {
+        console.warn('[Gemini] No models found! Returning default model.');
+        return [this.defaultModel];
+      }
+      return models;
+    } catch (error) {
+      console.error('[Gemini] listChatModels error:', error.message);
+      // Return default model on error so Gemini still shows up
+      return [this.defaultModel];
+    }
   }
 }
 

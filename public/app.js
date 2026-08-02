@@ -6,6 +6,7 @@ const ASSET = {
   copy: "./assets/copy.svg",
   edit: "./assets/new%20chat.svg",
   trash: "./assets/trashcan.svg",
+  pin: "./assets/pin.svg",
   keyShown: "./assets/key-shown.svg",
   keyHidden: "./assets/key-hidden.svg",
   local: "./assets/local.svg",
@@ -586,7 +587,7 @@ function renderConversationList() {
     pinButton.title = conv.pinned ? "Unpin chat" : "Pin chat";
     pinButton.setAttribute("aria-label", conv.pinned ? "Unpin chat" : "Pin chat");
     pinButton.classList.toggle("is-pinned", Boolean(conv.pinned));
-    pinButton.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 17v5"/><path d="M9 10.8 7 8.5V5h10v3.5l-2 2.3V17"/><path d="M9 17h6"/></svg>`;
+    pinButton.innerHTML = `<img src="${ASSET.pin}" alt="">`;
     pinButton.addEventListener("click", (event) => {
       event.stopPropagation();
       togglePin(conv.id);
@@ -1609,36 +1610,143 @@ function renderModelOptions() {
   const filtered = state.modelOptions.filter((option) => {
     return `${option.providerLabel} ${option.model}`.toLowerCase().includes(query);
   });
+  
   els.modelOptions.innerHTML = "";
-  let lastProvider = "";
+  
+  // Group models by provider
+  const byProvider = {};
   for (const option of filtered) {
-    if (option.provider !== lastProvider) {
+    if (!byProvider[option.provider]) {
+      byProvider[option.provider] = {
+        label: option.providerLabel,
+        models: []
+      };
+    }
+    byProvider[option.provider].models.push(option);
+  }
+  
+  // Render each provider's models
+  for (const [providerId, providerData] of Object.entries(byProvider)) {
+    // Skip if only provider is Gemini and we have multiple model families
+    const shouldGroupByFamily = providerId === 'gemini' && providerData.models.length > 5;
+    
+    if (shouldGroupByFamily) {
+      // Group Gemini models by family
+      const families = {};
+      for (const model of providerData.models) {
+        const family = extractModelFamily(model.model);
+        if (!families[family]) families[family] = [];
+        families[family].push(model);
+      }
+      
+      // Create provider header
+      const providerHeader = document.createElement("div");
+      providerHeader.className = "model-group";
+      providerHeader.textContent = providerData.label;
+      els.modelOptions.append(providerHeader);
+      
+      // Create collapsible groups for each family
+      for (const [familyName, familyModels] of Object.entries(families)) {
+        const groupHeader = document.createElement("button");
+        groupHeader.type = "button";
+        groupHeader.className = "model-group-toggle";
+        groupHeader.setAttribute("aria-expanded", "true");
+        groupHeader.innerHTML = `
+          <span class="model-group-chevron">▼</span>
+          <span>${escapeHtml(familyName)} (${familyModels.length})</span>
+        `;
+        
+        const groupModels = document.createElement("div");
+        groupModels.className = "model-group-models";
+        
+        groupHeader.addEventListener("click", () => {
+          const isExpanded = groupHeader.getAttribute("aria-expanded") === "true";
+          groupHeader.setAttribute("aria-expanded", String(!isExpanded));
+          groupModels.hidden = isExpanded;
+        });
+        
+        els.modelOptions.append(groupHeader);
+        els.modelOptions.append(groupModels);
+        
+        // Add models to this family group
+        for (const option of familyModels) {
+          const button = createModelButton(option);
+          groupModels.append(button);
+        }
+      }
+    } else {
+      // Regular provider grouping (not Gemini or small list)
       const group = document.createElement("div");
       group.className = "model-group";
-      group.textContent = option.providerLabel;
+      group.textContent = providerData.label;
       els.modelOptions.append(group);
-      lastProvider = option.provider;
+      
+      for (const option of providerData.models) {
+        const button = createModelButton(option);
+        els.modelOptions.append(button);
+      }
     }
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "model-option";
-    button.disabled = Boolean(option.disabled);
-    button.setAttribute("aria-selected", option.provider === state.currentProvider && option.model === state.currentModel ? "true" : "false");
-    button.innerHTML = option.disabled
-      ? `<span>${escapeHtml(option.providerLabel)} unavailable</span><small>${escapeHtml(option.reason || "No models returned")}</small>`
-      : `<span>${escapeHtml(option.model)}</span>`;
-    button.addEventListener("click", () => {
-      if (option.disabled) return;
-      state.currentProvider = option.provider;
-      state.currentModel = option.model;
-      els.modelPicker.dataset.open = "false";
-      els.modelButton.setAttribute("aria-expanded", "false");
-      updateModelLabel();
-      renderModelOptions();
-    });
-    els.modelOptions.append(button);
   }
+  
   syncSettingsSelects();
+}
+
+function extractModelFamily(modelName) {
+  // Extract model family from name
+  // Examples:
+  //   gemini-2.5-flash -> Gemini 2.5
+  //   gemini-3.1-pro -> Gemini 3.1
+  //   gemini-2.0-flash-thinking-exp -> Gemini 2.0
+  
+  const lower = modelName.toLowerCase();
+  
+  // Check for embedding models
+  if (lower.includes('embedding')) return 'Embedding Models';
+  
+  // Check for latest/experimental models
+  if (lower.includes('latest') || lower.includes('-exp') || lower.endsWith('preview')) {
+    return 'Latest & Experimental';
+  }
+  
+  // Check for robotics/specialized models
+  if (lower.includes('robotics')) return 'Robotics Models';
+  if (lower.includes('thinking')) return 'Thinking Models';
+  if (lower.includes('image')) return 'Image Generation';
+  if (lower.includes('video')) return 'Video Models';
+  
+  // Extract version (e.g., "2.5", "3.1", "2.0")
+  const versionMatch = lower.match(/(\d+\.\d+)/);
+  if (versionMatch) {
+    const version = versionMatch[1];
+    // Capitalize first letter
+    const modelBase = modelName.split('-')[0];
+    const capitalizedBase = modelBase.charAt(0).toUpperCase() + modelBase.slice(1);
+    return `${capitalizedBase} ${version}`;
+  }
+  
+  // Fallback
+  return 'Other Models';
+}
+
+function createModelButton(option) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "model-option";
+  button.disabled = Boolean(option.disabled);
+  button.setAttribute("aria-selected", option.provider === state.currentProvider && option.model === state.currentModel ? "true" : "false");
+  button.innerHTML = option.disabled
+    ? `<span>${escapeHtml(option.providerLabel)} unavailable</span><small>${escapeHtml(option.reason || "No models returned")}</small>`
+    : `<span>${escapeHtml(option.model)}</span>`;
+  button.addEventListener("click", () => {
+    if (option.disabled) return;
+    state.currentProvider = option.provider;
+    state.currentModel = option.model;
+    els.modelPicker.dataset.open = "false";
+    els.modelButton.setAttribute("aria-expanded", "false");
+    updateModelLabel();
+    renderModelOptions();
+  });
+  return button;
 }
 
 function createSettingsDropdown(root, onChange) {
