@@ -20,11 +20,15 @@ app.use('/node_modules', express.static(path.join(__dirname, 'node_modules')));
 
 routes.register(app);
 
-if (require.main === module) {
+app.start = function () {
   app.listen(CONFIG.port, () => {
     console.log(`Vanilla Chat running at http://localhost:${CONFIG.port}`);
     console.log(`Available providers: ${providers.listProviders().join(', ')}`);
   });
+};
+
+if (require.main === module) {
+  app.start();
 }
 
 module.exports = app;

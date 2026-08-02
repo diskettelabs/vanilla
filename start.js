@@ -24,5 +24,5 @@ if (flag === "-g") {
   spawnSync("npm", ["--prefix", "electron", "start"], { stdio: "inherit" });
 } else {
   // Default: run the Express web server
-  require("./server.js");
+  require("./server.js").start();
 }
