@@ -3429,6 +3429,7 @@ async function stopCompare() {
 async function boot() {
   setShortcuts();
   chooseGreeting();
+  applySettings(); // Apply settings immediately to prevent sidebar animation on load
   bindEvents();
   bindSetupFlow();
   bindHuggingFace();

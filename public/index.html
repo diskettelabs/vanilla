@@ -182,316 +182,399 @@
           <button class="text-button" type="button" data-close-modal>Close</button>
         </div>
         
-        <div class="settings-section">
-          <h3>Account</h3>
-          <div class="settings-grid">
-            <label class="settings-label">
-              <span class="label-text">Your name</span>
-              <input id="displayNameInput" class="settings-input" type="text" placeholder="Enter your name" autocomplete="off" spellcheck="false">
-            </label>
+        <div class="settings-layout">
+          <nav class="settings-tabs" aria-label="Settings navigation">
+            <button class="settings-tab active" data-tab="general">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+              General
+            </button>
+            <button class="settings-tab" data-tab="model">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+              AI Model
+            </button>
+            <button class="settings-tab" data-tab="chat">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+              Chat
+            </button>
+            <button class="settings-tab" data-tab="appearance">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20.94c1.5 0 2.75 1.06 4 1.06 3 0 6-8 6-12.22A4.91 4.91 0 0 0 17 5c-2.22 0-4 1.44-5 2-1-.56-2.78-2-5-2a4.9 4.9 0 0 0-5 4.78C2 14 5 22 8 22c1.25 0 2.5-1.06 4-1.06Z"></path><path d="M10 2c1 .5 2 2 2 5"></path></svg>
+              Appearance
+            </button>
+            <button class="settings-tab" data-tab="shortcuts">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7V4h16v3M9 20h6M12 4v16"></path></svg>
+              Shortcuts
+            </button>
+            <button class="settings-tab" data-tab="data">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"></path><path d="M21 3v5h-5"></path></svg>
+              Data & Privacy
+            </button>
+          </nav>
+          
+          <div class="settings-content">
+            <!-- General Tab -->
+            <div class="settings-tab-pane active" id="tab-general">
+              <div class="settings-section">
+                <h3>Account</h3>
+                <div class="settings-card">
+                  <label class="settings-label">
+                    <span class="label-text">Your name</span>
+                    <input id="displayNameInput" class="settings-input" type="text" placeholder="Enter your name" autocomplete="off" spellcheck="false">
+                  </label>
+                </div>
+              </div>
+
+              <div class="settings-section">
+                <h3>Preferences</h3>
+                <div class="settings-card settings-options">
+                  <label class="check-row">
+                    <input id="sidebarOpenToggle" type="checkbox" class="toggle-input">
+                    <span class="toggle-slider"></span>
+                    <span class="toggle-label">Open sidebar by default</span>
+                  </label>
+                  <label class="check-row">
+                    <input id="autoNameToggle" type="checkbox" class="toggle-input">
+                    <span class="toggle-slider"></span>
+                    <span class="toggle-label">Auto-name chats with AI</span>
+                  </label>
+                  <label class="check-row">
+                    <input id="enterToSendToggle" type="checkbox" class="toggle-input">
+                    <span class="toggle-slider"></span>
+                    <span class="toggle-label">Press Enter to send (Shift+Enter for new line)</span>
+                  </label>
+                </div>
+                <p class="settings-note" style="margin-top: 12px; margin-bottom: 0;">When auto-naming is enabled, Vanilla generates smart titles right after your first exchange. It uses a small local model (~350&nbsp;MB) downloaded through Ollama. You can always rename any chat manually using the button in the sidebar.</p>
+              </div>
+            </div>
+
+            <!-- Model Tab -->
+            <div class="settings-tab-pane" id="tab-model">
+              <div class="settings-section">
+                <h3>AI Model</h3>
+                <div class="settings-card">
+                  <div class="settings-grid">
+                    <label class="settings-label">
+                      <span class="label-text">Provider</span>
+                      <div class="settings-picker" id="providerPicker" data-open="false">
+                        <button type="button" class="settings-picker-button" aria-haspopup="listbox" aria-expanded="false">
+                          <span class="settings-picker-label"></span>
+                          <img class="settings-picker-chevron" src="./assets/chevron.svg" alt="">
+                        </button>
+                        <div class="settings-picker-menu" role="listbox">
+                          <div class="settings-picker-options"></div>
+                        </div>
+                      </div>
+                    </label>
+                    <label class="settings-label">
+                      <span class="label-text">Model</span>
+                      <div class="settings-picker" id="settingsModelPicker" data-open="false">
+                        <button type="button" class="settings-picker-button" aria-haspopup="listbox" aria-expanded="false">
+                          <span class="settings-picker-label"></span>
+                          <img class="settings-picker-chevron" src="./assets/chevron.svg" alt="">
+                        </button>
+                        <div class="settings-picker-menu" role="listbox">
+                          <div class="settings-picker-options"></div>
+                        </div>
+                      </div>
+                    </label>
+                  </div>
+                  <button id="hfInstallButton" class="hf-open-button" style="margin-top: 16px;" type="button">
+                    <img class="hf-open-icon" src="./assets/download.svg" alt="">
+                    <span class="hf-open-text"><strong>Install a model from HuggingFace</strong><small>Search GGUF models, download, and import them into Ollama locally</small></span>
+                  </button>
+                </div>
+              </div>
+
+              <div class="settings-section">
+                <h3>Providers &amp; API keys</h3>
+                <p class="settings-note">Keys are stored in your browser. Providers without a key are hidden from the model picker.</p>
+                <div class="settings-card">
+                  <label class="check-row">
+                    <input id="lmStudioToggle" type="checkbox" class="toggle-input">
+                    <span class="toggle-slider"></span>
+                    <span class="toggle-label">Enable LM Studio (Local)</span>
+                  </label>
+                  <div id="lmStudioSetupHint" class="lmstudio-hint" hidden>
+                    <p>To use LM Studio models:</p>
+                    <ol>
+                      <li>Open <strong>LM Studio</strong>.</li>
+                      <li>Go to the <strong>Developer</strong> tab in the left sidebar.</li>
+                      <li>In the <strong>Local Server</strong> section, click <strong>Start Server</strong>.</li>
+                    </ol>
+                    <p>The local API server runs at <code>http://localhost:1234/v1</code>. Load a model in LM Studio, then check the connection below.</p>
+                    <div class="lmstudio-check-row">
+                      <button id="lmStudioCheckButton" class="compare-run" type="button">Check connection</button>
+                      <span id="lmStudioStatus" class="lmstudio-status" hidden></span>
+                    </div>
+                  </div>
+                </div>
+                
+                <h4 class="settings-sub-label">Local &amp; CLI tools</h4>
+                <div class="settings-card settings-options">
+                  <label class="check-row">
+                    <input id="aiderToggle" type="checkbox" class="toggle-input">
+                    <span class="toggle-slider"></span>
+                    <span class="toggle-label">Enable Aider CLI</span>
+                  </label>
+                  <label class="check-row">
+                    <input id="gooseToggle" type="checkbox" class="toggle-input">
+                    <span class="toggle-slider"></span>
+                    <span class="toggle-label">Enable Goose CLI</span>
+                  </label>
+                  <label class="check-row">
+                    <input id="openCodeToggle" type="checkbox" class="toggle-input">
+                    <span class="toggle-slider"></span>
+                    <span class="toggle-label">Enable OpenCode CLI</span>
+                  </label>
+                </div>
+                
+                <div id="apiKeysList" class="api-keys-list" style="margin-top: 16px;"></div>
+              </div>
+              
+              <div class="settings-section">
+                <h3>Dictation</h3>
+                <div class="settings-card">
+                  <label class="settings-label">
+                    <span class="label-text">Voice recognition engine</span>
+                    <div class="settings-picker" id="dictationEnginePicker" data-open="false">
+                      <button type="button" class="settings-picker-button" aria-haspopup="listbox" aria-expanded="false">
+                        <span class="settings-picker-label"></span>
+                        <img class="settings-picker-chevron" src="./assets/chevron.svg" alt="">
+                      </button>
+                      <div class="settings-picker-menu" role="listbox">
+                        <div class="settings-picker-options"></div>
+                      </div>
+                    </div>
+                  </label>
+                  <p class="settings-note" id="dictationEngineNote" style="margin-top: 12px; margin-bottom: 0;"></p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Chat Tab -->
+            <div class="settings-tab-pane" id="tab-chat">
+              <div class="settings-section">
+                <h3>System Instructions</h3>
+                <div class="settings-card">
+                  <label class="settings-label">
+                    <div class="label-row">
+                      <span class="label-text">Custom system prompt</span>
+                      <span id="customPromptBadge" class="custom-prompt-badge" hidden>Active</span>
+                    </div>
+                    <span class="label-help">Add instructions to customize how the AI responds. Think of this as setting the personality, expertise level, or style you want. Examples: "Be concise and use analogies," "You're a senior developer who prefers functional programming," or "Explain like I'm learning for the first time."</span>
+                    <textarea id="customPromptInput" class="settings-textarea" rows="4" placeholder="e.g., You are a helpful coding assistant who prefers functional programming..." spellcheck="true"></textarea>
+                  </label>
+                </div>
+              </div>
+
+              <div class="settings-section">
+                <h3>Web Search</h3>
+                <div class="settings-card">
+                  <label class="check-row" style="margin-bottom: 16px;">
+                    <input id="webSearchToggle" type="checkbox" class="toggle-input">
+                    <span class="toggle-slider"></span>
+                    <span class="toggle-label">Search the web for fresh answers</span>
+                  </label>
+                  <div class="settings-grid">
+                    <label class="settings-label">
+                      <span class="label-text">Search engine</span>
+                      <div class="settings-picker" id="searchBackendPicker" data-open="false">
+                        <button type="button" class="settings-picker-button" aria-haspopup="listbox" aria-expanded="false">
+                          <span class="settings-picker-label"></span>
+                          <img class="settings-picker-chevron" src="./assets/chevron.svg" alt="">
+                        </button>
+                        <div class="settings-picker-menu" role="listbox">
+                          <div class="settings-picker-options"></div>
+                        </div>
+                      </div>
+                    </label>
+                    <label id="braveKeyRow" class="settings-label" hidden>
+                      <span class="label-text">Brave Search API key</span>
+                      <input id="braveApiKeyInput" class="settings-input" type="password" placeholder="Paste your Brave API key" autocomplete="off" spellcheck="false">
+                    </label>
+                  </div>
+                  <span class="label-help" style="display:block;margin-top:12px">DuckDuckGo works with no key. Brave gives cleaner results but needs a free API key from <code>api.search.brave.com</code>. When enabled, the latest question is searched before answering.</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Appearance Tab -->
+            <div class="settings-tab-pane" id="tab-appearance">
+              <div class="settings-section">
+                <h3>UI &amp; Design</h3>
+                <div class="settings-card">
+                  <div class="settings-grid settings-grid-2col">
+                    <label class="settings-label">
+                      <span class="label-text">Theme</span>
+                      <div class="settings-picker" id="themePicker" data-open="false">
+                        <button type="button" class="settings-picker-button" aria-haspopup="listbox" aria-expanded="false">
+                          <span class="settings-picker-label"></span>
+                          <img class="settings-picker-chevron" src="./assets/chevron.svg" alt="">
+                        </button>
+                        <div class="settings-picker-menu" role="listbox">
+                          <div class="settings-picker-options"></div>
+                        </div>
+                      </div>
+                    </label>
+                    <label class="settings-label">
+                      <span class="label-text">Message accent</span>
+                      <div class="settings-picker" id="accentPicker" data-open="false">
+                        <button type="button" class="settings-picker-button" aria-haspopup="listbox" aria-expanded="false">
+                          <span class="settings-picker-label"></span>
+                          <img class="settings-picker-chevron" src="./assets/chevron.svg" alt="">
+                        </button>
+                        <div class="settings-picker-menu" role="listbox">
+                          <div class="settings-picker-options"></div>
+                        </div>
+                      </div>
+                    </label>
+                    <label class="settings-label">
+                      <span class="label-text">Density</span>
+                      <div class="settings-picker" id="densityPicker" data-open="false">
+                        <button type="button" class="settings-picker-button" aria-haspopup="listbox" aria-expanded="false">
+                          <span class="settings-picker-label"></span>
+                          <img class="settings-picker-chevron" src="./assets/chevron.svg" alt="">
+                        </button>
+                        <div class="settings-picker-menu" role="listbox">
+                          <div class="settings-picker-options"></div>
+                        </div>
+                      </div>
+                    </label>
+                    <label class="settings-label">
+                      <span class="label-text">Text size</span>
+                      <div class="settings-picker" id="textSizePicker" data-open="false">
+                        <button type="button" class="settings-picker-button" aria-haspopup="listbox" aria-expanded="false">
+                          <span class="settings-picker-label"></span>
+                          <img class="settings-picker-chevron" src="./assets/chevron.svg" alt="">
+                        </button>
+                        <div class="settings-picker-menu" role="listbox">
+                          <div class="settings-picker-options"></div>
+                        </div>
+                      </div>
+                    </label>
+                    <label class="settings-label" style="grid-column: 1 / -1;">
+                      <span class="label-text">Assistant logo</span>
+                      <div class="settings-picker" id="logoPositionPicker" data-open="false">
+                        <button type="button" class="settings-picker-button" aria-haspopup="listbox" aria-expanded="false">
+                          <span class="settings-picker-label"></span>
+                          <img class="settings-picker-chevron" src="./assets/chevron.svg" alt="">
+                        </button>
+                        <div class="settings-picker-menu" role="listbox">
+                          <div class="settings-picker-options"></div>
+                        </div>
+                      </div>
+                    </label>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="settings-section">
+                <h3>Visual &amp; Audio</h3>
+                <div class="settings-card settings-options">
+                  <label class="check-row">
+                    <input id="reduceMotionToggle" type="checkbox" class="toggle-input">
+                    <span class="toggle-slider"></span>
+                    <span class="toggle-label">Reduce motion and animations</span>
+                  </label>
+                  <label class="check-row">
+                    <input id="showStatsToggle" type="checkbox" class="toggle-input">
+                    <span class="toggle-slider"></span>
+                    <span class="toggle-label">Show system stats in the top bar</span>
+                  </label>
+                  <label class="check-row">
+                    <input id="compareToggle" type="checkbox" class="toggle-input">
+                    <span class="toggle-slider"></span>
+                    <span class="toggle-label">Show the compare-models tool</span>
+                  </label>
+                  <div class="settings-divider" aria-hidden="true" style="margin: 4px 0;"></div>
+                  <label class="check-row">
+                    <input id="soundEffectsToggle" type="checkbox" class="toggle-input">
+                    <span class="toggle-slider"></span>
+                    <span class="toggle-label">Play UI sound effects</span>
+                  </label>
+                  <label class="check-row">
+                    <input id="ambientToggle" type="checkbox" class="toggle-input">
+                    <span class="toggle-slider"></span>
+                    <span class="toggle-label">Play ambient background music</span>
+                  </label>
+                  <label class="settings-label" style="margin-top: 8px;">
+                    <span class="label-text">Music track</span>
+                    <div class="settings-picker" id="musicTrackPicker" data-open="false">
+                      <button type="button" class="settings-picker-button" aria-haspopup="listbox" aria-expanded="false">
+                        <span class="settings-picker-label"></span>
+                        <img class="settings-picker-chevron" src="./assets/chevron.svg" alt="">
+                      </button>
+                      <div class="settings-picker-menu" role="listbox">
+                        <div class="settings-picker-options"></div>
+                      </div>
+                    </div>
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <!-- Shortcuts Tab -->
+            <div class="settings-tab-pane" id="tab-shortcuts">
+              <div class="settings-section">
+                <h3>Keyboard shortcuts</h3>
+                <div class="settings-card">
+                  <div class="settings-grid">
+                    <div class="shortcut-row">
+                      <span class="shortcut-label">New chat</span>
+                      <kbd class="shortcut-key" data-shortcut="new-chat">⌘+⇧+O</kbd>
+                    </div>
+                    <div class="shortcut-row">
+                      <span class="shortcut-label">Search conversations</span>
+                      <kbd class="shortcut-key" data-shortcut="search">⌘+K</kbd>
+                    </div>
+                    <div class="shortcut-row">
+                      <span class="shortcut-label">Open settings</span>
+                      <kbd class="shortcut-key">⌘+,</kbd>
+                    </div>
+                    <div class="shortcut-row">
+                      <span class="shortcut-label">Toggle sidebar</span>
+                      <kbd class="shortcut-key">⌘+B</kbd>
+                    </div>
+                    <div class="shortcut-row">
+                      <span class="shortcut-label">Focus message input</span>
+                      <kbd class="shortcut-key">/</kbd>
+                    </div>
+                    <div class="shortcut-row">
+                      <span class="shortcut-label">Cancel generation</span>
+                      <kbd class="shortcut-key">Esc</kbd>
+                    </div>
+                  </div>
+                  <p class="settings-note" style="margin-top: 16px; margin-bottom: 0;">Keyboard shortcuts help you navigate Vanilla faster. They adapt to your operating system (Cmd on Mac, Ctrl on Windows/Linux).</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Data Tab -->
+            <div class="settings-tab-pane" id="tab-data">
+              <div class="settings-section">
+                <h3>Export &amp; Backup</h3>
+                <div class="settings-card">
+                  <p class="settings-note">Download the current conversation as Markdown, JSON, or a standalone HTML page. You can also pin or rename chats from the sidebar.</p>
+                  <button id="exportChatButton" class="compare-run" type="button">Export current chat…</button>
+                </div>
+              </div>
+              
+              <div class="settings-section">
+                <h3>Troubleshooting</h3>
+                <div class="settings-card">
+                  <p class="settings-note">Need to start fresh? Redo the first-time setup and we'll walk you through everything again.</p>
+                  <button id="redoSetupButton" class="compare-run compare-run-secondary" type="button">Redo the first-time setup</button>
+                </div>
+              </div>
+
+              <div class="settings-section settings-danger-zone">
+                <h3>Danger Zone</h3>
+                <div class="settings-card" style="border: 1px solid rgba(176, 51, 44, 0.2); background: rgba(176, 51, 44, 0.02);">
+                  <p class="settings-note" style="color: #b0332c;">This removes Vanilla Chat completely from your computer—including all your conversations, settings, and the downloaded Ollama runtime. There's no undo button. If you're sure, go ahead.</p>
+                  <button id="uninstallButton" class="uninstall-button" style="margin-top: 0" type="button">Uninstall Vanilla Chat…</button>
+                </div>
+              </div>
+            </div>
           </div>
-        </div>
-        
-        <div class="settings-divider" aria-hidden="true"></div>
-        
-        <div class="settings-section">
-          <h3>AI Model</h3>
-          <div class="settings-grid">
-            <label class="settings-label">
-              <span class="label-text">Provider</span>
-              <div class="settings-picker" id="providerPicker" data-open="false">
-                <button type="button" class="settings-picker-button" aria-haspopup="listbox" aria-expanded="false">
-                  <span class="settings-picker-label"></span>
-                  <img class="settings-picker-chevron" src="./assets/chevron.svg" alt="">
-                </button>
-                <div class="settings-picker-menu" role="listbox">
-                  <div class="settings-picker-options"></div>
-                </div>
-              </div>
-            </label>
-            <label class="settings-label">
-              <span class="label-text">Model</span>
-              <div class="settings-picker" id="settingsModelPicker" data-open="false">
-                <button type="button" class="settings-picker-button" aria-haspopup="listbox" aria-expanded="false">
-                  <span class="settings-picker-label"></span>
-                  <img class="settings-picker-chevron" src="./assets/chevron.svg" alt="">
-                </button>
-                <div class="settings-picker-menu" role="listbox">
-                  <div class="settings-picker-options"></div>
-                </div>
-              </div>
-            </label>
-          </div>
-          <button id="hfInstallButton" class="hf-open-button" type="button">
-            <img class="hf-open-icon" src="./assets/download.svg" alt="">
-            <span class="hf-open-text"><strong>Install a model from HuggingFace</strong><small>Search GGUF models, download, and import them into Ollama locally</small></span>
-          </button>
-        </div>
-        
-        <div class="settings-section">
-          <h3>Providers &amp; API keys</h3>
-          <p class="settings-note">Keys are stored in your browser. Providers without a key are hidden from the model picker.</p>
-          <label class="check-row">
-            <input id="lmStudioToggle" type="checkbox">
-            <span>Enable LM Studio (Local)</span>
-          </label>
-          <div id="lmStudioSetupHint" class="lmstudio-hint" hidden>
-            <p>To use LM Studio models:</p>
-            <ol>
-              <li>Open <strong>LM Studio</strong>.</li>
-              <li>Go to the <strong>Developer</strong> tab in the left sidebar.</li>
-              <li>In the <strong>Local Server</strong> section, click <strong>Start Server</strong>.</li>
-            </ol>
-            <p>The local API server runs at <code>http://localhost:1234/v1</code>. Load a model in LM Studio, then check the connection below.</p>
-            <div class="lmstudio-check-row">
-              <button id="lmStudioCheckButton" class="compare-run" type="button">Check connection</button>
-              <span id="lmStudioStatus" class="lmstudio-status" hidden></span>
-            </div>
-          </div>
-          <p class="settings-sub-label">Local &amp; CLI tools</p>
-          <label class="check-row">
-            <input id="aiderToggle" type="checkbox">
-            <span>Enable Aider CLI</span>
-          </label>
-          <label class="check-row">
-            <input id="gooseToggle" type="checkbox">
-            <span>Enable Goose CLI</span>
-          </label>
-          <label class="check-row">
-            <input id="openCodeToggle" type="checkbox">
-            <span>Enable OpenCode CLI</span>
-          </label>
-          <div id="apiKeysList" class="api-keys-list"></div>
-        </div>
-        
-        <div class="settings-section">
-          <h3>Chat</h3>
-          <label class="settings-label">
-            <div class="label-row">
-              <span class="label-text">Custom system prompt</span>
-              <span id="customPromptBadge" class="custom-prompt-badge" hidden>Active</span>
-            </div>
-            <span class="label-help">Add instructions to customize how the AI responds. Think of this as setting the personality, expertise level, or style you want. Examples: "Be concise and use analogies," "You're a senior developer who prefers functional programming," or "Explain like I'm learning for the first time."</span>
-            <textarea id="customPromptInput" class="settings-textarea" rows="4" placeholder="e.g., You are a helpful coding assistant who prefers functional programming..." spellcheck="true"></textarea>
-          </label>
-          <div class="settings-divider" aria-hidden="true"></div>
-          <label class="check-row">
-            <input id="webSearchToggle" type="checkbox">
-            <span>Search the web for fresh answers</span>
-          </label>
-          <label class="settings-label">
-            <span class="label-text">Search engine</span>
-            <div class="settings-picker" id="searchBackendPicker" data-open="false">
-              <button type="button" class="settings-picker-button" aria-haspopup="listbox" aria-expanded="false">
-                <span class="settings-picker-label"></span>
-                <img class="settings-picker-chevron" src="./assets/chevron.svg" alt="">
-              </button>
-              <div class="settings-picker-menu" role="listbox">
-                <div class="settings-picker-options"></div>
-              </div>
-            </div>
-          </label>
-          <label id="braveKeyRow" class="settings-label" hidden>
-            <span class="label-text">Brave Search API key</span>
-            <input id="braveApiKeyInput" class="settings-input" type="password" placeholder="Paste your Brave API key" autocomplete="off" spellcheck="false">
-          </label>
-          <span class="label-help" style="display:block;margin-top:8px">DuckDuckGo works with no key. Brave gives cleaner results but needs a free API key from <code>api.search.brave.com</code>. When enabled, the latest question is searched before answering.</span>
-        </div>
-        
-        <div class="settings-divider" aria-hidden="true"></div>
-        
-        <div class="settings-section">
-          <h3>Dictation</h3>
-          <label class="settings-label">
-            <span class="label-text">Voice recognition engine</span>
-            <div class="settings-picker" id="dictationEnginePicker" data-open="false">
-              <button type="button" class="settings-picker-button" aria-haspopup="listbox" aria-expanded="false">
-                <span class="settings-picker-label"></span>
-                <img class="settings-picker-chevron" src="./assets/chevron.svg" alt="">
-              </button>
-              <div class="settings-picker-menu" role="listbox">
-                <div class="settings-picker-options"></div>
-              </div>
-            </div>
-          </label>
-          <p class="settings-note" id="dictationEngineNote"></p>
-        </div>
-        
-        <div class="settings-divider" aria-hidden="true"></div>
-        
-        <div class="settings-section">
-          <h3>UI</h3>
-          <div class="settings-grid settings-grid-2col">
-            <label class="settings-label">
-              <span class="label-text">Theme</span>
-              <div class="settings-picker" id="themePicker" data-open="false">
-                <button type="button" class="settings-picker-button" aria-haspopup="listbox" aria-expanded="false">
-                  <span class="settings-picker-label"></span>
-                  <img class="settings-picker-chevron" src="./assets/chevron.svg" alt="">
-                </button>
-                <div class="settings-picker-menu" role="listbox">
-                  <div class="settings-picker-options"></div>
-                </div>
-              </div>
-            </label>
-            <label class="settings-label">
-              <span class="label-text">Density</span>
-              <div class="settings-picker" id="densityPicker" data-open="false">
-                <button type="button" class="settings-picker-button" aria-haspopup="listbox" aria-expanded="false">
-                  <span class="settings-picker-label"></span>
-                  <img class="settings-picker-chevron" src="./assets/chevron.svg" alt="">
-                </button>
-                <div class="settings-picker-menu" role="listbox">
-                  <div class="settings-picker-options"></div>
-                </div>
-              </div>
-            </label>
-            <label class="settings-label">
-              <span class="label-text">Text size</span>
-              <div class="settings-picker" id="textSizePicker" data-open="false">
-                <button type="button" class="settings-picker-button" aria-haspopup="listbox" aria-expanded="false">
-                  <span class="settings-picker-label"></span>
-                  <img class="settings-picker-chevron" src="./assets/chevron.svg" alt="">
-                </button>
-                <div class="settings-picker-menu" role="listbox">
-                  <div class="settings-picker-options"></div>
-                </div>
-              </div>
-            </label>
-            <label class="settings-label">
-              <span class="label-text">Message accent</span>
-              <div class="settings-picker" id="accentPicker" data-open="false">
-                <button type="button" class="settings-picker-button" aria-haspopup="listbox" aria-expanded="false">
-                  <span class="settings-picker-label"></span>
-                  <img class="settings-picker-chevron" src="./assets/chevron.svg" alt="">
-                </button>
-                <div class="settings-picker-menu" role="listbox">
-                  <div class="settings-picker-options"></div>
-                </div>
-              </div>
-            </label>
-            <label class="settings-label">
-              <span class="label-text">Assistant logo</span>
-              <div class="settings-picker" id="logoPositionPicker" data-open="false">
-                <button type="button" class="settings-picker-button" aria-haspopup="listbox" aria-expanded="false">
-                  <span class="settings-picker-label"></span>
-                  <img class="settings-picker-chevron" src="./assets/chevron.svg" alt="">
-                </button>
-                <div class="settings-picker-menu" role="listbox">
-                  <div class="settings-picker-options"></div>
-                </div>
-              </div>
-            </label>
-          </div>
-        </div>
-        
-        <div class="settings-divider" aria-hidden="true"></div>
-        
-        <div class="settings-section">
-          <h3>Keyboard shortcuts</h3>
-          <div class="settings-grid">
-            <div class="shortcut-row">
-              <span class="shortcut-label">New chat</span>
-              <kbd class="shortcut-key" data-shortcut="new-chat">⌘+⇧+O</kbd>
-            </div>
-            <div class="shortcut-row">
-              <span class="shortcut-label">Search conversations</span>
-              <kbd class="shortcut-key" data-shortcut="search">⌘+K</kbd>
-            </div>
-            <div class="shortcut-row">
-              <span class="shortcut-label">Open settings</span>
-              <kbd class="shortcut-key">⌘+,</kbd>
-            </div>
-            <div class="shortcut-row">
-              <span class="shortcut-label">Toggle sidebar</span>
-              <kbd class="shortcut-key">⌘+B</kbd>
-            </div>
-            <div class="shortcut-row">
-              <span class="shortcut-label">Focus message input</span>
-              <kbd class="shortcut-key">/</kbd>
-            </div>
-            <div class="shortcut-row">
-              <span class="shortcut-label">Cancel generation</span>
-              <kbd class="shortcut-key">Esc</kbd>
-            </div>
-          </div>
-          <p class="settings-note">Keyboard shortcuts help you navigate Vanilla faster. They adapt to your operating system (Cmd on Mac, Ctrl on Windows/Linux).</p>
-        </div>
-        
-        <div class="settings-divider" aria-hidden="true"></div>
-        
-        <div class="settings-section">
-          <h3>Preferences</h3>
-          <div class="settings-options">
-            <label class="check-row">
-              <input id="sidebarOpenToggle" type="checkbox">
-              <span>Open sidebar by default</span>
-            </label>
-            <label class="check-row">
-              <input id="reduceMotionToggle" type="checkbox">
-              <span>Reduce motion and animations</span>
-            </label>
-            <label class="check-row">
-              <input id="enterToSendToggle" type="checkbox">
-              <span>Press Enter to send (Shift+Enter for new line)</span>
-            </label>
-            <label class="check-row">
-              <input id="showStatsToggle" type="checkbox">
-              <span>Show system stats in the top bar</span>
-            </label>
-            <label class="check-row">
-              <input id="soundEffectsToggle" type="checkbox">
-              <span>Play UI sound effects</span>
-            </label>
-            <label class="check-row">
-              <input id="ambientToggle" type="checkbox">
-              <span>Play ambient background music</span>
-            </label>
-            <label class="settings-label">
-              <span class="label-text">Music track</span>
-              <div class="settings-picker" id="musicTrackPicker" data-open="false">
-                <button type="button" class="settings-picker-button" aria-haspopup="listbox" aria-expanded="false">
-                  <span class="settings-picker-label"></span>
-                  <img class="settings-picker-chevron" src="./assets/chevron.svg" alt="">
-                </button>
-                <div class="settings-picker-menu" role="listbox">
-                  <div class="settings-picker-options"></div>
-                </div>
-              </div>
-            </label>
-            <label class="check-row">
-              <input id="autoNameToggle" type="checkbox">
-              <span>Auto-name chats with AI</span>
-            </label>
-            <label class="check-row">
-              <input id="compareToggle" type="checkbox">
-              <span>Show the compare-models tool</span>
-            </label>
-          </div>
-          <p class="settings-note">When auto-naming is enabled, Vanilla generates smart titles right after your first exchange. It uses a small local model (~350&nbsp;MB) downloaded through Ollama. You can always rename any chat manually using the button in the sidebar.</p>
-        </div>
-        
-        <div class="settings-divider" aria-hidden="true"></div>
-        
-        <div class="settings-section">
-          <h3>Export</h3>
-          <p class="settings-note">Download the current conversation as Markdown, JSON, or a standalone HTML page. You can also pin or rename chats from the sidebar.</p>
-          <button id="exportChatButton" class="compare-run" type="button">Export current chat…</button>
-        </div>
-        
-        <div class="settings-divider" aria-hidden="true"></div>
-        
-        <div class="settings-section settings-danger-zone">
-          <h3>Uninstall</h3>
-          <p class="settings-note">This removes Vanilla Chat completely from your computer—including all your conversations, settings, and the downloaded Ollama runtime. There's no undo button. If you're sure, go ahead.</p>
-          <button id="uninstallButton" class="uninstall-button" type="button">Uninstall Vanilla Chat…</button>
-        </div>
-        
-        <div class="settings-divider" aria-hidden="true"></div>
-        
-        <div class="settings-footer">
-          <p class="settings-note">Themes live in <code>themes/</code>. Provider and model options come from your configured server. Custom system prompts are applied at the start of each conversation to shape the AI's behavior and tone.</p>
-          <p class="settings-note">Need to start fresh? <button id="redoSetupButton" class="settings-link-button" type="button">Redo the first-time setup</button> and we'll walk you through everything again.</p>
         </div>
       </section>
     </div>
@@ -890,6 +973,7 @@
     <script src="/node_modules/vosk-browser/dist/vosk.js"></script>
     <script src="./sounds.js" defer></script>
     <script src="./ambience.js" defer></script>
+    <script src="./settings-ui.js" defer></script>
     <script src="./app.js" defer></script>
   </body>
 </html>
