@@ -177,13 +177,6 @@ button img,
   width: 117px;
   height: auto;
   display: block;
-  animation: mascot-float 5s ease-in-out infinite;
-  transition: transform 220ms ease;
-}
-
-.brand:hover .brand-logo {
-  animation-duration: 2.4s;
-  transform: scale(1.03) rotate(-1deg);
 }
 
 .icon-button {
@@ -203,7 +196,6 @@ button img,
 }
 
 .icon-button,
-.side-command,
 .conversation-row,
 .message-action,
 .pill-tool,
@@ -247,7 +239,6 @@ button img,
 }
 
 .side-command:hover {
-  background: rgba(0, 0, 0, 0.07);
   background: rgba(0, 0, 0, 0.04);
 }
 
@@ -263,7 +254,8 @@ button img,
   flex-shrink: 0;
 }
 
-.command-main img {
+.command-main img,
+.command-main .new-chat-icon {
   width: 20px;
   height: 20px;
   object-fit: contain;
@@ -473,10 +465,36 @@ button img,
   z-index: 3;
 }
 
-.conversation-rename img {
+.conversation-rename img,
+.conversation-rename .new-chat-icon {
   width: 14px;
   height: 14px;
-  filter: invert(60%) sepia(0%) saturate(0%) hue-rotate(0deg);
+}
+
+.conversation-rename .new-chat-icon {
+  display: block;
+  overflow: visible;
+}
+
+.conversation-rename .pencil {
+  transform-origin: bottom right;
+  transition: transform 180ms ease;
+}
+
+.conversation-rename:hover .pencil {
+  animation: pencil-wave-vertical 500ms ease-in-out;
+}
+
+@keyframes pencil-wave-vertical {
+  0%, 100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  25% {
+    transform: translateY(-2px) rotate(-3deg);
+  }
+  75% {
+    transform: translateY(2px) rotate(3deg);
+  }
 }
 
 .conversation-rename:hover {
@@ -486,6 +504,10 @@ button img,
 
 .conversation-rename:hover img {
   filter: invert(42%) sepia(48%) saturate(807%) hue-rotate(173deg) brightness(93%) contrast(89%);
+}
+
+.conversation-rename:hover .new-chat-icon {
+  color: #307ab1;
 }
 
 .conversation-rename:disabled {
@@ -613,15 +635,30 @@ button img,
   background: rgba(48, 122, 177, 0.12);
 }
 
-.conversation-delete img {
+.conversation-delete .trash-icon {
   width: 14px;
   height: 14px;
-  filter: invert(60%) sepia(0%) saturate(0%) hue-rotate(0deg);
+  color: #a5a5a5;
+  display: block;
+  overflow: visible;
+}
+
+.conversation-delete .trash-can-lid {
+  transform-origin: 100% 50%;
   transition: transform 180ms ease;
 }
 
-.conversation-delete:hover img {
-  transform: rotate(-9deg) translateY(1px);
+.conversation-delete:hover .trash-can-lid {
+  animation: trash-lid-open 300ms ease-out forwards;
+}
+
+@keyframes trash-lid-open {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(-45deg);
+  }
 }
 
 .conversation-row:hover,
@@ -661,8 +698,8 @@ button img,
   background: rgba(0, 0, 0, 0.06);
 }
 
-.conversation-delete:hover img {
-  filter: invert(21%) sepia(72%) saturate(2456%) hue-rotate(349deg) brightness(88%) contrast(86%);
+.conversation-delete:hover .trash-icon {
+  color: #b0332c;
 }
 
 .conversation-delete.is-armed {
@@ -718,13 +755,16 @@ button img,
   background-color: rgba(0, 0, 0, 0.07);
 }
 
-.collapsed-action img {
+.collapsed-action img,
+.collapsed-action .new-chat-icon {
   width: 20px;
   height: 20px;
   opacity: 0.8;
+  transition: opacity 150ms ease;
 }
 
-.collapsed-action:hover img {
+.collapsed-action:hover img,
+.collapsed-action:hover .new-chat-icon {
   opacity: 1;
 }
 
@@ -3647,10 +3687,6 @@ body[data-reduce-motion="true"] *::after {
   opacity: 0.85;
 }
 
-.setup-primary:hover:not(:disabled) svg {
-  transform: translateX(2px);
-}
-
 .setup-primary:disabled {
   opacity: 0.35;
   cursor: not-allowed;
@@ -3748,15 +3784,6 @@ body[data-reduce-motion="true"] *::after {
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
-}
-
-.retry-button:hover {
-  opacity: 0.9;
-  transform: translateY(-1px);
-}
-
-.retry-button:active {
-  transform: translateY(0);
 }
 
 /* Toast notifications */

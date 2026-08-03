@@ -18,6 +18,7 @@ process.chdir(IS_PACKAGED ? app.getPath('userData') : APP_ROOT);
 process.env.VANILLA_PACKAGED = IS_PACKAGED ? '1' : '0';
 process.env.VANILLA_USER_DATA = app.getPath('userData');
 process.env.VANILLA_OLLAMA_DIR = path.join(app.getPath('userData'), 'vanilla-chat', 'ollama');
+process.env.VANILLA_WHISPER_DIR = path.join(app.getPath('userData'), 'vanilla-chat', 'whisper');
 if (IS_PACKAGED) {
   process.env.VANILLA_APP_PATH = path.resolve(APP_ROOT, '..', '..', '..');
 }
