@@ -104,7 +104,7 @@ class LMStudioProvider extends Provider {
             'Content-Type': 'application/json',
             ...(this.apiKey ? { 'Authorization': `Bearer ${this.apiKey}` } : {}),
           },
-          timeout: this.timeout,
+          timeout: 0,  // No timeout - streaming can take a long time
         },
         (res) => {
           if (res.statusCode >= 400) {

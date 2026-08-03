@@ -133,6 +133,10 @@
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="18" rx="1.5"/><rect x="14" y="3" width="7" height="18" rx="1.5"/></svg>
                 <span>compare</span>
               </button>
+              <button class="pill-tool" type="button" data-tool="search" title="Toggle web search for fresh answers">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+                <span id="searchPillLabel">search</span>
+              </button>
               <button class="pill-tool" type="button" data-tool="prompt" title="Set instructions for this chat">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
                 <span id="promptPillLabel">prompt</span>
@@ -260,6 +264,28 @@
             <span class="label-help">Add instructions to customize how the AI responds. Think of this as setting the personality, expertise level, or style you want. Examples: "Be concise and use analogies," "You're a senior developer who prefers functional programming," or "Explain like I'm learning for the first time."</span>
             <textarea id="customPromptInput" class="settings-textarea" rows="4" placeholder="e.g., You are a helpful coding assistant who prefers functional programming..." spellcheck="true"></textarea>
           </label>
+          <div class="settings-divider" aria-hidden="true"></div>
+          <label class="check-row">
+            <input id="webSearchToggle" type="checkbox">
+            <span>Search the web for fresh answers</span>
+          </label>
+          <label class="settings-label">
+            <span class="label-text">Search engine</span>
+            <div class="settings-picker" id="searchBackendPicker" data-open="false">
+              <button type="button" class="settings-picker-button" aria-haspopup="listbox" aria-expanded="false">
+                <span class="settings-picker-label"></span>
+                <img class="settings-picker-chevron" src="./assets/chevron.svg" alt="">
+              </button>
+              <div class="settings-picker-menu" role="listbox">
+                <div class="settings-picker-options"></div>
+              </div>
+            </div>
+          </label>
+          <label id="braveKeyRow" class="settings-label" hidden>
+            <span class="label-text">Brave Search API key</span>
+            <input id="braveApiKeyInput" class="settings-input" type="password" placeholder="Paste your Brave API key" autocomplete="off" spellcheck="false">
+          </label>
+          <span class="label-help" style="display:block;margin-top:8px">DuckDuckGo works with no key. Brave gives cleaner results but needs a free API key from <code>api.search.brave.com</code>. When enabled, the latest question is searched before answering.</span>
         </div>
         
         <div class="settings-divider" aria-hidden="true"></div>

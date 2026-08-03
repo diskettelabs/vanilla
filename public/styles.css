@@ -1743,6 +1743,18 @@ body[data-assistant-logo="top"] .assistant-mark {
   animation: pulse-recording 1.5s ease-in-out infinite;
 }
 
+.pill-tool[data-tool="search"][data-active="true"] {
+  background: #0284c7;
+  border-color: #0284c7;
+  color: white;
+  animation: none;
+}
+
+.pill-tool[data-tool="search"][data-active="true"] img,
+.pill-tool[data-tool="search"][data-active="true"] svg {
+  opacity: 1;
+}
+
 .pill-tool[data-active="true"] img {
   opacity: 1;
   filter: brightness(0) invert(1);

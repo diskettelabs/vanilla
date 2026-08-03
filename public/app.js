@@ -71,6 +71,10 @@ const els = {
   openCodeToggle: document.querySelector("#openCodeToggle"),
   customPromptInput: document.querySelector("#customPromptInput"),
   customPromptBadge: document.querySelector("#customPromptBadge"),
+  webSearchToggle: document.querySelector("#webSearchToggle"),
+  searchBackendPicker: document.querySelector("#searchBackendPicker"),
+  braveApiKeyInput: document.querySelector("#braveApiKeyInput"),
+  braveKeyRow: document.querySelector("#braveKeyRow"),
   cpuStat: document.querySelector("#cpuStat"),
   gpuStat: document.querySelector("#gpuStat"),
   ramStat: document.querySelector("#ramStat"),
@@ -161,6 +165,9 @@ const state = {
     assistantLogo: localStorage.getItem("vanilla-assistant-logo") || "side",
     userName: localStorage.getItem("vanilla-user-name") || "",
     customPrompt: localStorage.getItem("vanilla-custom-prompt") || "",
+    webSearch: localStorage.getItem("vanilla-web-search") !== "false",
+    searchBackend: localStorage.getItem("vanilla-search-backend") || "duckduckgo",
+    braveApiKey: localStorage.getItem("vanilla-brave-key") || "",
   },
 };
 
@@ -1324,7 +1331,7 @@ async function streamChat(conversationId, message) {
   state.tokenQueue = "";
   state.tokenText = "";
 
-  state.activeAssistant.textContent = "Loading model...";
+  state.activeAssistant.textContent = state.settings.webSearch ? "Searching the web…" : "Loading model...";
   pumpTokens();
 
   const convPrompt = state.activeConversation?.customPrompt?.trim()
@@ -1346,6 +1353,9 @@ async function streamChat(conversationId, message) {
         provider: state.currentProvider,
         apiKey: getApiKey(state.currentProvider) || undefined,
         customPrompt,
+        search: state.settings.webSearch,
+        searchBackend: state.settings.searchBackend,
+        searchApiKey: state.settings.searchBackend === "brave" ? (state.settings.braveApiKey || "") : undefined,
       }),
       signal: controller.signal,
     });
@@ -1998,6 +2008,14 @@ function bindSettingsDropdowns() {
     { value: "audio:paper-lantern-rain.mp3", label: "Paper Lantern Rain" },
     { value: "audio:dust-on-the-morning-keys.mp3", label: "Dust on the Morning Keys" },
   ]);
+  dropdowns.searchBackend = createSettingsDropdown(els.searchBackendPicker, () => {
+    state.settings.searchBackend = dropdowns.searchBackend.value;
+    applySettings();
+  });
+  dropdowns.searchBackend.setOptions([
+    { value: "duckduckgo", label: "DuckDuckGo (no key)" },
+    { value: "brave", label: "Brave Search (API key)" },
+  ]);
 }
 
 function syncSettingsSelects() {
@@ -2065,6 +2083,18 @@ function applySettings() {
   if (els.gooseToggle) els.gooseToggle.checked = settings.showGoose;
   if (els.openCodeToggle) els.openCodeToggle.checked = settings.showOpenCode;
   if (els.autoNameToggle) els.autoNameToggle.checked = settings.autoName;
+  if (els.webSearchToggle) els.webSearchToggle.checked = settings.webSearch;
+  const searchPill = document.querySelector('[data-tool="search"]');
+  if (searchPill) {
+    searchPill.dataset.active = String(settings.webSearch);
+    searchPill.setAttribute("aria-pressed", String(settings.webSearch));
+  }
+  if (dropdowns.searchBackend) dropdowns.searchBackend.setValue(settings.searchBackend);
+  if (els.braveKeyRow) els.braveKeyRow.hidden = settings.searchBackend !== "brave";
+  if (els.braveApiKeyInput && document.activeElement !== els.braveApiKeyInput) {
+    els.braveApiKeyInput.value = settings.braveApiKey || "";
+  }
+  if (els.searchBackendPicker) els.searchBackendPicker.dataset.disabled = String(!settings.webSearch);
   if (els.displayNameInput && document.activeElement !== els.displayNameInput) {
     els.displayNameInput.value = settings.userName || "";
   }
@@ -2109,6 +2139,9 @@ function applySettings() {
   localStorage.setItem("vanilla-assistant-logo", settings.assistantLogo);
   localStorage.setItem("vanilla-user-name", settings.userName || "");
   localStorage.setItem("vanilla-custom-prompt", settings.customPrompt || "");
+  localStorage.setItem("vanilla-web-search", String(settings.webSearch));
+  localStorage.setItem("vanilla-search-backend", settings.searchBackend);
+  localStorage.setItem("vanilla-brave-key", settings.braveApiKey || "");
   applyCompareVisibility();
 }
 
@@ -2594,7 +2627,10 @@ function bindEvents() {
   els.compareRunButton.addEventListener("click", runCompare);
   els.compareStopButton.addEventListener("click", stopCompare);
   document.querySelector('[data-tool="prompt"]')?.addEventListener("click", openPromptModal);
-  els.conversationPromptSave.addEventListener("click", saveConversationPrompt);
+  document.querySelector('[data-tool="search"]')?.addEventListener("click", () => {
+    state.settings.webSearch = !state.settings.webSearch;
+    applySettings();
+  });  els.conversationPromptSave.addEventListener("click", saveConversationPrompt);
   els.conversationPromptClear.addEventListener("click", clearConversationPrompt);
   els.uninstallButton.addEventListener("click", uninstallApp);
   els.uninstallConfirmButton.addEventListener("click", doUninstall);
@@ -2660,6 +2696,18 @@ function bindEvents() {
     state.settings.enterToSend = els.enterToSendToggle.checked;
     applySettings();
   });
+  if (els.webSearchToggle) {
+    els.webSearchToggle.addEventListener("change", () => {
+      state.settings.webSearch = els.webSearchToggle.checked;
+      applySettings();
+    });
+  }
+  if (els.braveApiKeyInput) {
+    els.braveApiKeyInput.addEventListener("input", () => {
+      state.settings.braveApiKey = els.braveApiKeyInput.value.trim();
+      applySettings();
+    });
+  }
   els.showStatsToggle.addEventListener("change", () => {
     state.settings.showStats = els.showStatsToggle.checked;
     applySettings();

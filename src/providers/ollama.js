@@ -58,7 +58,6 @@ class OllamaProvider extends Provider {
       messages, 
       stream: true,
       options: {
-        num_predict: 2048,  // Allow longer responses
         temperature: 0.7,
         top_p: 0.9
       }

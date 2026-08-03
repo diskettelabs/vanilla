@@ -5,6 +5,7 @@ const uploads = require('./upload');
 const hf = require('./huggingface');
 const titles = require('./titles');
 const uninstall = require('./uninstall');
+const { searchWeb } = require('./search');
 const https = require('https');
 const { formatErrorForClient, formatErrorForLog, parseError } = require('./errors');
 
@@ -556,6 +557,22 @@ function register(app) {
     });
   });
 
+  // Web search (test endpoint; the stream route also searches inline)
+  app.get('/api/websearch', async (req, res) => {
+    const query = (req.query.q || '').trim();
+    if (!query) {
+      return res.status(400).json({ error: 'Missing query', action: 'Pass ?q=your search query' });
+    }
+    const backend = req.query.backend || 'duckduckgo';
+    const apiKey = req.query.key || '';
+    try {
+      const results = await searchWeb(query, { backend, apiKey });
+      res.json({ backend, results });
+    } catch (e) {
+      res.status(502).json({ error: e.message });
+    }
+  });
+
   // Streaming chat
   app.post('/api/chat/stream', async (req, res) => {
     const { conversationId, message, model, provider: providerName, customPrompt, apiKey } = req.body || {};
@@ -618,6 +635,29 @@ function register(app) {
       } else {
         // Replace existing system message with custom one
         chatMessages[0] = { role: 'system', content: customPrompt.trim() };
+      }
+    }
+
+    // Web search: fetch results for the latest user message and inject as context
+    if (req.body?.search && chatMessages.length > 0) {
+      const last = chatMessages[chatMessages.length - 1];
+      if (last.role === 'user' && typeof last.content === 'string' && last.content.trim()) {
+        const backend = req.body.searchBackend || 'duckduckgo';
+        const searchKey = req.body.searchApiKey || '';
+        const query = last.content.trim();
+        let results = [];
+        try {
+          results = await searchWeb(query, { backend, apiKey: searchKey });
+        } catch (e) {
+          console.error('[Search Error]', e.message);
+        }
+        if (results.length > 0) {
+          console.error(`[Search] ${backend}: ${results.length} results injected for "${query.slice(0, 60)}"`);
+          const context = `Web search results for "${query.slice(0, 300)}":\n\n${results
+            .map((r, i) => `[${i + 1}] ${r.title}\n${r.url}\n${r.snippet}`)
+            .join('\n\n')}\n\nUse these results to answer the user's question when relevant, and cite sources by their numbers. If the results don't cover the question, say so rather than guessing.`;
+          chatMessages.splice(chatMessages.length - 1, 0, { role: 'system', content: context });
+        }
       }
     }
 
