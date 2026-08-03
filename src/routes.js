@@ -7,11 +7,14 @@ const titles = require('./titles');
 const uninstall = require('./uninstall');
 const { searchWeb } = require('./search');
 const https = require('https');
+const fs = require('fs');
+const path = require('path');
 const { formatErrorForClient, formatErrorForLog, parseError } = require('./errors');
 
 const CONFIG = require('../config/default.json');
 
 const activeStreams = new Map();
+const THEMES_DIR = path.join(__dirname, '..', 'themes');
 
 function mergeConfig(providerName, apiKey) {
   return {
@@ -63,6 +66,36 @@ function register(app) {
 
   // Health
   app.get('/api/health', (_req, res) => res.json({ status: 'ok' }));
+
+  // Theme catalog: list available theme JSON files in themes/
+  app.get('/api/themes', (_req, res) => {
+    try {
+      const themes = fs
+        .readdirSync(THEMES_DIR)
+        .filter((file) => file.endsWith('.json'))
+        .map((file) => file.replace(/\.json$/, ''))
+        .map((name) => {
+          try {
+            const data = JSON.parse(fs.readFileSync(path.join(THEMES_DIR, `${name}.json`), 'utf8'));
+            return {
+              name,
+              displayName: data.displayName || name,
+              description: data.description || '',
+              version: data.version || '1.0.0',
+              author: data.author || '',
+              accent: data.accent || '',
+              hasLogo: Boolean(data.logo),
+              hasMascot: Boolean(data.mascot),
+            };
+          } catch {
+            return { name, displayName: name, description: '' };
+          }
+        });
+      res.json({ themes });
+    } catch (e) {
+      res.status(500).json({ error: 'Failed to read the themes directory', details: e.message });
+    }
+  });
 
   // System stats
   app.get('/api/system/stats', (_req, res) => {

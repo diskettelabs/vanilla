@@ -16,8 +16,21 @@ const ASSET = {
   download: "./assets/download.svg",
 };
 
-const MASCOT_SVG = (className = "mascot-svg") => `
-<svg class="${className}" viewBox="-5 -5 58 54" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+let themeMascot = null;
+let themeGreeting = false;
+let themePlaceholder = false;
+let themeStylesEl = null;
+let themeFaviconLink = null;
+const originalBrandLogo = document.querySelector(".brand-logo")?.outerHTML || null;
+const originalEmptyMascot = document.querySelector("#emptyState .empty-mascot")?.outerHTML || null;
+const originalTitle = document.title;
+
+function MASCOT_SVG(className = "mascot-svg") {
+  if (themeMascot) {
+    const svg = themeMascot.trim();
+    return svg.startsWith("<svg") ? svg.replace(/^<svg/, `<svg class="${className}"`) : svg;
+  }
+  return `<svg class="${className}" viewBox="-5 -5 58 54" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
   <g fill="currentColor">
     <path d="M42.361,18.136 C42.361,20.338 41.992,22.493 41.274,24.536 C43.102,26.216 44.187,28.561 44.187,31.091 C44.187,36.143 39.911,40.187 34.696,40.187 C32.046,40.187 29.594,39.136 27.848,37.384 C26.101,39.136 23.649,40.187 21,40.187 C18.351,40.187 15.899,39.136 14.152,37.384 C12.406,39.136 9.954,40.187 7.304,40.187 C2.089,40.187 -2.187,36.143 -2.187,31.091 C-2.187,28.561 -1.102,26.216 0.726,24.536 C0.008,22.493 -0.361,20.338 -0.361,18.136 C-0.361,6.884 9.229,-2.187 21,-2.187 C32.771,-2.187 42.361,6.884 42.361,18.136 Z M4.013,18.136 C4.013,20.308 4.474,22.415 5.359,24.369 C5.815,25.377 5.447,26.567 4.501,27.141 C3.059,28.015 2.187,29.491 2.187,31.091 C2.187,33.671 4.452,35.813 7.304,35.813 C9.49,35.813 11.393,34.539 12.116,32.7 C12.843,30.85 15.46,30.85 16.187,32.699 C16.911,34.539 18.814,35.813 21,35.813 C23.186,35.813 25.089,34.539 25.812,32.7 C26.538,30.85 29.156,30.85 29.883,32.699 C30.606,34.539 32.51,35.813 34.696,35.813 C37.548,35.813 39.813,33.671 39.813,31.091 C39.813,29.491 38.941,28.015 37.499,27.141 C36.553,26.567 36.185,25.377 36.641,24.369 C37.526,22.415 37.987,20.308 37.987,18.136 C37.987,9.356 30.408,2.187 21,2.187 C11.592,2.187 4.013,9.356 4.013,18.136 Z" fill-rule="nonzero"/>
   </g>
@@ -26,6 +39,7 @@ const MASCOT_SVG = (className = "mascot-svg") => `
     <g transform="translate(25.73,17.93)"><rect class="mascot-eye mascot-eye-r" x="-2.09" y="-5.68" width="4.18" height="11.36" rx="2.09" fill="#000000"/></g>
   </g>
 </svg>`;
+}
 
 const TRASH_SVG = `
 <svg class="trash-icon" width="14" height="14" viewBox="0 0 17 20" xmlns="http://www.w3.org/2000/svg">
@@ -331,6 +345,7 @@ function applyName(text) {
 }
 
 function chooseGreeting() {
+  if (themeGreeting) return;
   const hour = new Date().getHours();
   const name = getUserName();
   const timeSpecific = [];
@@ -935,6 +950,7 @@ let placeholderIndex = 0;
 
 function startPlaceholderRotation() {
   setInterval(() => {
+    if (themePlaceholder) return;
     placeholderIndex = (placeholderIndex + 1) % PROMPT_PLACEHOLDERS.length;
     els.promptInput.placeholder = PROMPT_PLACEHOLDERS[placeholderIndex];
   }, 8000);
@@ -2134,6 +2150,82 @@ function titleCase(value) {
   return value.replace(/-/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
+function injectClass(svg, classNames) {
+  if (!classNames) return svg;
+  const cleaned = svg.replace(/^<svg([^>]*?)\sclass="[^"]*"/i, "<svg$1");
+  return cleaned.replace(/^<svg([^>]*)>/, (whole, rest) => `<svg class="${classNames}"${rest}>`);
+}
+
+function applyTheme(theme) {
+  const root = document.documentElement;
+  const colors = theme?.colors;
+
+  if (colors) {
+    root.style.setProperty("--bg", colors.background);
+    root.style.setProperty("--text", colors.text);
+    root.style.setProperty("--bubble", colors.userMessage);
+    root.style.setProperty("--line", colors.border);
+    root.style.setProperty("--panel", colors.assistantMessage);
+    root.style.setProperty("--panel-strong", colors.secondary || colors.assistantMessage);
+    root.style.setProperty("--soft", colors.assistantMessage);
+    if (colors.surface) root.style.setProperty("--surface", colors.surface);
+    else root.style.removeProperty("--surface");
+  } else {
+    ["--bg", "--text", "--bubble", "--line", "--panel", "--panel-strong", "--soft", "--surface"].forEach((property) => {
+      root.style.removeProperty(property);
+    });
+  }
+
+  if (theme?.accent) root.style.setProperty("--accent", theme.accent);
+  else root.style.removeProperty("--accent");
+
+  const brand = document.querySelector(".brand-logo");
+  if (brand) {
+    brand.outerHTML = theme?.logo ? injectClass(theme.logo, "brand-logo") : (originalBrandLogo || brand.outerHTML);
+  }
+
+  themeMascot = theme?.mascot || null;
+  const emptyMascot = document.querySelector("#emptyState .empty-mascot");
+  if (emptyMascot) {
+    emptyMascot.outerHTML = theme?.mascot ? injectClass(theme.mascot, "empty-mascot mascot-svg") : (originalEmptyMascot || emptyMascot.outerHTML);
+  }
+
+  if (theme?.appName) document.title = theme.appName;
+  else document.title = originalTitle;
+
+  if (theme?.favicon) {
+    if (!themeFaviconLink) {
+      themeFaviconLink = document.createElement("link");
+      themeFaviconLink.rel = "icon";
+      document.head.appendChild(themeFaviconLink);
+    }
+    themeFaviconLink.href = theme.favicon;
+  } else if (themeFaviconLink) {
+    themeFaviconLink.remove();
+    themeFaviconLink = null;
+  }
+
+  const hadThemedGreeting = themeGreeting;
+  themeGreeting = Boolean(theme?.greeting);
+  if (themeGreeting && els.greeting) els.greeting.textContent = theme.greeting;
+  else if (hadThemedGreeting) chooseGreeting();
+
+  themePlaceholder = Boolean(theme?.placeholder);
+  if (themePlaceholder && els.promptInput) els.promptInput.placeholder = theme.placeholder;
+
+  if (theme?.styles) {
+    if (!themeStylesEl) {
+      themeStylesEl = document.createElement("style");
+      themeStylesEl.id = "theme-styles";
+      document.head.appendChild(themeStylesEl);
+    }
+    themeStylesEl.textContent = theme.styles;
+  } else if (themeStylesEl) {
+    themeStylesEl.remove();
+    themeStylesEl = null;
+  }
+}
+
 function applySettings() {
   const { settings } = state;
   document.body.dataset.density = settings.density;
@@ -2189,20 +2281,7 @@ function applySettings() {
     els.customPromptBadge.hidden = !settings.customPrompt || settings.customPrompt.trim() === "";
   }
   const theme = state.themes.find((item) => item.name === settings.theme);
-  if (theme?.colors) {
-    const colors = theme.colors;
-    document.documentElement.style.setProperty("--bg", colors.background);
-    document.documentElement.style.setProperty("--text", colors.text);
-    document.documentElement.style.setProperty("--bubble", colors.userMessage);
-    document.documentElement.style.setProperty("--line", colors.border);
-    document.documentElement.style.setProperty("--panel", colors.assistantMessage);
-    document.documentElement.style.setProperty("--panel-strong", colors.secondary);
-    document.documentElement.style.setProperty("--soft", colors.assistantMessage);
-  } else {
-    ["--bg", "--text", "--bubble", "--line", "--panel", "--panel-strong", "--soft"].forEach((property) => {
-      document.documentElement.style.removeProperty(property);
-    });
-  }
+  applyTheme(theme);
   localStorage.setItem("vanilla-theme", settings.theme);
   localStorage.setItem("vanilla-density", settings.density);
   localStorage.setItem("vanilla-text-size", settings.textSize);
@@ -2236,9 +2315,21 @@ function applyCompareVisibility() {
 }
 
 async function loadThemes() {
-  const results = await Promise.all(themeNames.map(async (name) => {
+  let names = themeNames;
+  try {
+    const response = await fetch("/api/themes");
+    if (response.ok) {
+      const data = await response.json();
+      if (Array.isArray(data.themes) && data.themes.length) {
+        names = data.themes.map((theme) => theme.name);
+      }
+    }
+  } catch {
+    // Fall back to the built-in list if the catalog endpoint is unavailable.
+  }
+  const results = await Promise.all(names.map(async (name) => {
     try {
-      const response = await fetch(`/themes/${name}.json`);
+      const response = await fetch(`/themes/${encodeURIComponent(name)}.json`);
       if (!response.ok) throw new Error("Theme unavailable");
       return await response.json();
     } catch {
