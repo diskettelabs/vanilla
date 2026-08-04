@@ -1800,6 +1800,18 @@ body[data-assistant-logo="top"] .assistant-mark {
   opacity: 1;
 }
 
+.pill-tool[data-tool="tools"][data-active="true"] {
+  background: var(--accent, #0284c7);
+  border-color: var(--accent, #0284c7);
+  color: white;
+  animation: none;
+}
+
+.pill-tool[data-tool="tools"][data-active="true"] img,
+.pill-tool[data-tool="tools"][data-active="true"] svg {
+  opacity: 1;
+}
+
 .pill-tool[data-active="true"] img {
   opacity: 1;
   filter: brightness(0) invert(1);
@@ -1985,6 +1997,230 @@ body[data-assistant-logo="top"] .assistant-mark {
   color: #999;
   font-size: 14px;
   line-height: 1.4;
+}
+
+/* Workspace modal */
+.workspace-modal {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.workspace-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.workspace-path-label {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--muted, #999);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 40%;
+}
+
+.workspace-file-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 52vh;
+  overflow: auto;
+  padding: 4px 2px;
+}
+
+.workspace-file-row {
+  display: flex;
+  align-items: stretch;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.workspace-file-row:hover {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.workspace-file {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  padding: 10px 8px 10px 12px;
+  text-align: left;
+  color: inherit;
+  font-size: 14px;
+}
+
+.workspace-file svg {
+  flex: none;
+  color: var(--muted, #999);
+}
+
+.workspace-file-path {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 500;
+}
+
+.workspace-file-meta {
+  color: var(--muted, #999);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.workspace-file-delete {
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  padding: 0 12px;
+  color: var(--muted, #999);
+  display: grid;
+  place-items: center;
+  opacity: 0;
+  transition: opacity 150ms ease, color 150ms ease;
+}
+
+.workspace-file-row:hover .workspace-file-delete {
+  opacity: 1;
+}
+
+.workspace-file-delete:hover {
+  color: #d64545;
+}
+
+.workspace-empty {
+  padding: 40px 16px;
+  text-align: center;
+  color: var(--muted, #999);
+}
+
+.workspace-empty p {
+  margin: 0 0 6px;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.workspace-empty span {
+  font-size: 14px;
+}
+
+.workspace-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.workspace-editor-head {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.workspace-editor-head .modal-input {
+  flex: 1;
+}
+
+.workspace-editor-actions {
+  display: flex;
+  gap: 6px;
+  flex: none;
+}
+
+.workspace-editor textarea {
+  min-height: 200px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 13px;
+  line-height: 1.5;
+  resize: vertical;
+}
+
+/* Tool call chips inside assistant messages */
+.tool-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.tool-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--line, #e3e3e1);
+  background: var(--soft, #f7f7f6);
+  font-size: 12px;
+  color: var(--muted, #999);
+  max-width: 100%;
+}
+
+.tool-chip svg {
+  flex: none;
+  opacity: 0.7;
+}
+
+.tool-chip-verb {
+  font-weight: 600;
+  color: var(--text);
+}
+
+.tool-chip-target {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  background: rgba(0, 0, 0, 0.06);
+  border-radius: 6px;
+  padding: 1px 6px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 220px;
+}
+
+.tool-chip-status {
+  font-size: 11px;
+}
+
+.tool-chip-running .tool-chip-status {
+  animation: tool-chip-pulse 1s ease-in-out infinite;
+}
+
+.tool-chip-running .tool-chip-status {
+  color: var(--accent, #307ab1);
+}
+
+.tool-chip-ok {
+  border-color: color-mix(in srgb, #2f9e63 30%, transparent);
+  background: color-mix(in srgb, #2f9e63 8%, transparent);
+}
+
+.tool-chip-ok .tool-chip-status {
+  color: #2f9e63;
+}
+
+.tool-chip-error {
+  border-color: color-mix(in srgb, #d64545 30%, transparent);
+  background: color-mix(in srgb, #d64545 8%, transparent);
+}
+
+.tool-chip-error .tool-chip-status {
+  color: #d64545;
+}
+
+@keyframes tool-chip-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
 }
 
 /* Model installer (HuggingFace) */

@@ -6,6 +6,8 @@ const hf = require('./huggingface');
 const titles = require('./titles');
 const uninstall = require('./uninstall');
 const { searchWeb } = require('./search');
+const workspace = require('./workspace');
+const { runToolLoop } = require('./tools');
 const https = require('https');
 const fs = require('fs');
 const path = require('path');
@@ -709,6 +711,31 @@ function register(app) {
       activeStreams.delete(conversationId);
     };
 
+    // Workspace tool calling: let the model create/read/delete files mid-chat
+    if (req.body?.workspaceTools) {
+      try {
+        const hint = {
+          role: 'system',
+          content: 'Workspace tools are enabled. You can create, read, list, and delete files in the user\'s workspace directory by calling the provided tools (write_file, read_file, list_workspace_files, delete_file). When the user asks to make, save, write, create, open, or delete a file, or to build something with files, call the matching tool to actually do it — do not just describe what you would do. Use write_file with a sensible filename (e.g. notes.txt) when the user does not specify one.',
+        };
+        const result = await runToolLoop(provider, effectiveProvider, effectiveModel, [hint, ...chatMessages], {
+          signal: abortController.signal,
+        });
+        for (const call of result.results) {
+          res.write(`data: ${JSON.stringify({ type: 'tool_call', name: call.name, args: call.args })}\n\n`);
+          res.write(`data: ${JSON.stringify({ type: 'tool_result', name: call.name, ok: call.ok, output: call.output })}\n\n`);
+        }
+        chatMessages = result.messages;
+      } catch (e) {
+        console.error('[Workspace Tool Error]', formatErrorForLog(e, {
+          endpoint: '/api/chat/stream',
+          provider: effectiveProvider,
+          model: effectiveModel,
+        }));
+        res.write(`data: ${JSON.stringify({ type: 'tool_error', error: e.message || String(e) })}\n\n`);
+      }
+    }
+
     let fullContent = '';
 
     try {
@@ -769,6 +796,41 @@ function register(app) {
         res.write(`data: ${JSON.stringify({ type: 'error', ...errorResponse })}\n\n`);
         res.end();
       }
+    }
+  });
+
+  // Workspace file management
+  app.get('/api/workspace', (req, res) => {
+    try {
+      res.json({ files: workspace.listFiles() });
+    } catch (e) {
+      res.status(500).json({ error: e.message || 'Failed to list workspace files' });
+    }
+  });
+
+  app.get('/api/workspace/file', (req, res) => {
+    try {
+      res.json(workspace.readFile(req.query.path));
+    } catch (e) {
+      res.status(404).json({ error: e.message || 'File not found' });
+    }
+  });
+
+  app.post('/api/workspace/write', (req, res) => {
+    try {
+      const { path: filePath, content } = req.body || {};
+      if (!filePath) return res.status(400).json({ error: 'Missing file path' });
+      res.json(workspace.writeFile(filePath, content));
+    } catch (e) {
+      res.status(500).json({ error: e.message || 'Failed to write file' });
+    }
+  });
+
+  app.delete('/api/workspace/file', (req, res) => {
+    try {
+      res.json(workspace.deleteFile(req.query.path));
+    } catch (e) {
+      res.status(500).json({ error: e.message || 'Failed to delete file' });
     }
   });
 }

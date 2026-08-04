@@ -106,6 +106,17 @@ const els = {
   customPromptInput: document.querySelector("#customPromptInput"),
   customPromptBadge: document.querySelector("#customPromptBadge"),
   webSearchToggle: document.querySelector("#webSearchToggle"),
+  workspaceToolsToggle: document.querySelector("#workspaceToolsToggle"),
+  workspaceModal: document.querySelector("#workspaceModal"),
+  workspaceFileList: document.querySelector("#workspaceFileList"),
+  workspaceNewButton: document.querySelector("#workspaceNewButton"),
+  workspaceRefreshButton: document.querySelector("#workspaceRefreshButton"),
+  workspacePathLabel: document.querySelector("#workspacePathLabel"),
+  workspaceEditor: document.querySelector("#workspaceEditor"),
+  workspaceFileName: document.querySelector("#workspaceFileName"),
+  workspaceFileContent: document.querySelector("#workspaceFileContent"),
+  workspaceSaveButton: document.querySelector("#workspaceSaveButton"),
+  workspaceEditorClose: document.querySelector("#workspaceEditorClose"),
   searchBackendPicker: document.querySelector("#searchBackendPicker"),
   braveApiKeyInput: document.querySelector("#braveApiKeyInput"),
   braveKeyRow: document.querySelector("#braveKeyRow"),
@@ -205,6 +216,7 @@ const state = {
     webSearch: localStorage.getItem("vanilla-web-search") !== "false",
     searchBackend: localStorage.getItem("vanilla-search-backend") || "duckduckgo",
     braveApiKey: localStorage.getItem("vanilla-brave-key") || "",
+    workspaceTools: localStorage.getItem("vanilla-workspace-tools") !== "false",
     dictationEngine: localStorage.getItem("vanilla-dictation-engine") || "vosk",
   },
 };
@@ -1405,6 +1417,7 @@ async function streamChat(conversationId, message) {
   state.activeAssistant = assistant.querySelector(".assistant-body");
   state.tokenQueue = "";
   state.tokenText = "";
+  state.toolChips = [];
 
   state.activeAssistant.textContent = state.settings.webSearch ? "Searching the web…" : "Loading model...";
   pumpTokens();
@@ -1431,6 +1444,7 @@ async function streamChat(conversationId, message) {
         search: state.settings.webSearch,
         searchBackend: state.settings.searchBackend,
         searchApiKey: state.settings.searchBackend === "brave" ? (state.settings.braveApiKey || "") : undefined,
+        workspaceTools: state.settings.workspaceTools,
       }),
       signal: controller.signal,
     });
@@ -1500,6 +1514,12 @@ function handleSsePart(part) {
       } else if (event.type === "done") {
         state.streamComplete = true;
         Sounds.receive();
+      } else if (event.type === "tool_call") {
+        addToolChip(event.name || "tool", event.args || {});
+      } else if (event.type === "tool_result") {
+        resolveToolChip(event.name || "tool", event.ok !== false);
+      } else if (event.type === "tool_error") {
+        addToolError(event.error || "Tool call failed");
       } else if (event.type === "error") {
         const error = new Error(event.error || "Stream failed");
         error.action = event.action || null;
@@ -1511,16 +1531,68 @@ function handleSsePart(part) {
   }
 }
 
+function toolChipLabel(name, args) {
+  const map = {
+    list_workspace_files: ["listing files", ""],
+    read_file: ["reading", String(args?.path || "")],
+    write_file: ["writing", String(args?.path || "")],
+    delete_file: ["deleting", String(args?.path || "")],
+  };
+  const [verb, target] = map[name] || [name.replace(/_/g, " "), ""];
+  return { verb, target };
+}
+
+function toolChipHtml(entry) {
+  const cls = entry.status === "running" ? "tool-chip-running" : entry.status === "ok" ? "tool-chip-ok" : "tool-chip-error";
+  const statusText = entry.status === "running" ? "…" : entry.status === "ok" ? "done" : "failed";
+  const { verb, target } = toolChipLabel(entry.name, entry.args);
+  return `<span class="tool-chip ${cls}" title="${entry.errorText ? escapeHtml(entry.errorText) : ""}">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg>
+    <span class="tool-chip-verb">${escapeHtml(verb)}</span>
+    ${target ? `<code class="tool-chip-target">${escapeHtml(target)}</code>` : ""}
+    <span class="tool-chip-status">${statusText}</span>
+  </span>`;
+}
+
+function addToolChip(name, args) {
+  if (!state.activeAssistant) return;
+  state.toolChips.push({ name, args: args || {}, status: "running" });
+  renderAssistantBody();
+}
+
+function resolveToolChip(name, ok) {
+  const idx = state.toolChips.findIndex((entry) => entry.status === "running" && entry.name === name);
+  const entry = idx !== -1 ? state.toolChips[idx] : state.toolChips.find((item) => item.status === "running");
+  if (!entry) return;
+  entry.status = ok ? "ok" : "error";
+  renderAssistantBody();
+}
+
+function addToolError(message) {
+  if (!state.activeAssistant) return;
+  state.toolChips.push({ name: "tool", args: {}, status: "error", errorText: message || "tool call failed" });
+  renderAssistantBody();
+}
+
+function renderAssistantBody() {
+  if (!state.activeAssistant) return;
+  const chipsHtml = (state.toolChips || []).map(toolChipHtml).join("");
+  const chipsBlock = chipsHtml ? `<div class="tool-chips">${chipsHtml}</div>` : "";
+  state.activeAssistant.innerHTML = chipsBlock + renderMarkdown(state.tokenText, { streaming: true });
+  attachCodeCopy(state.activeAssistant);
+  scrollToBottom();
+}
+
 function pumpTokens() {
   if (!state.activeAssistant) return;
   const draw = () => {
-    if (state.tokenQueue) {
-      const take = Math.max(1, Math.min(10, Math.ceil(state.tokenQueue.length / 8)));
-      state.tokenText += state.tokenQueue.slice(0, take);
-      state.tokenQueue = state.tokenQueue.slice(take);
-      state.activeAssistant.innerHTML = renderMarkdown(state.tokenText, { streaming: true });
-      attachCodeCopy(state.activeAssistant);
-      scrollToBottom();
+    if (state.tokenQueue || (state.toolChips && state.toolChips.length)) {
+      if (state.tokenQueue) {
+        const take = Math.max(1, Math.min(10, Math.ceil(state.tokenQueue.length / 8)));
+        state.tokenText += state.tokenQueue.slice(0, take);
+        state.tokenQueue = state.tokenQueue.slice(take);
+      }
+      renderAssistantBody();
     }
     if (state.runningConversationId || state.tokenQueue) {
       state.tokenPump = requestAnimationFrame(draw);
@@ -1534,9 +1606,7 @@ function finishStream() {
     if (state.tokenQueue && state.activeAssistant) {
       state.tokenText += state.tokenQueue;
       state.tokenQueue = "";
-      state.activeAssistant.innerHTML = renderMarkdown(state.tokenText);
-      attachCodeCopy(state.activeAssistant);
-      scrollToBottom();
+      renderAssistantBody();
     }
   };
   
@@ -2258,10 +2328,16 @@ function applySettings() {
   if (els.openCodeToggle) els.openCodeToggle.checked = settings.showOpenCode;
   if (els.autoNameToggle) els.autoNameToggle.checked = settings.autoName;
   if (els.webSearchToggle) els.webSearchToggle.checked = settings.webSearch;
+  if (els.workspaceToolsToggle) els.workspaceToolsToggle.checked = settings.workspaceTools;
   const searchPill = document.querySelector('[data-tool="search"]');
   if (searchPill) {
     searchPill.dataset.active = String(settings.webSearch);
     searchPill.setAttribute("aria-pressed", String(settings.webSearch));
+  }
+  const toolsPill = document.querySelector('[data-tool="tools"]');
+  if (toolsPill) {
+    toolsPill.dataset.active = String(settings.workspaceTools);
+    toolsPill.setAttribute("aria-pressed", String(settings.workspaceTools));
   }
   if (dropdowns.searchBackend) dropdowns.searchBackend.setValue(settings.searchBackend);
   if (dropdowns.dictationEngine) dropdowns.dictationEngine.setValue(settings.dictationEngine);
@@ -2303,6 +2379,7 @@ function applySettings() {
   localStorage.setItem("vanilla-user-name", settings.userName || "");
   localStorage.setItem("vanilla-custom-prompt", settings.customPrompt || "");
   localStorage.setItem("vanilla-web-search", String(settings.webSearch));
+  localStorage.setItem("vanilla-workspace-tools", String(settings.workspaceTools));
   localStorage.setItem("vanilla-search-backend", settings.searchBackend);
   localStorage.setItem("vanilla-brave-key", settings.braveApiKey || "");
   localStorage.setItem("vanilla-dictation-engine", settings.dictationEngine || "vosk");
@@ -2353,6 +2430,7 @@ function openModal(modal) {
 function closeModals() {
   Sounds.close();
   els.searchModal.hidden = true;
+  els.workspaceModal.hidden = true;
   els.settingsModal.hidden = true;
   els.installModal.hidden = true;
   els.uninstallModal.hidden = true;
@@ -2439,6 +2517,99 @@ async function runSearch() {
   } catch (error) {
     els.searchResults.innerHTML = `<p class="muted-note">Search failed. Try again.</p>`;
   }
+}
+
+function openWorkspace() {
+  openModal(els.workspaceModal);
+  refreshWorkspace();
+}
+
+async function refreshWorkspace() {
+  try {
+    const data = await api("/api/workspace");
+    renderWorkspaceFiles(data.files || []);
+  } catch (error) {
+    els.workspaceFileList.innerHTML = `<p class="muted-note">Couldn't load the workspace. ${escapeHtml(error.message || "")}</p>`;
+  }
+}
+
+function renderWorkspaceFiles(files) {
+  if (!files.length) {
+    els.workspaceFileList.innerHTML = `<div class="workspace-empty"><p>No files yet.</p><span>Ask the AI to create something, or make a file yourself.</span></div>`;
+    return;
+  }
+  els.workspaceFileList.innerHTML = files.map((file) => `
+    <div class="workspace-file-row">
+      <button class="workspace-file" type="button" data-path="${escapeHtml(file.path)}">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg>
+        <span class="workspace-file-path">${escapeHtml(file.path)}</span>
+        <span class="workspace-file-meta">${formatFileSize(file.size)}</span>
+      </button>
+      <button class="workspace-file-delete" type="button" data-delete-path="${escapeHtml(file.path)}" aria-label="Delete ${escapeHtml(file.path)}" title="Delete ${escapeHtml(file.path)}">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+      </button>
+    </div>
+  `).join("");
+  els.workspaceFileList.querySelectorAll(".workspace-file").forEach((button) => {
+    button.addEventListener("click", () => viewWorkspaceFile(button.dataset.path));
+  });
+  els.workspaceFileList.querySelectorAll(".workspace-file-delete").forEach((button) => {
+    button.addEventListener("click", () => deleteWorkspaceFile(button.dataset.deletePath));
+  });
+}
+
+function newWorkspaceFile() {
+  els.workspaceFileName.value = "";
+  els.workspaceFileContent.value = "";
+  els.workspaceEditor.hidden = false;
+  els.workspaceSaveButton.textContent = "Save";
+  els.workspaceFileName.focus();
+}
+
+async function viewWorkspaceFile(filePath) {
+  try {
+    const data = await api(`/api/workspace/file?path=${encodeURIComponent(filePath)}`);
+    els.workspaceFileName.value = data.path || filePath;
+    els.workspaceFileContent.value = data.truncated ? `${data.content}\n\n… (file truncated at 200 KB)` : data.content;
+    els.workspaceEditor.hidden = false;
+    els.workspaceSaveButton.textContent = "Save";
+  } catch (error) {
+    els.workspaceFileList.innerHTML = `<p class="muted-note">${escapeHtml(error.message || "Couldn't open the file.")}</p>`;
+  }
+}
+
+async function saveWorkspaceFile() {
+  const filePath = els.workspaceFileName.value.trim();
+  const content = els.workspaceFileContent.value;
+  if (!filePath) {
+    els.workspaceFileName.focus();
+    return;
+  }
+  try {
+    await api("/api/workspace/write", {
+      method: "POST",
+      body: JSON.stringify({ path: filePath, content }),
+    });
+    els.workspaceEditor.hidden = true;
+    refreshWorkspace();
+  } catch (error) {
+    els.workspaceFileList.innerHTML = `<p class="muted-note">${escapeHtml(error.message || "Couldn't save the file.")}</p>`;
+  }
+}
+
+async function deleteWorkspaceFile(filePath) {
+  if (!confirm(`Delete "${filePath}" from the workspace?`)) return;
+  try {
+    await api(`/api/workspace/file?path=${encodeURIComponent(filePath)}`, { method: "DELETE" });
+    els.workspaceEditor.hidden = true;
+    refreshWorkspace();
+  } catch (error) {
+    els.workspaceFileList.innerHTML = `<p class="muted-note">${escapeHtml(error.message || "Couldn't delete the file.")}</p>`;
+  }
+}
+
+function closeWorkspaceEditor() {
+  els.workspaceEditor.hidden = true;
 }
 
 function formatBytes(value) {
@@ -2795,6 +2966,13 @@ function bindEvents() {
   document.querySelectorAll('[data-action="search"]').forEach((button) => {
     button.addEventListener("click", () => openModal(els.searchModal));
   });
+  document.querySelectorAll('[data-action="workspace"]').forEach((button) => {
+    button.addEventListener("click", openWorkspace);
+  });
+  els.workspaceNewButton.addEventListener("click", newWorkspaceFile);
+  els.workspaceRefreshButton.addEventListener("click", refreshWorkspace);
+  els.workspaceSaveButton.addEventListener("click", saveWorkspaceFile);
+  els.workspaceEditorClose.addEventListener("click", closeWorkspaceEditor);
   document.querySelectorAll(".toggle-input").forEach((input) => {
     input.addEventListener("change", () => Sounds.toggle());
   });
@@ -2809,7 +2987,12 @@ function bindEvents() {
   document.querySelector('[data-tool="search"]')?.addEventListener("click", () => {
     state.settings.webSearch = !state.settings.webSearch;
     applySettings();
-  });  els.conversationPromptSave.addEventListener("click", saveConversationPrompt);
+  });
+  document.querySelector('[data-tool="tools"]')?.addEventListener("click", () => {
+    state.settings.workspaceTools = !state.settings.workspaceTools;
+    applySettings();
+  });
+  els.conversationPromptSave.addEventListener("click", saveConversationPrompt);
   els.conversationPromptClear.addEventListener("click", clearConversationPrompt);
   els.uninstallButton.addEventListener("click", uninstallApp);
   els.uninstallConfirmButton.addEventListener("click", doUninstall);
@@ -2878,6 +3061,12 @@ function bindEvents() {
   if (els.webSearchToggle) {
     els.webSearchToggle.addEventListener("change", () => {
       state.settings.webSearch = els.webSearchToggle.checked;
+      applySettings();
+    });
+  }
+  if (els.workspaceToolsToggle) {
+    els.workspaceToolsToggle.addEventListener("change", () => {
+      state.settings.workspaceTools = els.workspaceToolsToggle.checked;
       applySettings();
     });
   }
@@ -3000,6 +3189,10 @@ function bindEvents() {
     if (command && event.shiftKey && event.key.toLowerCase() === "o") {
       event.preventDefault();
       newChat();
+    }
+    if (command && event.shiftKey && event.key.toLowerCase() === "f") {
+      event.preventDefault();
+      openWorkspace();
     }
     if (event.key === "Escape") {
       closeModals();
