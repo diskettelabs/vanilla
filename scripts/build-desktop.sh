@@ -89,16 +89,14 @@ cp -R "$STAGING/node_modules" "$APP/Contents/Resources/app/node_modules"
 rm -rf "$APP/Contents/Resources/app/data"
 
 ENTITLEMENTS="$APP/Contents/entitlements.plist"
-BIN="$APP/Contents/MacOS/gelectron-bin"
 if [ -f "$ENTITLEMENTS" ]; then
-  if codesign --force --sign - --entitlements "$ENTITLEMENTS" "$BIN" >/dev/null 2>&1 \
-     && codesign --force --sign - "$APP" >/dev/null 2>&1; then
+  if codesign --force --deep --sign - --entitlements "$ENTITLEMENTS" "$APP" >/dev/null 2>&1; then
     echo "  signed (ad-hoc, mic/camera entitlements)"
   else
     echo "  (codesign skipped)"
   fi
 else
-  if codesign --force --sign - "$APP" >/dev/null 2>&1; then
+  if codesign --force --deep --sign - "$APP" >/dev/null 2>&1; then
     echo "  signed (ad-hoc)"
   else
     echo "  (codesign skipped)"
