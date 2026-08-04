@@ -1205,48 +1205,6 @@ button img,
   transform-origin: center;
 }
 
-.mascot-gaze {
-  animation: mascot-gaze 12s ease-in-out infinite;
-}
-
-.brand-gaze {
-  /* animation removed */
-}
-
-@keyframes mascot-gaze {
-  0%,
-  28%,
-  70%,
-  100% {
-    transform: translateX(0);
-  }
-  40% {
-    transform: translateX(3.4px);
-  }
-  56% {
-    transform: translateX(-3.4px);
-  }
-}
-
-@keyframes brand-gaze {
-  0%,
-  28%,
-  70%,
-  100% {
-    transform: translateX(0);
-  }
-  40% {
-    transform: translateX(1.3px);
-  }
-  56% {
-    transform: translateX(-1.3px);
-  }
-}
-
-.conversation-empty .mascot.is-napping .mascot-gaze {
-  animation-play-state: paused;
-}
-
 @keyframes mascot-blink {
   0%,
   88%,
