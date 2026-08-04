@@ -17,20 +17,23 @@ Open `http://localhost:2051` in your browser.
 - **Local models** — make sure Ollama is running (`ollama serve`), or start the LM Studio local server (Developer tab → Local Server → Start Server).
 - **Cloud models** — pick a provider in Settings → AI Model and paste your API key.
 - **Desktop app** — `npm start -- -g` launches the Gelectron desktop build (bundled Ollama runtime); `npm start -- -e` launches the Electron build (system Ollama).
+- **Auto-install everything** — `./run-this-furst.sh` clones and builds Gelectron + gelectron-ollama, installs dependencies, and runs the app. Options: `--run` (install then launch), `--no-build` (reuse an existing Gelectron binary).
 
 ## Features
 
 - **Real-time streaming** — responses appear token-by-token via SSE
+- **Web search** — toggle it in the composer or Settings; your question is searched (DuckDuckGo by default, optional Brave API key) and cited results are injected into the response
 - **Multi-provider** — Ollama, LM Studio, OpenAI, Anthropic, HuggingFace, Gemini, and the Aider / Goose / OpenCode CLIs
 - **Compare models** — run the same prompt against multiple models side by side
 - **Conversation management** — create, switch, rename, regenerate, export (Markdown/JSON/HTML), and delete chats
 - **HuggingFace installer** — search GGUF models and import them into Ollama from the UI
 - **Custom system prompts** — global default plus per-conversation override
 - **Auto-naming** — smart chat titles generated locally via Ollama
-- **Themes** — 14 ice cream color schemes (vanilla, strawberry, mint, lemon, lime, peach, plum, raspberry, lavender, dragonfruit, dreamsicle, blue-moon, chocolate, monochrome)
-- **Settings UI** — organized sections (Account, AI Model, Providers & API keys, Chat, UI, Preferences) with pickers for theme, density, text size, accent, and assistant logo position
+- **Themes** — 14 ice cream color schemes (vanilla, strawberry, mint, lemon, lime, peach, plum, raspberry, lavender, dragonfruit, dreamsicle, blue-moon, chocolate, monochrome) plus custom JSON themes that can replace colors, accent, logo, mascot, app name, and CSS. Authoring guide: `/themes/themes.html`
+- **Settings UI** — organized tabs (General, AI Model, Chat, Appearance, Shortcuts, Data & Privacy) with pickers for theme, density, text size, accent, and assistant logo position
 - **Voice input** — browser-based dictation (VOSK, on-device)
 - **File uploads** — attach images and files with OCR/image understanding
+- **Sound effects** — optional UI sounds (Web Audio, no audio files)
 - **Privacy** — all data stays local, nothing leaves your machine unless you use a cloud provider
 
 ## Requirements
@@ -81,7 +84,9 @@ vanilla-sh/
 │   └── styles.css
 ├── gelectron/            Gelectron desktop wrapper (bundled Ollama)
 ├── electron/             Electron desktop wrapper
-├── themes/               14 ice cream color themes
+├── themes/               JSON color themes + themes.html authoring guide
+├── docs/                 Historical design/task notes
+├── CONTRIBUTING.md       Contributor guide
 ├── data/
 │   └── conversations/    Saved conversations (JSON)
 └── config/
@@ -104,10 +109,15 @@ vanilla-sh/
 | `POST /api/conversations/:id/name` | Rename a conversation |
 | `POST /api/conversations/:id/regenerate` | Regenerate the last response |
 | `POST /api/conversations/:id/erase-last-response` | Erase the last response |
-| `POST /api/chat/stream` | Send a message and stream the response (SSE) |
+| `POST /api/chat/stream` | Send a message and stream the response (SSE); optional `search` / `searchBackend` / `searchApiKey` fields enable web-search injection |
 | `POST /api/chat/stop/:conversationId` | Stop an in-progress stream |
 | `POST /api/chat/compare` | Run a prompt against multiple models |
+| `POST /api/chat/compare-stop/:id` | Stop an in-progress comparison |
 | `GET /api/search` | Search conversations |
+| `GET /api/websearch?q=&backend=&key=` | Web search (duckduckgo or brave) — test endpoint |
+| `GET /api/themes` | List available JSON themes |
+| `GET /api/vosk-model` | VOSK dictation model download |
+| `GET /api/names/prewarm` | Preload the auto-naming model |
 | `GET /api/hf/search` | Search HuggingFace GGUF models |
 | `GET /api/hf/repo` | Inspect a HuggingFace repo |
 | `POST /api/hf/install` | Download a GGUF model into Ollama |
