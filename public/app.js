@@ -2795,6 +2795,9 @@ function bindEvents() {
   document.querySelectorAll('[data-action="search"]').forEach((button) => {
     button.addEventListener("click", () => openModal(els.searchModal));
   });
+  document.querySelectorAll(".toggle-input").forEach((input) => {
+    input.addEventListener("change", () => Sounds.toggle());
+  });
   els.settingsButton.addEventListener("click", () => openModal(els.settingsModal));
   els.exportChatButton.addEventListener("click", openExportModal);
   els.exportDownloadButton.addEventListener("click", exportConversation);

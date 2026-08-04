@@ -2626,7 +2626,6 @@ body[data-assistant-logo="top"] .assistant-mark {
 /* Settings Modal */
 .settings-modal {
   max-width: 680px;
-  overflow: auto;
 }
 
 .settings-section {
@@ -4133,7 +4132,7 @@ body[data-reduce-motion="true"] *::after {
 .settings-modal {
   width: min(840px, calc(100vw - 32px));
   max-width: 840px;
-  max-height: 85vh;
+  height: min(85vh, 680px);
   padding: 0;
   display: flex;
   flex-direction: column;
