@@ -49,5 +49,9 @@
   },
   "storage": {
     "dir": "./data/conversations"
+  },
+  "update": {
+    "feedUrl": "https://github.com/owenvanvooren/vanilla-sh/releases/latest/download/latest.yml",
+    "autoCheckOnLaunch": true
   }
 }

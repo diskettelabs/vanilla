@@ -8,6 +8,7 @@ const uninstall = require('./uninstall');
 const { searchWeb } = require('./search');
 const workspace = require('./workspace');
 const { runToolLoop } = require('./tools');
+const { updater } = require('./updater');
 const https = require('https');
 const fs = require('fs');
 const path = require('path');
@@ -832,6 +833,31 @@ function register(app) {
     } catch (e) {
       res.status(500).json({ error: e.message || 'Failed to delete file' });
     }
+  });
+
+  // App updates (gelectron autoUpdater — packaged apps only)
+  app.get('/api/update/status', (_req, res) => {
+    res.json(updater.getStatus());
+  });
+
+  app.post('/api/update/check', async (_req, res) => {
+    try {
+      res.json(await updater.check());
+    } catch (e) {
+      res.status(500).json({ error: e.message || 'Update check failed' });
+    }
+  });
+
+  app.post('/api/update/download', async (_req, res) => {
+    try {
+      res.json(await updater.download());
+    } catch (e) {
+      res.status(500).json({ error: e.message || 'Update download failed' });
+    }
+  });
+
+  app.post('/api/update/install', (_req, res) => {
+    res.json(updater.install());
   });
 }
 

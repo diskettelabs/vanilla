@@ -4523,3 +4523,92 @@ body[data-reduce-motion="true"] *::after {
   from { opacity: 0; transform: translateY(4px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
+.update-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  justify-content: space-between;
+  padding: 8px 16px;
+  font-size: 13px;
+  background: var(--accent, #307ab1);
+  color: #fff;
+  animation: fade-in 200ms ease;
+}
+
+.update-banner-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.update-banner-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.update-banner-button {
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 600;
+  border-radius: 6px;
+  padding: 3px 12px;
+  cursor: pointer;
+  transition: background 150ms ease;
+}
+
+.update-banner-button:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.update-status {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 12px;
+}
+
+.update-status-line {
+  font-weight: 500;
+  color: var(--text, #333);
+}
+
+.update-status-line[data-state="available"],
+.update-status-line[data-state="downloaded"] {
+  color: #2e7d32;
+}
+
+.update-status-line[data-state="error"] {
+  color: #b0332c;
+}
+
+.update-status-sub {
+  color: var(--muted, #777);
+  font-size: 12px;
+}
+
+.update-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.update-banner-progress {
+  width: 80px;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.35);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.update-banner-progress > span {
+  display: block;
+  height: 100%;
+  background: #fff;
+  transition: width 200ms ease;
+}

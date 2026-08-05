@@ -269,6 +269,15 @@ app.whenReady().then(async () => {
 
   mainWindow.loadURL(`http://localhost:${CONFIG.port}`);
 
+  const updateConfig = CONFIG.update || {};
+  if (updateConfig.autoCheckOnLaunch !== false) {
+    const { updater } = require(path.join(APP_ROOT, 'src', 'updater'));
+    if (updater.supported) {
+      updater.check().catch(() => {});
+      console.log(`[Updates] Checking for updates against ${updater.getStatus().feedURL}`);
+    }
+  }
+
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
       createWindow(`http://localhost:${CONFIG.port}`);
@@ -290,6 +299,11 @@ function startRetryLoop() {
       retryTimer = null;
       console.log('Startup succeeded after retry.');
       mainWindow.loadURL(`http://localhost:${CONFIG.port}`);
+      const updateConfig = CONFIG.update || {};
+      if (updateConfig.autoCheckOnLaunch !== false) {
+        const { updater } = require(path.join(APP_ROOT, 'src', 'updater'));
+        if (updater.supported) updater.check().catch(() => {});
+      }
     } catch (error) {
       console.warn('Startup retry pending:', error && error.message);
     } finally {

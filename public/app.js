@@ -164,6 +164,13 @@ const els = {
   uninstallConfirmButton: document.querySelector("#uninstallConfirmButton"),
   setupModal: document.querySelector("#setupModal"),
   autoNameToggle: document.querySelector("#autoNameToggle"),
+  updateBanner: document.querySelector("#updateBanner"),
+  updateBannerText: document.querySelector("#updateBannerText"),
+  updateBannerAction: document.querySelector("#updateBannerAction"),
+  updateStatusLine: document.querySelector("#updateStatusLine"),
+  updateStatusSub: document.querySelector("#updateStatusSub"),
+  updateCheckButton: document.querySelector("#updateCheckButton"),
+  updateInstallButton: document.querySelector("#updateInstallButton"),
 };
 
 const dropdowns = {};
@@ -2950,6 +2957,219 @@ async function doUninstall() {
   }
 }
 
+// ─── App updates ────────────────────────────────────────────────────────────
+
+const updateState = {
+  status: null,
+  checkedAt: 0,
+  _dismissed: false,
+  _pollTimer: null,
+};
+
+function formatUpdateVersion(status) {
+  if (status && status.updateInfo && status.updateInfo.version) {
+    return `v${status.updateInfo.version}`;
+  }
+  return "";
+}
+
+function refreshUpdateUI(status) {
+  updateState.status = status;
+  const line = els.updateStatusLine;
+  const sub = els.updateStatusSub;
+  const checkBtn = els.updateCheckButton;
+  const installBtn = els.updateInstallButton;
+  const banner = els.updateBanner;
+  const bannerText = els.updateBannerText;
+  const bannerAction = els.updateBannerAction;
+
+  if (!status) return;
+
+  if (els.updateStatusLine.parentElement.hidden === false) {
+    const current = status.currentVersion ? `v${status.currentVersion}` : "";
+    line.dataset.state = "";
+    if (status.supported === false) {
+      line.textContent = "Updates are not available in this build.";
+      sub.textContent = status.reason || "";
+      sub.hidden = false;
+      checkBtn.disabled = true;
+      installBtn.hidden = true;
+    } else if (status.status === "checking") {
+      line.textContent = "Checking for updates…";
+      sub.hidden = true;
+      checkBtn.disabled = true;
+      installBtn.hidden = true;
+    } else if (status.status === "available") {
+      line.dataset.state = "available";
+      line.textContent = `Update available: ${formatUpdateVersion(status)} (you're on ${current})`;
+      sub.textContent = status.updateInfo?.releaseDate ? `Released ${new Date(status.updateInfo.releaseDate).toLocaleDateString()}` : "";
+      sub.hidden = false;
+      checkBtn.disabled = false;
+      installBtn.hidden = false;
+      installBtn.textContent = "Download & restart";
+    } else if (status.status === "downloading") {
+      const pct = status.progress && Number.isFinite(status.progress.percent) ? status.progress.percent : 0;
+      line.textContent = `Downloading update ${formatUpdateVersion(status)}… ${Math.round(pct)}%`;
+      sub.hidden = true;
+      checkBtn.disabled = true;
+      installBtn.hidden = true;
+    } else if (status.status === "downloaded") {
+      line.dataset.state = "downloaded";
+      line.textContent = `Update ${formatUpdateVersion(status)} downloaded — restart to apply`;
+      sub.hidden = true;
+      checkBtn.disabled = true;
+      installBtn.hidden = false;
+      installBtn.textContent = "Restart now";
+    } else if (status.status === "not-available") {
+      line.textContent = `You're on the latest version${current ? ` (${current})` : ""}.`;
+      sub.hidden = true;
+      checkBtn.disabled = false;
+      installBtn.hidden = true;
+    } else if (status.status === "error") {
+      line.dataset.state = "error";
+      line.textContent = "Update check failed.";
+      sub.textContent = status.error || "";
+      sub.hidden = false;
+      checkBtn.disabled = false;
+      installBtn.hidden = true;
+    } else {
+      line.textContent = "Checking for updates…";
+      sub.hidden = true;
+      checkBtn.disabled = false;
+      installBtn.hidden = true;
+    }
+  }
+
+  // Banner (dismissible, once per session)
+  if (!banner || updateState._dismissed) return;
+  if (status.supported === false) {
+    banner.hidden = true;
+    return;
+  }
+  if (status.status === "available") {
+    banner.hidden = false;
+    bannerText.textContent = `A new version of Vanilla Chat is available: ${formatUpdateVersion(status)}`;
+    bannerAction.textContent = "Download";
+    bannerAction.onclick = () => triggerUpdateDownload();
+  } else if (status.status === "downloaded") {
+    banner.hidden = false;
+    bannerText.textContent = `Update ${formatUpdateVersion(status)} is ready. Restart to apply.`;
+    bannerAction.textContent = "Restart now";
+    bannerAction.onclick = () => triggerUpdateInstall();
+  } else if (status.status === "downloading") {
+    banner.hidden = false;
+    const pct = status.progress && Number.isFinite(status.progress.percent) ? status.progress.percent : 0;
+    bannerText.textContent = `Downloading update… ${Math.round(pct)}%`;
+    bannerAction.textContent = "";
+    bannerAction.disabled = true;
+  } else {
+    banner.hidden = true;
+  }
+}
+
+async function loadUpdateStatus(forceCheck = false) {
+  try {
+    if (forceCheck) {
+      const res = await api("/api/update/check", { method: "POST", timeoutMs: 45000 });
+      if (res && res.status === "downloading") {
+        startUpdatePolling();
+      }
+      updateState.checkedAt = Date.now();
+      refreshUpdateUI(res || null);
+      return;
+    }
+    const status = await api("/api/update/status");
+    updateState.checkedAt = Date.now();
+    refreshUpdateUI(status || null);
+    if (status && status.status === "downloading") {
+      startUpdatePolling();
+    }
+  } catch (error) {
+    // Update checking is a nicety — never break the app over it.
+    refreshUpdateUI({ supported: false, reason: error.message || "Could not reach the update service.", status: "error" });
+  }
+}
+
+async function triggerUpdateCheck() {
+  els.updateCheckButton.disabled = true;
+  els.updateCheckButton.textContent = "Checking…";
+  try {
+    await loadUpdateStatus(true);
+  } finally {
+    els.updateCheckButton.disabled = false;
+    els.updateCheckButton.textContent = "Check for updates";
+  }
+}
+
+async function triggerUpdateDownload() {
+  els.updateInstallButton.disabled = true;
+  els.updateBannerAction.disabled = true;
+  try {
+    const res = await api("/api/update/download", { method: "POST", timeoutMs: 45000 });
+    refreshUpdateUI(res || null);
+    startUpdatePolling();
+  } catch (error) {
+    showNotification(error.message || "Failed to start update download", "error");
+  } finally {
+    els.updateInstallButton.disabled = false;
+    els.updateBannerAction.disabled = false;
+  }
+}
+
+async function triggerUpdateInstall() {
+  try {
+    const res = await api("/api/update/install", { method: "POST" });
+    if (!res || !res.ok) {
+      showNotification((res && res.error) || "Could not restart into the update.", "error");
+    }
+  } catch (error) {
+    showNotification(error.message || "Could not restart into the update.", "error");
+  }
+}
+
+function startUpdatePolling() {
+  if (updateState._pollTimer) return;
+  updateState._pollTimer = setInterval(async () => {
+    try {
+      const status = await api("/api/update/status");
+      refreshUpdateUI(status || null);
+      if (status && status.status !== "downloading") {
+        clearInterval(updateState._pollTimer);
+        updateState._pollTimer = null;
+      }
+    } catch (e) {
+      clearInterval(updateState._pollTimer);
+      updateState._pollTimer = null;
+    }
+  }, 2500);
+}
+
+function initUpdater() {
+  if (!els.updateStatusLine && !els.updateBanner) return;
+  setTimeout(() => loadUpdateStatus(), 3000);
+  setInterval(() => {
+    const now = Date.now();
+    if (now - updateState.checkedAt > 15 * 60 * 1000) {
+      loadUpdateStatus();
+    }
+  }, 60 * 1000);
+}
+
+function bindUpdateEvents() {
+  if (els.updateCheckButton) {
+    els.updateCheckButton.addEventListener("click", triggerUpdateCheck);
+  }
+  if (els.updateInstallButton) {
+    els.updateInstallButton.addEventListener("click", () => {
+      if (updateState.status && updateState.status.status === "downloaded") {
+        triggerUpdateInstall();
+      } else {
+        triggerUpdateDownload();
+      }
+    });
+  }
+}
+
 function bindEvents() {
   const toggleSidebar = () => {
     Sounds.toggle();
@@ -2976,7 +3196,10 @@ function bindEvents() {
   document.querySelectorAll(".toggle-input").forEach((input) => {
     input.addEventListener("change", () => Sounds.toggle());
   });
-  els.settingsButton.addEventListener("click", () => openModal(els.settingsModal));
+  els.settingsButton.addEventListener("click", () => {
+    openModal(els.settingsModal);
+    loadUpdateStatus();
+  });
   els.exportChatButton.addEventListener("click", openExportModal);
   els.exportDownloadButton.addEventListener("click", exportConversation);
   els.exportCopyButton.addEventListener("click", copyExport);
@@ -3718,6 +3941,7 @@ async function boot() {
   chooseGreeting();
   applySettings(); // Apply settings immediately to prevent sidebar animation on load
   bindEvents();
+  bindUpdateEvents();
   bindSetupFlow();
   bindHuggingFace();
   initDictation();
@@ -3728,6 +3952,7 @@ async function boot() {
   renderApiKeys();
   setInterval(refreshStats, 3000);
   attachCodeCopy();
+  initUpdater();
   if (localStorage.getItem("vanilla-setup-done") && state.settings.autoName) prewarmTitleModel();
   maybeShowSetup();
 }

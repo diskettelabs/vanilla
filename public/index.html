@@ -122,6 +122,13 @@
           </button>
         </header>
 
+        <div id="updateBanner" class="update-banner" hidden>
+          <span id="updateBannerText" class="update-banner-text"></span>
+          <div class="update-banner-actions">
+            <button id="updateBannerAction" class="update-banner-button" type="button"></button>
+          </div>
+        </div>
+
         <section class="chat-stage" aria-live="polite">
           <div id="emptyState" class="empty-state">
             <svg class="empty-mascot mascot-svg" viewBox="-5 -5 58 54" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -621,6 +628,20 @@
                 <div class="settings-card">
                   <p class="settings-note">Need to start fresh? Redo the first-time setup and we'll walk you through everything again.</p>
                   <button id="redoSetupButton" class="compare-run compare-run-secondary" type="button">Redo the first-time setup</button>
+                </div>
+              </div>
+
+              <div class="settings-section">
+                <h3>Updates</h3>
+                <div class="settings-card">
+                  <div id="updateStatus" class="update-status">
+                    <span id="updateStatusLine" class="update-status-line">Checking for updates…</span>
+                    <span id="updateStatusSub" class="update-status-sub" hidden></span>
+                  </div>
+                  <div class="update-actions">
+                    <button id="updateCheckButton" class="compare-run compare-run-secondary" type="button">Check for updates</button>
+                    <button id="updateInstallButton" class="compare-run" type="button" hidden>Download &amp; restart</button>
+                  </div>
                 </div>
               </div>
 
