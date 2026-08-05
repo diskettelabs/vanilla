@@ -15,9 +15,10 @@
 - [Quick start](#quick-start)
 - [Getting started](#getting-started)
 - [Project overview](#project-overview)
+- [Design notes](#design-notes)
 - [Project structure](#project-structure)
 - [How it works](#how-it-works)
-- [Code style](#code-style)
+- [How we code](#how-we-code)
 - [Verifying your changes](#verifying-your-changes)
 - [Git workflow](#git-workflow)
 - [Troubleshooting](#troubleshooting)
@@ -79,6 +80,22 @@ Open `http://localhost:2051` in your browser.
 | Themes | JSON files + authoring docs | `themes/` |
 | Data | JSON conversation files (gitignored) | `data/conversations/` |
 
+## Design notes
+
+These are the decisions that shape the code. Read them before touching a new area — the structure exists because of them.
+
+- **The web build is the source of truth; the desktop shell is just a wrapper.** The whole app runs from `node server.js` and works in a plain browser. Gelectron/Electron add the window, splash screen, and update checking — nothing else. New features should be testable in the browser first.
+- **No build step, no frameworks, no frontend npm deps.** `public/` is served straight off disk. The frontend is one file per concern: `index.html`, `app.js` (all UI logic), `styles.css`. This is deliberate — contributors never run a bundler, and diffs stay reviewable.
+- **One wire protocol for every provider.** OpenAI, Anthropic, Gemini, Ollama, LM Studio, and the CLI providers all funnel through the same Server-Sent Events shape (`data: { "type": "token" | "tool_call" | "tool_result" | "tool_error" | "error" | "done", ... }\n\n`). The frontend only knows how to render this one protocol (`handleSsePart`), so adding a provider never touches the UI.
+- **Providers are adapters.** Each lives in `src/providers/`, extends `Provider` (`src/providers/base.js`), and implements `hasConfiguredKey()`, `listModels()`, and `chatStream(messages, model, onToken, onDone, onError)`. New providers are registered in `src/providers/index.js` and configured under `CONFIG.providers`.
+- **Settings live in the browser only.** Everything is read from and written back to `localStorage` under `vanilla-*` keys by `applySettings()` in `public/app.js`. There is no server-side settings store and no separate `saveSettings()` — the pattern is: change the toggle → update `state.settings` → call `applySettings()`.
+- **Data is flat JSON on disk.** Conversations are individual JSON files in `data/conversations/` (gitignored), managed by `src/storage.js`. No database.
+- **Privacy-first by default.** No telemetry or phone-home. DuckDuckGo is the default search backend because it needs no key. External calls happen only for the providers, search, and update feed the user enables.
+- **Theming is CSS custom properties.** `applyTheme()` maps theme JSON `colors.*` onto `var(--bg)`, `--surface`, `--accent`, and so on. Hardcoding hex in new UI breaks themes — always use a variable, and register new ones in `:root` plus `applyTheme()`.
+- **Errors are user-facing contracts.** APIs return `{ error, action, recoverable }` via `formatErrorForClient` (`src/errors.js`); the frontend `api()` helper turns that into an `Error` with `.action` and `.recoverable`, so the UI can show a "what to do" line instead of a stack trace.
+- **Desktop-only features must degrade gracefully in the web build.** The update system is the template: `src/updater.js` only touches `require('electron')` when running in a packaged app (`isGelectronContext()`), so plain `node server.js` never downloads an Electron binary and the `/api/update/*` routes simply report `supported: false`. Follow the same guard pattern for new desktop integrations.
+- **UI feedback is sound-aware.** Sounds come from `Sounds` (`public/sounds.js`, Web Audio only) and are gated through `Sounds.setEnabled()`. New feedback moments should use `Sounds.*`, not inline audio.
+
 ## Project structure
 
 ```
@@ -95,6 +112,12 @@ vanilla-sh/
 │   ├── titles.js         Auto-naming conversations
 │   ├── system.js         CPU / RAM / GPU stats
 │   ├── huggingface.js    GGUF model search + install into Ollama
+│   ├── ollama.js         Ollama helpers (models, install)
+│   ├── tools.js          Tool-calling loop (workspace search/web/file tools)
+│   ├── workspace.js      Sandboxed file access under data/workspace/
+│   ├── updater.js        Desktop app auto-update wrapper (web-safe)
+│   ├── uninstall.js      Clean uninstall helpers
+│   ├── lifecycle.js      Startup/shutdown hooks
 │   ├── providers/        Provider adapters
 │   └── errors.js
 ├── public/
@@ -139,13 +162,39 @@ To add a theme, drop a `.json` file in `themes/` following the schema in **`/the
 - Toggle switches (`.toggle-input`) each have a `change` listener, plus one delegated listener that plays `Sounds.toggle()` — registered before the per-toggle handlers so a flick is heard even while muting.
 - UI sounds come from `Sounds` (`public/sounds.js`) — Web Audio only, no audio files. The "Play UI sound effects" switch gates everything via `Sounds.setEnabled()`.
 
-## Code style
+## How we code
 
-- **Vanilla everything.** No new frameworks, bundlers, or CSS preprocessors. Match the patterns in the file you're editing.
-- **No comments unless they earn their keep.** Clear naming beats comment noise.
-- **Colors via CSS custom properties.** Prefer `var(--token, fallback)` over hardcoded hex so themes keep working. When a surface needs theming, add a variable to `:root` in `styles.css` and map it in `applyTheme()`.
-- **Server errors** — log with `console.error` (Gelectron writes stderr to the log file); `console.log` goes to a pipe and is invisible in the desktop log.
-- **Keep it small.** One focused change per PR.
+**Frontend (`public/app.js`)**
+
+- DOM references live in one `els = { ... }` map at the top of the file — add new elements there instead of scattering `document.querySelector` calls. App state lives in `state = { ... }`.
+- Use the `api(path, { timeoutMs })` wrapper for all fetches — it normalizes errors, adds timeouts, and turns network failures into friendly messages. Don't hand-roll `fetch` + error handling.
+- Wire UI with `data-*` attributes and event delegation (see the document-level click/keydown handlers), not inline `onclick`.
+- Toggle switches are `.toggle-input` checkboxes with a `change` listener; the delegated sound listener is registered before per-toggle handlers so a flick is heard even while muting.
+- Group related functions under section comments like `// ─── App updates ─────────`; otherwise keep comments rare.
+- Keep functions small and named by their job: `renderConversationList`, `streamChat`, `handleSsePart` — one job per function.
+
+**Backend (`src/`, `server.js`)**
+
+- All routes are registered inside `register(app)` in `src/routes.js` — one place to see the whole API. Route handlers stay thin; real logic lives in the focused modules (`storage`, `search`, `tools`, `updater`, `workspace`, …), which export plain functions.
+- `server.js` is thin: it boots the app, calls `register(app)`, and serves static dirs.
+- Log with `console.error` — under Gelectron, stderr is what lands in the log file; `console.log` goes to a pipe and is invisible in the desktop log. Keep lines consistent with `formatErrorForLog(e, { endpoint })`.
+- Never throw raw errors at the client. Use `formatErrorForClient` / `parseError` and set a sensible HTTP status.
+- Config lives in `config/default.json`, read once as `CONFIG`. New knobs (timeouts, hosts, feed URLs) go there; env vars can override them (e.g. `VANILLA_UPDATE_FEED`).
+- Keep chat resilient: search, model-list, and provider hiccups are non-fatal — the user should still be able to talk.
+
+**Streaming protocol (SSE)**
+
+- `Content-Type: text/event-stream`; each event is one JSON line: `data: { ... }\n\n`.
+- Event types: `token` (append to the active assistant message), `tool_call`, `tool_result`, `tool_error`, `error`, `done` (`done` may carry `interrupted: true` when the user stops).
+- The client buffers partial lines and feeds complete parts to `handleSsePart()`. Keep each write self-contained so a dropped connection doesn't corrupt the message.
+
+**Other conventions**
+
+- Vanilla everything. No new frameworks, bundlers, or CSS preprocessors. Match the patterns in the file you're editing.
+- No comments unless they earn their keep. Clear naming beats comment noise.
+- Colors via CSS custom properties (`var(--token, fallback)`), never hardcoded hex.
+- CSS class names are kebab-case; JS uses camelCase; localStorage keys are `vanilla-*`.
+- Keep it small. One focused change per PR.
 
 ## Verifying your changes
 
