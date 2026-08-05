@@ -19,6 +19,7 @@
 - [Project structure](#project-structure)
 - [How it works](#how-it-works)
 - [How we code](#how-we-code)
+- [How we design the frontend](#how-we-design-the-frontend)
 - [Verifying your changes](#verifying-your-changes)
 - [Git workflow](#git-workflow)
 - [Troubleshooting](#troubleshooting)
@@ -195,6 +196,23 @@ To add a theme, drop a `.json` file in `themes/` following the schema in **`/the
 - Colors via CSS custom properties (`var(--token, fallback)`), never hardcoded hex.
 - CSS class names are kebab-case; JS uses camelCase; localStorage keys are `vanilla-*`.
 - Keep it small. One focused change per PR.
+
+## How we design the frontend
+
+The frontend is a hand-rolled SPA in three files — `index.html` (markup skeleton), `app.js` (all logic), `styles.css` (all styling). These are the patterns that keep it coherent without a framework.
+
+- **Markup, logic, and style never mix.** No inline `onclick`, no inline `style=`, no `<style>` blocks in components. New markup goes in `index.html`, new behavior in `app.js`, new look in `styles.css`.
+- **State-driven styling via data attributes, not class toggling.** Settings and UI modes are reflected as attributes and CSS keys off them: `body[data-density="compact"]`, `body[data-text-size]`, `body[data-accent]`, `body[data-assistant-logo]`, `body[data-reduce-motion]`, `.app-shell[data-sidebar="closed"]`, `.pill-tool[data-active]`, `.model-picker[data-open]`. `applySettings()` writes them all in one place (`document.body.dataset.*`, `els.shell.dataset.*`). Add a setting → add a data attribute → style against it.
+- **Design tokens are CSS custom properties; themes only override tokens.** `:root` defines `--bg`, `--surface`, `--panel`, `--line`, `--text`, `--muted`, `--bubble`, `--accent`, `--radius`, `--shadow`, `--font`, `--ui-scale`. Component rules reference only `var(--token, fallback)` — never a literal color. `applyTheme()` maps theme JSON onto the tokens, and `body[data-accent="..."]` tweaks `--bubble`.
+- **Modals are backdrop + panel toggled with the `hidden` attribute.** `.modal-backdrop` is a fixed, blurred, grid-centered overlay (`z-index: 20`); `.modal` is `width: min(680px, 100vw - 32px)`, `max-height: 76vh`, with the content pane scrolling internally. Show/hide by flipping the `hidden` property (`[hidden] { display: none !important }`) — never remove elements from the DOM.
+- **The settings modal is the template for settings UI.** `.settings-layout` is a flex row: a fixed 220px `.settings-tabs` rail plus a scrolling `.settings-content` pane. Panes are `.settings-tab-pane`, hidden by default, shown with `.active` (switched by `settings-ui.js`). Inside a pane, content is stacked `.settings-section` → `.settings-card` blocks using `.check-row` toggles, `.label-help` helper text, and custom `.settings-picker` dropdowns. The modal has a fixed height so it never resizes between tabs.
+- **Custom dropdowns instead of `<select>`.** Every picker (model, accent, density, search backend, music track, …) is a button + menu controlled by a `data-open` attribute via the `dropdowns.*` + `createSettingsDropdown()` helpers in `app.js` — consistent theming, and the menu can overlay the composer.
+- **Icons are inline SVG constants, not image files.** Icons live in the `ASSET` map or as template constants (`TRASH_SVG`, `NEW_CHAT_SVG`, `MASCOT_SVG()`) so themes can swap them and CSS can recolor them.
+- **The composer is a stack of stateful parts.** The prompt textarea, toggle pills (`.pill-tool[data-tool="search"|"tools"][data-active]`), and a submit button that flips to stop via `[data-mode="stop"]`. The composer pills and the Settings switches mirror each other through `applySettings()` — keep them in sync when adding a new toggle.
+- **Streaming renders as it arrives.** `streamChat` reads the SSE stream and `handleSsePart()` appends tokens to the active message; `pumpTokens()` batches the DOM writes so long answers stay smooth. Tool calls render as chips above the answer.
+- **Feedback uses the existing layers.** Transient notices go through `showNotification()` (`#appNotification`), sounds through `Sounds` (`public/sounds.js`, Web Audio, gated by `Sounds.setEnabled()`). Don't add new toast or audio systems.
+- **Animation is pure CSS and respects reduced motion.** Micro-interactions are `transition`/`animation` with `ease` curves (e.g. `modal-in 240ms cubic-bezier(0.2, 0.8, 0.2, 1)`). `body[data-reduce-motion="true"]` collapses every duration to ~1ms, so new animations need no extra JS to be accessible.
+- **Accessibility basics are built into the patterns.** Toggles are real `<input type="checkbox">`, pills carry `aria-pressed`, modals and pickers use `hidden` and `data-open`, and keyboard handling goes through one delegated `document.addEventListener("keydown", ...)`.
 
 ## Verifying your changes
 
