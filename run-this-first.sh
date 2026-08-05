@@ -132,13 +132,14 @@ if [ -f "$APP_DIR/gelectron/package.json" ]; then
     const fs = require('node:fs');
     const file = '$APP_DIR/gelectron/package.json';
     const pkg = JSON.parse(fs.readFileSync(file, 'utf8'));
-    const want = 'file:../../gelectron-ollama';
     if (!pkg.dependencies) pkg.dependencies = {};
-    if (pkg.dependencies['gelectron-ollama'] !== want) {
-      pkg.dependencies['gelectron-ollama'] = want;
-      fs.writeFileSync(file, JSON.stringify(pkg, null, 2) + '\n');
-      console.log('  normalized gelectron-ollama dependency -> ' + want);
+    for (const [name, want] of [['gelectron', 'file:../../gelectron'], ['gelectron-ollama', 'file:../../gelectron-ollama']]) {
+      if (pkg.dependencies[name] !== want) {
+        pkg.dependencies[name] = want;
+        console.log('  normalized ' + name + ' dependency -> ' + want);
+      }
     }
+    fs.writeFileSync(file, JSON.stringify(pkg, null, 2) + '\n');
   "
   npm install --prefix "$APP_DIR/gelectron" --no-audit --no-fund
 else
@@ -147,11 +148,17 @@ fi
 
 # ------------------------------------------------------------- smoke test
 echo
-echo "── Verifying gelectron-ollama resolves ──"
+echo "── Verifying gelectron + gelectron-ollama resolve ──"
 if (cd "$APP_DIR/gelectron" && node -e "require('gelectron-ollama'); process.exit(0)"); then
   echo "✓ require('gelectron-ollama') works from $APP_DIR/gelectron"
 else
   echo "✗ Could not resolve gelectron-ollama. Run: npm install --prefix \"$APP_DIR/gelectron\"" >&2
+  exit 1
+fi
+if command -v "$APP_DIR/gelectron/node_modules/.bin/gelectron" >/dev/null 2>&1; then
+  echo "✓ gelectron binary linked: $APP_DIR/gelectron/node_modules/.bin/gelectron"
+else
+  echo "✗ gelectron not linked in $APP_DIR/gelectron. Run: npm install --prefix \"$APP_DIR/gelectron\"" >&2
   exit 1
 fi
 
