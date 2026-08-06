@@ -137,6 +137,21 @@ button img,
   height: 24px;
 }
 
+.icon-mask {
+  display: block;
+  width: 20px;
+  height: 20px;
+  background-color: currentColor;
+  -webkit-mask-image: var(--icon-url);
+  mask-image: var(--icon-url);
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+}
+
 .app-shell {
   display: grid;
   grid-template-columns: 313px 1fr;
@@ -757,7 +772,8 @@ button img,
 }
 
 .collapsed-action img,
-.collapsed-action .new-chat-icon {
+.collapsed-action .new-chat-icon,
+.collapsed-action .search-icon {
   width: 20px;
   height: 20px;
   opacity: 0.8;
@@ -765,7 +781,8 @@ button img,
 }
 
 .collapsed-action:hover img,
-.collapsed-action:hover .new-chat-icon {
+.collapsed-action:hover .new-chat-icon,
+.collapsed-action:hover .search-icon {
   opacity: 1;
 }
 
@@ -1773,11 +1790,17 @@ body[data-assistant-logo="top"] .assistant-mark {
   transition: opacity 150ms ease, transform 180ms ease;
 }
 
-.pill-tool svg {
-  transition: transform 180ms ease;
+.pill-tool svg,
+.pill-tool .icon-mask {
+  width: 16px;
+  height: 16px;
+  opacity: 0.5;
+  flex-shrink: 0;
+  transition: opacity 150ms ease, transform 180ms ease;
 }
 
-.pill-tool:hover img {
+.pill-tool:hover img,
+.pill-tool:hover .icon-mask {
   opacity: 0.7;
 }
 
@@ -1796,7 +1819,8 @@ body[data-assistant-logo="top"] .assistant-mark {
 }
 
 .pill-tool[data-tool="search"][data-active="true"] img,
-.pill-tool[data-tool="search"][data-active="true"] svg {
+.pill-tool[data-tool="search"][data-active="true"] svg,
+.pill-tool[data-tool="search"][data-active="true"] .icon-mask {
   opacity: 1;
 }
 
@@ -4366,79 +4390,90 @@ body[data-reduce-motion="true"] *::after {
 
 /* --- New Settings UI Redesign --- */
 .settings-modal {
-  width: min(840px, calc(100vw - 32px));
-  max-width: 840px;
-  height: min(85vh, 680px);
+  width: min(920px, calc(100vw - 28px));
+  max-width: 920px;
+  height: min(84vh, 700px);
   padding: 0;
   display: flex;
   flex-direction: column;
+  border-radius: 14px;
+  background: #f7f8fa;
 }
 
 .settings-modal .modal-head {
-  padding: 20px 24px 16px;
+  padding: 14px 18px 10px;
   margin-bottom: 0;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  background: #f7f8fa;
 }
 
 .settings-layout {
-  display: flex;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
   flex: 1;
   overflow: hidden;
-  min-height: 500px;
+  min-height: 460px;
 }
 
 .settings-tabs {
-  width: 220px;
-  flex-shrink: 0;
-  background: rgba(0, 0, 0, 0.02);
-  border-right: 1px solid rgba(0, 0, 0, 0.05);
-  padding: 16px 12px;
+  background: transparent;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  padding: 8px 12px 0;
   display: flex;
-  flex-direction: column;
-  gap: 4px;
-  overflow-y: auto;
+  align-items: center;
+  gap: 2px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  white-space: nowrap;
 }
 
 .settings-tab {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 12px;
-  width: 100%;
-  padding: 10px 14px;
+  gap: 8px;
+  width: auto;
+  padding: 8px 12px;
   border: none;
-  border-radius: 8px;
+  border-radius: 8px 8px 0 0;
   background: transparent;
-  color: #666;
-  font-size: 14px;
+  color: #667085;
+  font-size: 13px;
   font-weight: 600;
-  text-align: left;
+  text-align: center;
   cursor: pointer;
-  transition: all 150ms ease;
+  transition: all 120ms ease;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
 }
 
 .settings-tab svg {
   opacity: 0.7;
+  width: 15px;
+  height: 15px;
 }
 
 .settings-tab:hover {
-  background: rgba(0, 0, 0, 0.04);
-  color: #222;
+  background: rgba(0, 0, 0, 0.03);
+  color: #344054;
 }
 
 .settings-tab.active {
-  background: #307ab1;
-  color: #fff;
+  background: rgba(255, 255, 255, 0.95);
+  color: #1d2939;
+  border-bottom-color: #307ab1;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
 }
 
 .settings-tab.active svg {
   opacity: 1;
+  color: #307ab1;
 }
 
 .settings-content {
   flex: 1;
   overflow-y: auto;
-  padding: 24px 32px;
-  background: rgba(255, 255, 255, 0.5);
+  padding: 14px 18px 18px;
+  background: #f7f8fa;
 }
 
 .settings-tab-pane {
@@ -4453,18 +4488,18 @@ body[data-reduce-motion="true"] *::after {
 .settings-card {
   background: #fff;
   border: 1px solid rgba(0, 0, 0, 0.08);
-  border-radius: 12px;
-  padding: 16px 20px;
-  margin-top: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin-top: 8px;
+  box-shadow: 0 1px 3px rgba(16, 24, 40, 0.05);
 }
 
 .settings-card.settings-options {
-  padding: 8px 12px;
+  padding: 4px 8px;
 }
 
 .settings-card .check-row {
-  padding: 10px 8px;
+  padding: 8px 6px;
   border-radius: 8px;
 }
 
@@ -4481,8 +4516,8 @@ body[data-reduce-motion="true"] *::after {
 .toggle-input {
   appearance: none;
   -webkit-appearance: none;
-  width: 36px !important;
-  height: 20px !important;
+  width: 34px !important;
+  height: 18px !important;
   background: rgba(0, 0, 0, 0.15);
   border-radius: 20px;
   position: relative;
@@ -4498,8 +4533,8 @@ body[data-reduce-motion="true"] *::after {
   position: absolute;
   top: 2px;
   left: 2px;
-  width: 16px;
-  height: 16px;
+  width: 14px;
+  height: 14px;
   background: #fff;
   border-radius: 50%;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);

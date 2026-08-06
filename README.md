@@ -131,3 +131,7 @@ Server settings live in `config/default.json`:
 - `port` — server port (default `2051`)
 - `defaultProvider` — default provider (default `ollama`)
 - `providers` — per-provider settings such as `host`, `baseUrl`, `apiKey`, `defaultModel`, and `requestTimeout`. Cloud API keys can also be entered in the app UI and are stored locally in your browser.
+
+## Fonts
+
+The fonts used in this project are subject to their respective licenses. Please consult the font files included in the repository or their upstream sources for specific license details and attribution requirements.

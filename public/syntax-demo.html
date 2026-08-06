@@ -112,14 +112,14 @@ npm test
 
 # Deploy
 if [ "$ENVIRONMENT" = "production" ]; then
-    echo "⚠️  Deploying to PRODUCTION"
+    echo "Deploying to PRODUCTION"
     kubectl apply -f k8s/production/
 else
     echo "Deploying to staging"
     kubectl apply -f k8s/staging/
 fi
 
-echo "✅ Deployment complete!"</code></pre>
+echo "Deployment complete!"</code></pre>
       </div>
     </div>
 

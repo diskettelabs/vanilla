@@ -49,7 +49,7 @@
             </svg>
           </button>
           <button class="icon-button collapsed-action" type="button" data-action="search" aria-label="Search" title="Search">
-            <img src="./assets/search.svg" alt="">
+            <span class="search-icon icon-mask" style="--icon-url: url('./assets/search.svg')" aria-hidden="true"></span>
           </button>
           <button class="icon-button collapsed-action" type="button" data-action="workspace" aria-label="Workspace" title="Workspace">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg>
@@ -71,7 +71,7 @@
           </button>
           <button class="side-command" type="button" data-action="search">
             <span class="command-main">
-              <img src="./assets/search.svg" alt="">
+              <span class="search-icon icon-mask" style="--icon-url: url('./assets/search.svg')" aria-hidden="true"></span>
               <span>Search</span>
             </span>
             <kbd data-shortcut="search">⌘+K</kbd>
@@ -149,7 +149,7 @@
           <div class="omnibar">
             <div class="input-wrapper">
               <div id="attachmentPreview" class="attachment-preview" hidden></div>
-              <textarea id="promptInput" rows="1" placeholder="what's up?" aria-label="Message"></textarea>
+              <textarea id="promptInput" rows="1" placeholder="What are we working on?" aria-label="Message"></textarea>
             </div>
             <div class="omnibar-tools">
               <button class="pill-tool" type="button" data-tool="attach">
@@ -161,11 +161,11 @@
                 <span>compare</span>
               </button>
               <button class="pill-tool" type="button" data-tool="search" title="Toggle web search for fresh answers">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+                <span class="icon-mask" style="--icon-url: url('./assets/search.svg')" aria-hidden="true"></span>
                 <span id="searchPillLabel">search</span>
               </button>
               <button class="pill-tool" type="button" data-tool="tools" title="Toggle workspace tools for the AI">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg>
+                <span class="icon-mask" style="--icon-url: url('./assets/tools.svg')" aria-hidden="true"></span>
                 <span id="toolsPillLabel">tools</span>
               </button>
               <button class="pill-tool" type="button" data-tool="prompt" title="Set instructions for this chat">
@@ -222,7 +222,7 @@
               <button id="workspaceEditorClose" class="text-button" type="button">Cancel</button>
             </div>
           </div>
-          <textarea id="workspaceFileContent" class="settings-textarea" rows="14" placeholder="File contents…" spellcheck="false"></textarea>
+          <textarea id="workspaceFileContent" class="settings-textarea" rows="14" placeholder="File contents..." spellcheck="false"></textarea>
         </div>
       </section>
     </div>
@@ -261,7 +261,7 @@
               Data & Privacy
             </button>
           </nav>
-          
+
           <div class="settings-content">
             <!-- General Tab -->
             <div class="settings-tab-pane active" id="tab-general">
@@ -412,8 +412,8 @@
                       <span class="label-text">Custom system prompt</span>
                       <span id="customPromptBadge" class="custom-prompt-badge" hidden>Active</span>
                     </div>
-                    <span class="label-help">Add instructions to customize how the AI responds. Think of this as setting the personality, expertise level, or style you want. Examples: "Be concise and use analogies," "You're a senior developer who prefers functional programming," or "Explain like I'm learning for the first time."</span>
-                    <textarea id="customPromptInput" class="settings-textarea" rows="4" placeholder="e.g., You are a helpful coding assistant who prefers functional programming..." spellcheck="true"></textarea>
+                    <span class="label-help">Add instructions for how you want responses written. You can set tone, depth, constraints, or preferred format. Example: "Be concise and include tradeoffs."</span>
+                    <textarea id="customPromptInput" class="settings-textarea" rows="4" placeholder="Example: Be concise, practical, and show tradeoffs." spellcheck="true"></textarea>
                   </label>
                 </div>
               </div>
@@ -444,7 +444,7 @@
                       <input id="braveApiKeyInput" class="settings-input" type="password" placeholder="Paste your Brave API key" autocomplete="off" spellcheck="false">
                     </label>
                   </div>
-                  <span class="label-help" style="display:block;margin-top:12px">DuckDuckGo works with no key. Brave gives cleaner results but needs a free API key from <code>api.search.brave.com</code>. When enabled, the latest question is searched before answering.</span>
+                  <span class="label-help" style="display:block;margin-top:12px">DuckDuckGo works without a key. Brave can be more precise, but it needs a free API key from <code>api.search.brave.com</code>. When enabled, your latest question is searched before answering.</span>
                 </div>
               </div>
 
@@ -456,7 +456,7 @@
                     <span class="toggle-slider"></span>
                     <span class="toggle-label">Let the AI create and edit files</span>
                   </label>
-                  <span class="label-help" style="display:block;margin-top:12px">When on, the AI can create, read, and delete files inside the app's <code>data/workspace/</code> folder (never anywhere else). Tool calls show up as chips above the answer. Works best with providers that support tool calling.</span>
+                  <span class="label-help" style="display:block;margin-top:12px">When enabled, the assistant can create, read, and delete files in <code>data/workspace/</code> only. File actions appear as chips above each reply. This works best with providers that support tool calling.</span>
                 </div>
               </div>
             </div>
@@ -592,11 +592,11 @@
                     </div>
                     <div class="shortcut-row">
                       <span class="shortcut-label">Open settings</span>
-                      <kbd class="shortcut-key">⌘+,</kbd>
+                      <kbd class="shortcut-key" data-shortcut="open-settings">⌘+,</kbd>
                     </div>
                     <div class="shortcut-row">
                       <span class="shortcut-label">Toggle sidebar</span>
-                      <kbd class="shortcut-key">⌘+B</kbd>
+                      <kbd class="shortcut-key" data-shortcut="toggle-sidebar">⌘+B</kbd>
                     </div>
                     <div class="shortcut-row">
                       <span class="shortcut-label">Focus message input</span>
@@ -618,7 +618,7 @@
                 <h3>Export &amp; Backup</h3>
                 <div class="settings-card">
                   <p class="settings-note">Download the current conversation as Markdown, JSON, or a standalone HTML page. You can also pin or rename chats from the sidebar.</p>
-                  <button id="exportChatButton" class="compare-run" type="button">Export current chat…</button>
+                  <button id="exportChatButton" class="compare-run" type="button">Export current chat...</button>
                 </div>
               </div>
               
@@ -634,7 +634,7 @@
                 <h3>Updates</h3>
                 <div class="settings-card">
                   <div id="updateStatus" class="update-status">
-                    <span id="updateStatusLine" class="update-status-line">Checking for updates…</span>
+                    <span id="updateStatusLine" class="update-status-line">Checking for updates...</span>
                     <span id="updateStatusSub" class="update-status-sub" hidden></span>
                   </div>
                   <div class="update-actions">
@@ -647,8 +647,8 @@
               <div class="settings-section settings-danger-zone">
                 <h3>Danger Zone</h3>
                 <div class="settings-card" style="border: 1px solid rgba(176, 51, 44, 0.2); background: rgba(176, 51, 44, 0.02);">
-                  <p class="settings-note" style="color: #b0332c;">This removes Vanilla Chat completely from your computer—including all your conversations, settings, and the downloaded Ollama runtime. There's no undo button. If you're sure, go ahead.</p>
-                  <button id="uninstallButton" class="uninstall-button" style="margin-top: 0" type="button">Uninstall Vanilla Chat…</button>
+                  <p class="settings-note" style="color: #b0332c;">This removes Vanilla Chat from your computer, including conversations, settings, and the downloaded Ollama runtime. This action cannot be undone.</p>
+                  <button id="uninstallButton" class="uninstall-button" style="margin-top: 0" type="button">Uninstall Vanilla Chat...</button>
                 </div>
               </div>
             </div>
@@ -690,18 +690,17 @@
           <span class="setup-dot" data-dot="4"></span>
           <span class="setup-dot" data-dot="5"></span>
           <span class="setup-dot" data-dot="6"></span>
-          <span class="setup-dot" data-dot="7"></span>
         </div>
 
         <!-- Step 1: Name -->
         <div class="setup-step" data-step="1">
           <div class="setup-hero">
             <img src="./assets/vanilla%20logomark.svg" alt="vanilla." class="setup-logo">
-            <p class="setup-tagline">AI that feels like yours—fast, private, and ridiculously useful.</p>
+            <p class="setup-tagline">Your setup, your pace. Fast, private, and practical.</p>
           </div>
           <div class="setup-body">
             <h2 id="setupTitle" class="setup-title">First things first: what should I call you?</h2>
-            <p class="setup-subtitle">We'll use your name for greetings and the occasional personalized prompt. No pressure—you can always change it later.</p>
+            <p class="setup-subtitle">We use your name in greetings and a few prompts. You can change it anytime.</p>
             <div class="setup-field">
               <input id="setupNameInput" class="setup-input" type="text" placeholder="Your name" autocomplete="given-name" spellcheck="false">
             </div>
@@ -717,22 +716,22 @@
         <!-- Step 2: AI type -->
         <div class="setup-step" data-step="2" hidden>
           <div class="setup-body">
-            <h2 class="setup-title">Where's your AI running?</h2>
-            <p class="setup-subtitle">Vanilla works with local models (think: private, offline, zero latency) or cloud providers (OpenAI, Anthropic, and friends). Pick what fits your vibe.</p>
+            <h2 class="setup-title">Where should your model run?</h2>
+            <p class="setup-subtitle">You can run models locally for privacy, or connect a cloud provider for broader model options.</p>
             <div class="setup-choice-grid">
               <button class="setup-choice" type="button" data-choice="local" aria-pressed="false">
                 <span class="setup-choice-icon">
                   <img src="./assets/local.svg" alt="">
                 </span>
                 <strong>Local AI</strong>
-                <span>Runs on your machine via Ollama. Private, fast, fully offline. Your data never leaves.</span>
+                <span>Runs on your machine with Ollama. Private and works offline.</span>
               </button>
               <button class="setup-choice" type="button" data-choice="cloud" aria-pressed="false">
                 <span class="setup-choice-icon">
                   <img src="./assets/cloud.svg" alt="">
                 </span>
                 <strong>Cloud AI</strong>
-                <span>Connect to OpenAI, Anthropic, or another provider. More power, requires an API key.</span>
+                <span>Connect OpenAI, Anthropic, or another provider with an API key.</span>
               </button>
             </div>
           </div>
@@ -749,7 +748,7 @@
         <div class="setup-step" data-step="3" hidden>
           <div class="setup-body">
             <h2 class="setup-title">Want your chats named automatically?</h2>
-            <p class="setup-subtitle">Vanilla can generate smart titles for your conversations using a tiny local model (about 350 MB via Ollama). It's quick, private, and runs entirely on your machine. Or skip it—you can always rename chats manually.</p>
+            <p class="setup-subtitle">Vanilla can auto-name chats using a small local model (about 350 MB via Ollama). You can skip this and rename chats manually at any time.</p>
             <div class="setup-choice-grid">
               <button class="setup-choice" type="button" data-naming="yes" aria-pressed="false">
                 <span class="setup-choice-icon">
@@ -762,8 +761,8 @@
                 <span class="setup-choice-icon">
                   <img src="./assets/close.svg" alt="">
                 </span>
-                <strong>Nah, I'll name them</strong>
-                <span>Skip the download. You'll rename chats yourself when you feel like it.</span>
+                <strong>I'll name them myself</strong>
+                <span>Skip the download and rename chats manually.</span>
               </button>
             </div>
           </div>
@@ -794,7 +793,7 @@
                   <img src="./assets/close.svg" alt="">
                 </span>
                 <strong>No thanks</strong>
-                <span>Skip it for now — you can always import later.</span>
+                <span>Skip for now. You can import later.</span>
               </button>
             </div>
             <div id="setupImportWrap" class="setup-field" hidden>
@@ -806,58 +805,6 @@
           <div class="setup-actions setup-actions-split">
             <button class="setup-back" type="button" data-setup-back>Back</button>
             <button id="setupImportNext" class="setup-primary" type="button" disabled>
-              Continue
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            </button>
-          </div>
-        </div>
-
-        <!-- Step 5: Background music -->
-        <div class="setup-step" data-step="5" hidden>
-          <div class="setup-body">
-            <h2 class="setup-title">Want some background music?</h2>
-            <p class="setup-subtitle">Vanilla can play a soft, generative soundtrack while you chat. Pick a vibe — or skip it. You can change this anytime in Settings.</p>
-            <div class="setup-choice-grid">
-              <button class="setup-choice" type="button" data-music="vanilla" aria-pressed="false">
-                <span class="setup-choice-icon">
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
-                </span>
-                <strong>Vanilla Haze</strong>
-                <span>Soft arps and brushed rhythm — the classic.</span>
-              </button>
-              <button class="setup-choice" type="button" data-music="golden" aria-pressed="false">
-                <span class="setup-choice-icon">
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
-                </span>
-                <strong>Golden Hour</strong>
-                <span>Slow, dreamy leads over warm chords.</span>
-              </button>
-              <button class="setup-choice" type="button" data-music="midnight" aria-pressed="false">
-                <span class="setup-choice-icon">
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
-                </span>
-                <strong>Midnight Lo-Fi</strong>
-                <span>Mellow keys over a soft kick and hats.</span>
-              </button>
-              <button class="setup-choice" type="button" data-music="rainy" aria-pressed="false">
-                <span class="setup-choice-icon">
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
-                </span>
-                <strong>Rainy Day</strong>
-                <span>Sparse felt piano with gentle pads.</span>
-              </button>
-              <button class="setup-choice" type="button" data-music="none" aria-pressed="false">
-                <span class="setup-choice-icon">
-                  <img src="./assets/close.svg" alt="">
-                </span>
-                <strong>Keep it quiet</strong>
-                <span>No music — just you and your chats.</span>
-              </button>
-            </div>
-          </div>
-          <div class="setup-actions setup-actions-split">
-            <button class="setup-back" type="button" data-setup-back>Back</button>
-            <button id="setupMusicNext" class="setup-primary" type="button" disabled>
               Continue
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
             </button>
@@ -882,7 +829,7 @@
                   <img src="./assets/close.svg" alt="">
                 </span>
                 <strong>Skip dictation</strong>
-                <span>No voice input for now—you can enable it later in Settings.</span>
+                <span>No voice input for now. You can enable it later in Settings.</span>
               </button>
             </div>
           </div>
@@ -899,7 +846,7 @@
         <div class="setup-step" data-step="7a" hidden>
           <div class="setup-body">
             <h2 class="setup-title">Almost there. Let's check your Ollama setup.</h2>
-            <p class="setup-subtitle">Vanilla connects to Ollama at <code>localhost:11434</code> by default. Only tweak this if you're running Ollama on a custom host or port. (If you're not sure, leave it alone—it's probably right.)</p>
+            <p class="setup-subtitle">Vanilla connects to Ollama at <code>localhost:11434</code> by default. Change this only if your Ollama server uses a custom host or port.</p>
             <div class="setup-field">
               <label class="setup-label" for="setupOllamaHost">Ollama host</label>
               <input id="setupOllamaHost" class="setup-input" type="text" value="http://localhost:11434" spellcheck="false" autocomplete="off">
@@ -907,15 +854,15 @@
           </div>
           <div class="setup-actions setup-actions-split">
             <button class="setup-back" type="button" data-setup-back>Back</button>
-            <button id="setupLocalDone" class="setup-primary" type="button">Let's go</button>
+            <button id="setupLocalDone" class="setup-primary" type="button">Finish setup</button>
           </div>
         </div>
 
         <!-- Step 7b: Cloud provider config -->
         <div class="setup-step" data-step="7b" hidden>
           <div class="setup-body">
-            <h2 class="setup-title">One last thing: your API key.</h2>
-            <p class="setup-subtitle">Pick your cloud provider and drop in your API key. Don't worry—it's stored locally in your browser and never leaves your machine. You can swap providers or update keys anytime in Settings.</p>
+            <h2 class="setup-title">One more step: add your API key.</h2>
+            <p class="setup-subtitle">Choose a cloud provider and enter your API key. Keys are stored locally in your browser, and you can update them anytime in Settings.</p>
             <div class="setup-field">
               <label class="setup-label" for="setupProviderSelect">Cloud provider</label>
               <select id="setupProviderSelect" class="setup-select">
@@ -936,7 +883,7 @@
           </div>
           <div class="setup-actions setup-actions-split">
             <button class="setup-back" type="button" data-setup-back>Back</button>
-            <button id="setupCloudDone" class="setup-primary" type="button">Let's go</button>
+            <button id="setupCloudDone" class="setup-primary" type="button">Finish setup</button>
           </div>
         </div>
 
@@ -958,7 +905,7 @@
         <div class="install-body">
           <div class="install-search-wrap">
             <div class="install-search-row">
-              <input id="hfSearchInput" class="modal-input" type="search" placeholder="Search HuggingFace — e.g. Llama, Qwen, Mistral…" autocomplete="off" spellcheck="false">
+              <input id="hfSearchInput" class="modal-input" type="search" placeholder="Search HuggingFace (for example: Llama, Qwen, Mistral)" autocomplete="off" spellcheck="false">
               <select id="hfSortSelect" class="hf-sort-select" title="Sort results">
                 <option value="downloads" selected>Most popular</option>
                 <option value="likes">Most liked</option>
@@ -984,7 +931,7 @@
         <label class="settings-label">
           <span class="label-text">Prompt</span>
           <span class="label-help">Every selected model answers the same question. Results stream in side-by-side.</span>
-          <textarea id="comparePrompt" class="settings-textarea" rows="4" placeholder="Ask all selected models the same question…"></textarea>
+          <textarea id="comparePrompt" class="settings-textarea" rows="4" placeholder="Ask all selected models the same question..."></textarea>
         </label>
         <div class="compare-picker-head">
           <span class="label-text">Models</span>
@@ -1036,7 +983,7 @@
         <label class="settings-label">
           <span class="label-text">System prompt for this chat</span>
           <span class="label-help">Only affects this conversation. Leave blank to fall back to your global custom prompt in Settings.</span>
-          <textarea id="conversationPromptInput" class="settings-textarea" rows="5" placeholder="Instructions for this chat only…"></textarea>
+          <textarea id="conversationPromptInput" class="settings-textarea" rows="5" placeholder="Instructions for this chat only..."></textarea>
         </label>
         <div class="compare-actions">
           <button id="conversationPromptSave" class="compare-run" type="button">Save</button>

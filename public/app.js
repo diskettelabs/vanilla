@@ -208,7 +208,7 @@ const state = {
     reduceMotion: localStorage.getItem("vanilla-reduce-motion") === "true",
     enterToSend: localStorage.getItem("vanilla-enter-to-send") !== "false",
     showStats: localStorage.getItem("vanilla-show-stats") !== "false",
-    soundEffects: localStorage.getItem("vanilla-sound-effects") !== "false",
+    soundEffects: localStorage.getItem("vanilla-sound-effects") === "true",
     ambientMusic: localStorage.getItem("vanilla-ambient-music") === "true",
     musicTrack: localStorage.getItem("vanilla-ambient-track") || "vanilla",
     showCompare: localStorage.getItem("vanilla-show-compare") === "true",
@@ -234,41 +234,26 @@ const themeNames = [
 ];
 
 const greetings = [
-  "What's up?", "Let's get started.", "Ready when you are.", "What are we making today?",
-  "Bring me a problem.", "I saved you a clean slate.", "What needs untangling?",
-  "Let's make it useful.", "What are we thinking through?", "Tell me where to aim.",
-  "Ready to dive in, {name}?", "What's the move, {name}?", "Give me the weird version, {name}.",
-  "{name}, let's do this.", "Let's turn the idea into something real, {name}.",
-  "What are we shipping today, {name}?", "{name}, your cursor has the floor.",
-  "Ready for the next thread, {name}?", "I am listening, {name}.", "Start anywhere, {name}.",
-  "Quiet hours, loud ideas.", "Too late to be vague. What's the mission?",
-  "Ready or not, here I come!", "Let's do the satisfying version.",
-  "Give me the messy draft.", "We can make that sharper.", "What deserves attention?",
-  "Let's find the cleanest path.", "Drop the thought here.", "What should Vanilla chew on?",
-  "I'm warmed up.", "Blank page, low pressure.", "Start with the rough edge.",
-  "What are we curious about?", "Let's make a dent.", "One prompt at a time.",
-  "What are we improving?", "I can work with fragments.", "Give me the high level.",
-  "Let's chase the useful answer.", "What's bothering the build?", "What's the question behind the question?",
-  "Ready for a fresh pass.", "Let's put the pieces on the table.", "What needs a second brain?",
-  "Let's make it less annoying.", "What would you like solved?", "I'm here for the hard part.",
-  "Let's turn fog into steps.", "What's worth doing next?", "Make a wish, but practical.",
-  "What are we testing?", "What needs explaining?", "What needs building?",
-  "Let's draft, then polish.", "You bring the spark. I'll bring the structure.",
-  "What is the next tiny win?", "Let's get something working.", "What should be easier?",
-  "Tell me the constraint.", "What are the vibes and the requirements?",
-  "Ready to reason out loud.", "What's the shape of the thing?", "Let's inspect the problem.",
-  "Give me the real context.", "What are we comparing?", "What needs a decision?",
-  "Let's make the computer behave.", "What should this become?", "What needs naming?",
-  "Let's make the first version.", "What are we simplifying?", "What needs a plan?",
-  "I have room for the whole rant.", "Let's do the careful version.",
-  "What should we not miss?", "What's the fastest honest path?", "What are we fixing first?",
-  "Let's make it feel inevitable.", "What deserves a better answer?",
-  "Ready for the scratchpad.", "What would success look like?", "Let's pressure-test it.",
-  "What are we learning today?", "Give me the puzzle.", "Let's make a useful mess.",
-  "I am ready for the oddly specific thing.", "What's the tiny monster hiding in this one?",
-  "Bring the context. I'll bring the patience.", "Let's get unstuck.",
-  "What can I help you finish?", "Ready for the next good question.",
-  "Let's make the vague thing concrete.", "What are we doing with this fine rectangle?"
+  "Ready when you are.",
+  "What are we working on?",
+  "Drop in the problem and we will sort it out.",
+  "What needs a second set of eyes?",
+  "Where should we start?",
+  "Show me the rough draft.",
+  "What should we make better?",
+  "What are we shipping today?",
+  "What is the blocker?",
+  "What needs a clean pass?",
+  "What are we solving, {name}?",
+  "What should we tackle first, {name}?",
+  "Ready when you are, {name}.",
+  "Send context and we will map it out.",
+  "What is the goal for this one?",
+  "Give me the short version first.",
+  "What deserves attention today?",
+  "Let us make this easier.",
+  "What should be clearer?",
+  "What can I help you finish?"
 ];
 
 function api(path, options = {}) {
@@ -317,7 +302,16 @@ function api(path, options = {}) {
 }
 
 function isMacLike() {
-  return /Mac|iPhone|iPad|iPod/.test(navigator.platform);
+  const uaDataPlatform = navigator.userAgentData?.platform || "";
+  const platform = navigator.platform || "";
+  const userAgent = navigator.userAgent || "";
+  const fingerprint = `${uaDataPlatform} ${platform} ${userAgent}`;
+
+  if (/Linux|X11|Ubuntu|CrOS/i.test(fingerprint)) return false;
+  if (/Win/i.test(fingerprint)) return false;
+  if (/Android/i.test(fingerprint)) return false;
+
+  return /Mac|iPhone|iPad|iPod/i.test(fingerprint);
 }
 
 function getApiKey(provider) {
@@ -349,8 +343,20 @@ function usableProviders() {
 }
 
 function setShortcuts() {
-  document.querySelector('[data-shortcut="new-chat"]').textContent = isMacLike() ? "⌘+⇧+O" : "Ctrl+Shift+O";
-  document.querySelector('[data-shortcut="search"]').textContent = isMacLike() ? "⌘+K" : "Ctrl+K";
+  const isMac = isMacLike();
+  const shortcuts = {
+    "new-chat": isMac ? "⌘+⇧+O" : "Ctrl+Shift+O",
+    search: isMac ? "⌘+K" : "Ctrl+K",
+    workspace: isMac ? "⌘+⇧+F" : "Ctrl+Shift+F",
+    "open-settings": isMac ? "⌘+," : "Ctrl+,",
+    "toggle-sidebar": isMac ? "⌘+B" : "Ctrl+B",
+  };
+
+  Object.entries(shortcuts).forEach(([name, value]) => {
+    document.querySelectorAll(`[data-shortcut="${name}"]`).forEach((el) => {
+      el.textContent = value;
+    });
+  });
 }
 
 function getUserName() {
@@ -638,7 +644,7 @@ function renderConversationList() {
     empty.className = "conversation-empty";
     empty.innerHTML = `${MASCOT_SVG("mascot mascot-svg")}
       <span class="mascot-zzz" aria-hidden="true">z&thinsp;Z</span>
-      <p class="conversation-empty-text">No chats yet — start one, it's on the house.</p>`;
+      <p class="conversation-empty-text">No chats yet. Start a new one.</p>`;
     els.conversationList.append(empty);
     armMascotNap(empty.querySelector(".mascot"));
     return;
@@ -936,16 +942,16 @@ function addAssistantMessage(content = "", { id = crypto.randomUUID(), animate =
 }
 
 const LOADER_MESSAGES = [
-  "Reticulating splines…",
-  "Consulting the oracle…",
-  "Stirring the vanilla…",
-  "Gathering the good thoughts…",
-  "Polishing the answer…",
+  "Thinking...",
+  "Putting this together...",
+  "Working through the details...",
+  "Drafting a clear answer...",
+  "Almost there...",
 ];
 let loaderMessageIndex = 0;
 
 function loaderHtml() {
-  return '<div class="typing-loader" aria-label="Waiting for response"><span></span><span></span><span></span><span class="loader-msg" data-cycle>Reticulating splines…</span></div>';
+  return '<div class="typing-loader" aria-label="Waiting for response"><span></span><span></span><span></span><span class="loader-msg" data-cycle>Thinking...</span></div>';
 }
 
 function startLoaderRotation() {
@@ -959,11 +965,11 @@ function startLoaderRotation() {
 }
 
 const PROMPT_PLACEHOLDERS = [
-  "what's up?",
-  "Or ask me something spicy 🌶️",
-  "Ask anything…",
-  "Give me the weird version.",
-  "What needs building?",
+  "What are we working on?",
+  "Ask a question.",
+  "Share context or paste code.",
+  "Tell me what you want to build.",
+  "What should we fix first?",
 ];
 let placeholderIndex = 0;
 
@@ -1339,7 +1345,7 @@ async function handleAttachmentUpload(message) {
         if (e.lengthComputable) {
           const pct = Math.round((e.loaded / e.total) * 100);
           progress.querySelector(".upload-fill").style.width = `${pct}%`;
-          progress.querySelector(".upload-label").textContent = `Uploading ${name} — ${pct}%`;
+          progress.querySelector(".upload-label").textContent = `Uploading ${name} (${pct}%)`;
         }
       };
 
@@ -1382,7 +1388,7 @@ async function handleAttachmentUpload(message) {
     if (isResultImage) {
       visualContent = `<img src="${result.url}" alt="${escapeHtml(result.name)}" style="max-width: 100%; border-radius: 12px; margin-top: 10px;">`;
     } else {
-      visualContent = `<a href="${result.url}" target="_blank" class="file-attachment"><span class="file-icon">${ext.toUpperCase()}</span><span class="file-info"><span class="file-name">${escapeHtml(result.name)}</span><span class="file-meta">${escapeHtml(result.type)} — ${formatFileSize(result.size)}</span></span></a>`;
+      visualContent = `<a href="${result.url}" target="_blank" class="file-attachment"><span class="file-icon">${ext.toUpperCase()}</span><span class="file-info"><span class="file-name">${escapeHtml(result.name)}</span><span class="file-meta">${escapeHtml(result.type)} · ${formatFileSize(result.size)}</span></span></a>`;
     }
 
     // Message sent to AI (just URL for context)
@@ -1700,11 +1706,11 @@ async function retryLastMessage() {
 }
 
 const SUCCESS_VARIANTS = {
-  "Chat pinned": ["Chat pinned", "Pinned. Classy.", "It's a keeper now.", "Pinned for later."],
-  "Chat unpinned": ["Chat unpinned", "Unpinned. Free as a bird.", "Let it go."],
-  "Chat renamed": ["Chat renamed", "Renamed. Fits better now.", "New name, who dis?"],
-  "Chat exported": ["Chat exported", "Exported. Precious cargo.", "Saved. Feels good."],
-  "Chat deleted": ["Chat deleted", "Gone. No witnesses.", "Deleted. Fresh air."],
+  "Chat pinned": ["Chat pinned", "Pinned for later."],
+  "Chat unpinned": ["Chat unpinned", "Removed from pinned."],
+  "Chat renamed": ["Chat renamed", "Name updated."],
+  "Chat exported": ["Chat exported", "Export ready."],
+  "Chat deleted": ["Chat deleted", "Removed."],
 };
 
 function showNotification(message, type = "info", duration = 3000) {
@@ -1806,7 +1812,7 @@ async function checkLmStudio() {
     const models = await api("/api/models?provider=lmstudio", { timeoutMs: 5000 });
     if (Array.isArray(models) && models.length) {
       const preview = models.slice(0, 3).join(", ");
-      status.textContent = `Connected — ${models.length} model${models.length === 1 ? "" : "s"} available (${preview}${models.length > 3 ? "…" : ""}).`;
+      status.textContent = `Connected. ${models.length} model${models.length === 1 ? "" : "s"} available (${preview}${models.length > 3 ? "..." : ""}).`;
       status.classList.add("ok");
     } else {
       status.textContent = "Connected, but no models are loaded. Load a model in LM Studio, then try again.";
@@ -2188,7 +2194,7 @@ function updateDictationNote() {
     els.dictationEngineNote.textContent = "VOSK runs in your browser, downloads ~40MB on first use. Decent accuracy, works offline.";
     if (els.dictationButton) els.dictationButton.style.display = '';
   } else {
-    els.dictationEngineNote.textContent = "Voice dictation is disabled. Enable it above to use hands-free input.";
+    els.dictationEngineNote.textContent = "Voice dictation is off. Turn it on above to use voice input.";
     if (els.dictationButton) els.dictationButton.style.display = 'none';
   }
 }
@@ -2542,7 +2548,7 @@ async function refreshWorkspace() {
 
 function renderWorkspaceFiles(files) {
   if (!files.length) {
-    els.workspaceFileList.innerHTML = `<div class="workspace-empty"><p>No files yet.</p><span>Ask the AI to create something, or make a file yourself.</span></div>`;
+    els.workspaceFileList.innerHTML = `<div class="workspace-empty"><p>No files yet.</p><span>Create one here, or ask the assistant to create one.</span></div>`;
     return;
   }
   els.workspaceFileList.innerHTML = files.map((file) => `
@@ -2620,7 +2626,7 @@ function closeWorkspaceEditor() {
 }
 
 function formatBytes(value) {
-  if (!Number.isFinite(value) || value <= 0) return "—";
+  if (!Number.isFinite(value) || value <= 0) return "--";
   const units = ["B", "KB", "MB", "GB", "TB"];
   let n = value;
   let i = 0;
@@ -2632,7 +2638,7 @@ function formatBytes(value) {
 }
 
 function formatCount(value) {
-  if (!Number.isFinite(value) || value <= 0) return "—";
+  if (!Number.isFinite(value) || value <= 0) return "--";
   if (value >= 1_000_000) {
     const millions = value / 1_000_000;
     return `${millions >= 10 ? Math.round(millions) : millions.toFixed(1)}M`;
@@ -3015,7 +3021,7 @@ function refreshUpdateUI(status) {
       installBtn.hidden = true;
     } else if (status.status === "downloaded") {
       line.dataset.state = "downloaded";
-      line.textContent = `Update ${formatUpdateVersion(status)} downloaded — restart to apply`;
+      line.textContent = `Update ${formatUpdateVersion(status)} downloaded. Restart to apply.`;
       sub.hidden = true;
       checkBtn.disabled = true;
       installBtn.hidden = false;
@@ -3085,7 +3091,7 @@ async function loadUpdateStatus(forceCheck = false) {
       startUpdatePolling();
     }
   } catch (error) {
-    // Update checking is a nicety — never break the app over it.
+    // Update checking is a nicety, never break the app over it.
     refreshUpdateUI({ supported: false, reason: error.message || "Could not reach the update service.", status: "error" });
   }
 }
@@ -3327,7 +3333,7 @@ function bindEvents() {
       state.settings.showLmStudio = els.lmStudioToggle.checked;
       applySettings();
       if (state.settings.showLmStudio) {
-        showNotification("LM Studio enabled — start the local server in LM Studio to connect", "info", 5000);
+        showNotification("LM Studio enabled. Start the local server in LM Studio to connect.", "info", 5000);
       }
       loadProvidersAndModels();
     });
@@ -3341,7 +3347,7 @@ function bindEvents() {
       state.settings[key] = toggle.checked;
       applySettings();
       if (toggle.checked) {
-        showNotification(`${label} enabled — make sure it is installed and on your PATH`, "info", 5000);
+        showNotification(`${label} enabled. Make sure it is installed and on your PATH.`, "info", 5000);
       }
       loadProvidersAndModels();
     });
@@ -3384,8 +3390,6 @@ function bindEvents() {
       if (namingNext) { namingNext.disabled = true; delete namingNext.dataset.naming; }
       const dictationNext = els.setupModal?.querySelector("#setupDictationNext");
       if (dictationNext) { dictationNext.disabled = true; delete dictationNext.dataset.dictation; }
-      const musicNext = els.setupModal?.querySelector("#setupMusicNext");
-      if (musicNext) { musicNext.disabled = true; delete musicNext.dataset.music; }
       els.setupModal?.querySelectorAll(".setup-choice").forEach((b) => b.setAttribute("aria-pressed", "false"));
       const importWrap = els.setupModal?.querySelector("#setupImportWrap");
       const importNext = els.setupModal?.querySelector("#setupImportNext");
@@ -3516,7 +3520,7 @@ function clearAttachment() {
 function createUploadProgress() {
   const el = document.createElement("div");
   el.className = "upload-progress";
-  el.innerHTML = '<div class="upload-track"><div class="upload-fill"></div></div><span class="upload-label">Preparing…</span>';
+  el.innerHTML = '<div class="upload-track"><div class="upload-fill"></div></div><span class="upload-label">Preparing...</span>';
   els.messages.append(el);
   els.emptyState.hidden = true;
   scrollToBottom();
@@ -3536,7 +3540,7 @@ function addUploadedMessage(content) {
 function updatePromptPill() {
   if (!els.promptPillLabel) return;
   const hasPrompt = Boolean(state.activeConversation?.customPrompt?.trim());
-  els.promptPillLabel.textContent = hasPrompt ? "prompt ✓" : "prompt";
+  els.promptPillLabel.textContent = hasPrompt ? "prompt set" : "prompt";
   els.promptPillLabel.closest("[data-tool='prompt']")?.classList.toggle("is-custom", hasPrompt);
   els.promptPillLabel.closest("[data-tool='prompt']")?.setAttribute("aria-label", hasPrompt ? "Chat instructions set" : "Set chat instructions");
 }
@@ -3862,7 +3866,7 @@ async function runCompare() {
     const key = m.id;
     const col = document.createElement("div");
     col.className = "compare-col";
-    col.innerHTML = `<div class="compare-col-head"><span class="compare-col-provider">${escapeHtml(m.providerLabel || m.provider)}</span><span class="compare-col-model">${escapeHtml(m.model)}</span></div><div class="compare-col-body"><div class="typing-loader"><span></span><span></span><span></span><span class="loader-msg" data-cycle>Reticulating splines…</span></div></div>`;
+    col.innerHTML = `<div class="compare-col-head"><span class="compare-col-provider">${escapeHtml(m.providerLabel || m.provider)}</span><span class="compare-col-model">${escapeHtml(m.model)}</span></div><div class="compare-col-body"><div class="typing-loader"><span></span><span></span><span></span><span class="loader-msg" data-cycle>Thinking...</span></div></div>`;
     els.compareResults.append(col);
     compareState.results[key] = { el: col.querySelector(".compare-col-body"), text: "", queue: "", error: false };
   });
@@ -3984,10 +3988,9 @@ function updateSetupDots(stepAttr) {
     stepAttr === "2" ? 2 :
     stepAttr === "3" ? 3 :
     stepAttr === "4" ? 4 :
-    stepAttr === "5" ? 5 :
-    stepAttr === "6" ? 6 :
-    stepAttr === "7a" ? 7 :
-    stepAttr === "7b" ? 7 : 1;
+    stepAttr === "6" ? 5 :
+    stepAttr === "7a" ? 6 :
+    stepAttr === "7b" ? 6 : 1;
   els.setupModal.querySelectorAll(".setup-dot").forEach((dot) => {
     const n = Number(dot.dataset.dot);
     dot.dataset.state = n < stepNum ? "done" : n === stepNum ? "active" : "idle";
@@ -4140,34 +4143,9 @@ function bindSetupFlow() {
 
   if (importNext) {
     importNext.addEventListener("click", () => {
-      showSetupStep("5");
+      showSetupStep("6");
     });
   }
-
-  // Step 5: background music preference
-  const musicButtons = els.setupModal.querySelectorAll(".setup-choice[data-music]");
-  const musicNext = els.setupModal.querySelector("#setupMusicNext");
-
-  musicButtons.forEach((btn) => {
-    btn.addEventListener("click", () => {
-      musicButtons.forEach((b) => b.setAttribute("aria-pressed", "false"));
-      btn.setAttribute("aria-pressed", "true");
-      musicNext.disabled = false;
-      musicNext.dataset.music = btn.dataset.music;
-    });
-  });
-
-  musicNext.addEventListener("click", () => {
-    const music = musicNext.dataset.music;
-    if (music === "none") {
-      state.settings.ambientMusic = false;
-    } else if (music) {
-      state.settings.ambientMusic = true;
-      state.settings.musicTrack = music;
-    }
-    applySettings();
-    showSetupStep("6");
-  });
 
   // Step 6: Dictation preference
   const dictationButtons = els.setupModal.querySelectorAll(".setup-choice[data-dictation]");
@@ -4188,12 +4166,12 @@ function bindSetupFlow() {
         try {
           const status = await api("/api/whisper/status");
           if (status.installed) {
-            whisperStatus.textContent = "✓ Whisper is installed and ready.";
+            whisperStatus.textContent = "Whisper is installed and ready.";
           } else {
             whisperStatus.textContent = "Whisper will be downloaded (~1.5GB) when you continue.";
           }
         } catch (error) {
-          whisperStatus.textContent = "⚠ Could not check Whisper status.";
+          whisperStatus.textContent = "Could not check Whisper status.";
         }
       } else {
         whisperStatus.hidden = true;
@@ -4218,7 +4196,7 @@ function bindSetupFlow() {
         if (result.success) {
           state.settings.dictationEngine = "whisper";
           applySettings();
-          whisperStatus.textContent = "✓ Whisper installed successfully!";
+          whisperStatus.textContent = "Whisper installed successfully.";
           setTimeout(() => {
             const choice = aiNext.dataset.choice;
             if (choice === "local") showSetupStep("7a");
@@ -4266,8 +4244,8 @@ function bindSetupFlow() {
       if (currentStep === "2") showSetupStep("1");
       if (currentStep === "3") showSetupStep("2");
       if (currentStep === "4") showSetupStep("3");
-      if (currentStep === "5") showSetupStep("4");
-      if (currentStep === "6a" || currentStep === "6b") showSetupStep("5");
+      if (currentStep === "6") showSetupStep("4");
+      if (currentStep === "7a" || currentStep === "7b") showSetupStep("6");
     });
   });
 }
