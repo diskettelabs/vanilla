@@ -2,8 +2,7 @@
 
 ## Supported Versions
 
-Use this section to tell people about which versions of your project are
-currently being supported with security updates.
+Currently actively maintained and supported versions
 
 | Version | Supported          |
 | ------- | ------------------ |
@@ -11,8 +10,5 @@ currently being supported with security updates.
 
 ## Reporting a Vulnerability
 
-Use this section to tell people how to report a vulnerability.
-
-Tell them where to go, how often they can expect to get an update on a
-reported vulnerability, what to expect if the vulnerability is accepted or
-declined, etc.
+If you find vulnerability, please submit it in app(not supported yet)
+Or by creating a GitHub issue so that we can fix it
