@@ -111,6 +111,7 @@ const els = {
   workspaceFileList: document.querySelector("#workspaceFileList"),
   workspaceNewButton: document.querySelector("#workspaceNewButton"),
   workspaceRefreshButton: document.querySelector("#workspaceRefreshButton"),
+  workspaceOpenButton: document.querySelector("#workspaceOpenButton"),
   workspacePathLabel: document.querySelector("#workspacePathLabel"),
   workspaceEditor: document.querySelector("#workspaceEditor"),
   workspaceFileName: document.querySelector("#workspaceFileName"),
@@ -2534,9 +2535,19 @@ function openWorkspace() {
 async function refreshWorkspace() {
   try {
     const data = await api("/api/workspace");
+    if (data.dir && els.workspacePathLabel) els.workspacePathLabel.textContent = data.dir;
     renderWorkspaceFiles(data.files || []);
   } catch (error) {
     els.workspaceFileList.innerHTML = `<p class="muted-note">Couldn't load the workspace. ${escapeHtml(error.message || "")}</p>`;
+  }
+}
+
+async function openWorkspaceFolder() {
+  try {
+    await api("/api/workspace/open", { method: "POST" });
+    showNotification("Workspace folder opened", "success");
+  } catch (error) {
+    showNotification(error.action || error.message || "Couldn't open the workspace folder", "error");
   }
 }
 
@@ -3191,6 +3202,7 @@ function bindEvents() {
   });
   els.workspaceNewButton.addEventListener("click", newWorkspaceFile);
   els.workspaceRefreshButton.addEventListener("click", refreshWorkspace);
+  els.workspaceOpenButton.addEventListener("click", openWorkspaceFolder);
   els.workspaceSaveButton.addEventListener("click", saveWorkspaceFile);
   els.workspaceEditorClose.addEventListener("click", closeWorkspaceEditor);
   document.querySelectorAll(".toggle-input").forEach((input) => {

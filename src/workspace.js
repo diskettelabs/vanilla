@@ -1,7 +1,11 @@
 const fs = require('node:fs');
 const path = require('node:path');
+const { execFile } = require('node:child_process');
 
-const WORKSPACE_DIR = path.join(__dirname, '..', 'data', 'workspace');
+// Resolve relative to cwd: in the packaged app gelectron chdir()s to the user
+// data dir, so this lands in ~/Library/Application Support/VanillaChat/data/
+// instead of the read-only app bundle.
+const WORKSPACE_DIR = path.resolve('data', 'workspace');
 
 function ensureDir() {
   fs.mkdirSync(WORKSPACE_DIR, { recursive: true });
@@ -74,4 +78,16 @@ function readFile(rel, maxBytes = 200000) {
   return { path: toRel(abs), size: buf.length, truncated: false, content: buf.toString('utf8') };
 }
 
-module.exports = { WORKSPACE_DIR, isEnabled, listFiles, writeFile, deleteFile, readFile };
+function openFolder() {
+  ensureDir();
+  const cmd =
+    process.platform === 'darwin' ? 'open' : process.platform === 'win32' ? 'explorer' : 'xdg-open';
+  return new Promise((resolve, reject) => {
+    execFile(cmd, [WORKSPACE_DIR], { timeout: 10000 }, (err) => {
+      if (err) return reject(new Error(`Could not open the folder: ${err.message}`));
+      resolve({ path: WORKSPACE_DIR });
+    });
+  });
+}
+
+module.exports = { WORKSPACE_DIR, isEnabled, listFiles, writeFile, deleteFile, readFile, openFolder };
