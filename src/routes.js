@@ -803,9 +803,17 @@ function register(app) {
   // Workspace file management
   app.get('/api/workspace', (req, res) => {
     try {
-      res.json({ files: workspace.listFiles() });
+      res.json({ dir: workspace.WORKSPACE_DIR, files: workspace.listFiles() });
     } catch (e) {
       res.status(500).json({ error: e.message || 'Failed to list workspace files' });
+    }
+  });
+
+  app.post('/api/workspace/open', async (_req, res) => {
+    try {
+      res.json(await workspace.openFolder());
+    } catch (e) {
+      res.status(500).json({ error: e.message || 'Failed to open the workspace folder' });
     }
   });
 

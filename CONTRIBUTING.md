@@ -85,17 +85,9 @@ Open `http://localhost:2051` in your browser.
 
 These are the decisions that shape the code. Read them before touching a new area — the structure exists because of them.
 
-- **The web build is the source of truth; the desktop shell is just a wrapper.** The whole app runs from `node server.js` and works in a plain browser. Gelectron/Electron add the window, splash screen, and update checking — nothing else. New features should be testable in the browser first.
-- **No build step, no frameworks, no frontend npm deps.** `public/` is served straight off disk. The frontend is one file per concern: `index.html`, `app.js` (all UI logic), `styles.css`. This is deliberate — contributors never run a bundler, and diffs stay reviewable.
-- **One wire protocol for every provider.** OpenAI, Anthropic, Gemini, Ollama, LM Studio, and the CLI providers all funnel through the same Server-Sent Events shape (`data: { "type": "token" | "tool_call" | "tool_result" | "tool_error" | "error" | "done", ... }\n\n`). The frontend only knows how to render this one protocol (`handleSsePart`), so adding a provider never touches the UI.
-- **Providers are adapters.** Each lives in `src/providers/`, extends `Provider` (`src/providers/base.js`), and implements `hasConfiguredKey()`, `listModels()`, and `chatStream(messages, model, onToken, onDone, onError)`. New providers are registered in `src/providers/index.js` and configured under `CONFIG.providers`.
-- **Settings live in the browser only.** Everything is read from and written back to `localStorage` under `vanilla-*` keys by `applySettings()` in `public/app.js`. There is no server-side settings store and no separate `saveSettings()` — the pattern is: change the toggle → update `state.settings` → call `applySettings()`.
-- **Data is flat JSON on disk.** Conversations are individual JSON files in `data/conversations/` (gitignored), managed by `src/storage.js`. No database.
-- **Privacy-first by default.** No telemetry or phone-home. DuckDuckGo is the default search backend because it needs no key. External calls happen only for the providers, search, and update feed the user enables.
-- **Theming is CSS custom properties.** `applyTheme()` maps theme JSON `colors.*` onto `var(--bg)`, `--surface`, `--accent`, and so on. Hardcoding hex in new UI breaks themes — always use a variable, and register new ones in `:root` plus `applyTheme()`.
-- **Errors are user-facing contracts.** APIs return `{ error, action, recoverable }` via `formatErrorForClient` (`src/errors.js`); the frontend `api()` helper turns that into an `Error` with `.action` and `.recoverable`, so the UI can show a "what to do" line instead of a stack trace.
-- **Desktop-only features must degrade gracefully in the web build.** The update system is the template: `src/updater.js` only touches `require('electron')` when running in a packaged app (`isGelectronContext()`), so plain `node server.js` never downloads an Electron binary and the `/api/update/*` routes simply report `supported: false`. Follow the same guard pattern for new desktop integrations.
-- **UI feedback is sound-aware.** Sounds come from `Sounds` (`public/sounds.js`, Web Audio only) and are gated through `Sounds.setEnabled()`. New feedback moments should use `Sounds.*`, not inline audio.
+We try to go for minimalist look, so if you clutter it up too much, we may have to take your request, your poll request, and change it. If in this event we will still give you credit, but if you could please minimize issues with overcluttering, that would be great. We also have a style guide: all styles must be and editable by the themes, so any new or added thing must be updated in the HTML page where we keep the API and supported by the front end.
+
+For back-end work, please note that no matter what you do, it has to still work with the NoJSA server and the web front tent spawned by it. If you ever break this rule, we will have to deny your poll request. It's OK to have features that are exclusive to Galtron, but please ask for permission first
 
 ## Project structure
 
