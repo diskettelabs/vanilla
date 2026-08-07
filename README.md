@@ -6,6 +6,8 @@
 
 A simple, privacy-first web chat interface for local and cloud AI models — Ollama, LM Studio, OpenAI, Anthropic, HuggingFace, and Gemini — plus direct integration with the Aider, Goose, and OpenCode CLIs. Comes with 14 ice cream-themed color schemes.
 
+
+
 ## Quick Start
 
 ```bash
