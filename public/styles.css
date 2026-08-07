@@ -1,10 +1,4 @@
-@font-face {
-  font-family: Satoshi;
-  src: url("./assets/fonts/satoshi/Satoshi-Variable.woff2") format("woff2");
-  font-style: normal;
-  font-weight: 300 900;
-  font-display: swap;
-}
+/* Satoshi font loaded from FontShare CDN in index.html */
 
 @font-face {
   font-family: "Iosevka Extended";
