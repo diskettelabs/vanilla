@@ -1,14 +1,16 @@
-# Vanilla Chat
+# vanilla chat interface
 
 <p align="center">
   <img src="./logo.png" alt="Vanilla Chat logo" width="140">
 </p>
 
-A simple, privacy-first web chat interface for local and cloud AI models — Ollama, LM Studio, OpenAI, Anthropic, HuggingFace, and Gemini — plus direct integration with the Aider, Goose, and OpenCode CLIs. Comes with 14 ice cream-themed color schemes.
+A simple, privacy-first web chat interface for local and cloud AI models from Ollama, LM Studio, OpenAI, Anthropic, HuggingFace, and Google, plus direct integration with the Aider, Goose, and OpenCode CLIs. Comes with 13 ice cream-themed color schemes.
 
 
 
-## Quick Start
+## quick start
+
+### starting the web interface:
 
 ```bash
 npm start
@@ -16,47 +18,59 @@ npm start
 
 Open `http://localhost:2051` in your browser.
 
-- **Local models** — make sure Ollama is running (`ollama serve`), or start the LM Studio local server (Developer tab → Local Server → Start Server).
-- **Cloud models** — pick a provider in Settings → AI Model and paste your API key.
-- **Desktop app** — `npm start -- -g` launches the Gelectron desktop build (bundled Ollama runtime); `npm start -- -e` launches the Electron build (system Ollama).
-- **Auto-install everything** — `./run-this-furst.sh` clones and builds Gelectron + gelectron-ollama, installs dependencies, and runs the app. Options: `--run` (install then launch), `--no-build` (reuse an existing Gelectron binary).
+- **Running Ollama/LM Studio** — make sure Ollama is running (`ollama serve`), or start the LM Studio local server (Developer tab → Local Server → Start Server).
 
-## Features
+### starting the desktop app:
+**Gelectron Build** — lightweight with a bundled Ollama runtime:
+1. **Auto-install everything** — `./run-this-first.sh` clones and builds Gelectron + gelectron-ollama, installs dependencies, and runs the app. Options: `--run` (install then launch), `--no-build` (reuse an existing Gelectron binary).
+
+1. **Run Gelectron app binary** — `npm start -- -g
+`
+
+**Electron Build** — heavier with no bundled Ollama runtime:
+```bash
+npm start -- -e
+```
+
+### setting up cloud models:
+
+Pick a provider in Settings → AI Model and paste your API key.
+
+## features
 
 - **Real-time streaming** — responses appear token-by-token via SSE
 - **Web search** — toggle it in the composer or Settings; your question is searched (DuckDuckGo by default, optional Brave API key) and cited results are injected into the response
-- **Multi-provider** — Ollama, LM Studio, OpenAI, Anthropic, HuggingFace, Gemini, and the Aider / Goose / OpenCode CLIs
+- **Multi-provider** — Ollama, LM Studio, OpenAI, Anthropic, HuggingFace, Google, and the Aider / Goose / OpenCode CLIs
 - **Compare models** — run the same prompt against multiple models side by side
 - **Conversation management** — create, switch, rename, regenerate, export (Markdown/JSON/HTML), and delete chats
 - **HuggingFace installer** — search GGUF models and import them into Ollama from the UI
 - **Custom system prompts** — global default plus per-conversation override
 - **Auto-naming** — smart chat titles generated locally via Ollama
-- **Themes** — 14 ice cream color schemes (vanilla, strawberry, mint, lemon, lime, peach, plum, raspberry, lavender, dragonfruit, dreamsicle, blue-moon, chocolate, monochrome) plus custom JSON themes that can replace colors, accent, logo, mascot, app name, and CSS. Authoring guide: `/themes/themes.html`
-- **Settings UI** — organized tabs (General, AI Model, Chat, Appearance, Shortcuts, Data & Privacy) with pickers for theme, density, text size, accent, and assistant logo position
+- **Themes** — 13 ice cream color schemes (vanilla, strawberry, mint, lemon, lime, peach, raspberry, lavender, dragonfruit, dreamsicle, blue-moon, chocolate, monochrome) plus custom JSON themes that can replace colors, accent, logo, mascot, app name, and CSS. Authoring guide: `/themes/themes.html`
+- **Settings UI** — organized tabs (General, AI Model, Chat, Appearance, Shortcuts, Data & Privacy) with pickers for theme, density, text size, accent, and more
 - **Voice input** — browser-based dictation (VOSK, on-device)
 - **File uploads** — attach images and files with OCR/image understanding
-- **Sound effects** — optional UI sounds (Web Audio, no audio files)
 - **Privacy** — all data stays local, nothing leaves your machine unless you use a cloud provider
 
-## Requirements
+## requirements
 
 - [Node.js](https://nodejs.org) 18+
-- For local models: [Ollama](https://ollama.ai) and/or [LM Studio](https://lmstudio.ai) running locally
+- For local models (if using the web interface or Electron): [Ollama](https://ollama.ai) and/or [LM Studio](https://lmstudio.ai) running locally
 - For CLI tools: Aider, Goose, or OpenCode installed and on your PATH
 - For cloud providers: an API key from the respective service
 
-## Settings
+## settings
 
-Open Settings (⌘+,) — the UI is organized into sections:
+Open Settings <kbd>⌘+,</kbd> — the UI is organized into sections:
 
 - **Account** — your display name
 - **AI Model** — provider and model selection, HuggingFace model installer
 - **Providers & API keys** — enable optional providers/tools (LM Studio, Aider, Goose, OpenCode) and manage keys; LM Studio includes a connection check
 - **Chat** — global custom system prompt
-- **UI** — theme, density, text size, message accent, and **assistant logo position** (beside text or above text)
+- **UI** — theme, density, text size, message accent, and assistant logo position
 - **Keyboard shortcuts** / **Preferences** / **Export** / **Uninstall**
 
-## Project Structure
+## project structure
 
 ```
 vanilla-sh/
@@ -95,7 +109,7 @@ vanilla-sh/
     └── default.json      Server configuration
 ```
 
-## API
+## api
 
 | Endpoint | Description |
 |---|---|
@@ -126,7 +140,7 @@ vanilla-sh/
 | `POST /api/upload` | Upload a file (image/audio/document) |
 | `POST /api/uninstall` | Uninstall the app |
 
-## Configuration
+## configuration
 
 Server settings live in `config/default.json`:
 
@@ -134,6 +148,6 @@ Server settings live in `config/default.json`:
 - `defaultProvider` — default provider (default `ollama`)
 - `providers` — per-provider settings such as `host`, `baseUrl`, `apiKey`, `defaultModel`, and `requestTimeout`. Cloud API keys can also be entered in the app UI and are stored locally in your browser.
 
-## Fonts
+## fonts
 
 The fonts used in this project are subject to their respective licenses. Please consult the font files included in the repository or their upstream sources for specific license details and attribution requirements.
