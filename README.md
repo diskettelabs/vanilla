@@ -1,7 +1,5 @@
-# vanilla chat interface
-
-<p align="center">
-  <img src="./logo.png" alt="Vanilla Chat logo" width="140">
+<p align="left">
+  <img src="./wordmark.svg" alt="Vanilla Chat logo" width="140"> <h1>vanilla chat interface</h1>
 </p>
 
 A simple, privacy-first web chat interface for local and cloud AI models from Ollama, LM Studio, OpenAI, Anthropic, HuggingFace, and Google, plus direct integration with the Aider, Goose, and OpenCode CLIs. Comes with 13 ice cream-themed color schemes.
