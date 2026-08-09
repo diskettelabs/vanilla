@@ -907,7 +907,7 @@ button img,
 }
 
 .model-picker[data-open="true"] .model-menu {
-  grid-template-rows: auto 1fr;
+  grid-template-rows: auto 1fr auto;
   opacity: 1;
   pointer-events: auto;
   transform: translateY(0) scale(1);
@@ -944,6 +944,33 @@ button img,
   border-color: var(--accent, rgba(48, 122, 177, 0.5));
   background: var(--surface, #fff);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent, #307ab1) 12%, transparent);
+}
+
+.model-menu-footer {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  border: 0;
+  border-top: 1px solid var(--line, #e8e8e7);
+  background: transparent;
+  color: var(--text, #141414);
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 13px 16px;
+  text-align: left;
+  transition: background 150ms ease;
+}
+
+.model-menu-footer:hover {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.model-menu-footer img {
+  width: 18px;
+  height: 18px;
+  color: var(--accent, #307ab1);
 }
 
 .model-options {
@@ -2697,6 +2724,51 @@ body[data-assistant-logo="top"] .assistant-mark {
 
 .hf-done-btn:hover {
   background: #16693a;
+}
+
+.ollama-repo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  min-width: 0;
+  border: 1px solid rgba(0, 0, 0, 0.04);
+  border-radius: 10px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.6) 0%, rgba(248, 248, 247, 0.8) 100%);
+  padding: 11px 12px 11px 14px;
+  transition: all 180ms ease;
+}
+
+.ollama-repo:hover {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.8) 0%, rgba(250, 250, 249, 0.9) 100%);
+  border-color: rgba(0, 0, 0, 0.06);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.ollama-repo-side {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.hf-repo-desc {
+  margin-top: 3px;
+  font-size: 13px;
+  color: var(--muted, #999);
+  line-height: 1.35;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.hf-install-btn.is-installed {
+  background: #1e8e4e;
+  opacity: 1;
+  cursor: default;
 }
 
 /* Provider API keys */

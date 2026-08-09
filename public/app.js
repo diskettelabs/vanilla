@@ -156,6 +156,11 @@ const els = {
   hfDetail: document.querySelector("#hfDetail"),
   hfBackButton: document.querySelector(".hf-back-button"),
   hfProgress: document.querySelector("#hfProgress"),
+  downloadModelsButton: document.querySelector("#downloadModelsButton"),
+  ollamaModal: document.querySelector("#ollamaModal"),
+  ollamaSearchInput: document.querySelector("#ollamaSearchInput"),
+  ollamaResults: document.querySelector("#ollamaResults"),
+  ollamaProgress: document.querySelector("#ollamaProgress"),
   fileInput: document.querySelector("#fileInput"),
   attachmentPreview: document.querySelector("#attachmentPreview"),
   displayNameInput: document.querySelector("#displayNameInput"),
@@ -2447,6 +2452,7 @@ function closeModals() {
   els.workspaceModal.hidden = true;
   els.settingsModal.hidden = true;
   els.installModal.hidden = true;
+  els.ollamaModal.hidden = true;
   els.uninstallModal.hidden = true;
   if (els.exportModal) els.exportModal.hidden = true;
   if (els.compareModal) els.compareModal.hidden = true;
@@ -2950,6 +2956,208 @@ function bindHuggingFace() {
   els.hfSortSelect.addEventListener("change", () => {
     hfSort = els.hfSortSelect.value;
     renderHfResults(sortHfResults(state.lastHfResults || []));
+  });
+}
+
+// ─── Ollama model browser ─────────────────────────────────────────────────
+
+const ollamaTagNames = {
+  general: "General",
+  reasoning: "Reasoning",
+  coding: "Coding",
+  vision: "Vision",
+  "image-gen": "Image generation",
+  embedding: "Embeddings",
+  small: "Small",
+  large: "Large",
+  experimental: "Experimental",
+};
+
+let ollamaInstalled = new Set();
+
+async function openOllamaBrowser() {
+  closeModals();
+  resetOllamaInstaller();
+  els.ollamaSearchInput.value = "";
+  openModal(els.ollamaModal);
+  await loadOllamaCatalog("");
+}
+
+function resetOllamaInstaller() {
+  els.ollamaProgress.classList.remove("is-error", "is-done");
+  els.ollamaProgress.innerHTML = "";
+  els.ollamaProgress.hidden = true;
+  els.ollamaResults.querySelectorAll(".hf-install-btn").forEach((btn) => {
+    btn.disabled = false;
+    btn.classList.remove("is-installing");
+    btn.textContent = "Download";
+  });
+}
+
+async function loadOllamaCatalog(query) {
+  els.ollamaResults.innerHTML = '<p class="muted-note">Loading models…</p>';
+  try {
+    const [lib, tags] = await Promise.all([
+      api(`/api/ollama/library?q=${encodeURIComponent(query)}`),
+      api("/api/ollama/tags"),
+    ]);
+    ollamaInstalled = new Set(tags.names || []);
+    renderOllamaCatalog(lib.results || [], query);
+  } catch (error) {
+    els.ollamaResults.innerHTML = `<p class="muted-note">${escapeHtml(error.message)}</p>`;
+  }
+}
+
+function ollamaTagsLabel(tags) {
+  return (tags || [])
+    .map((t) => ollamaTagNames[t] || t)
+    .filter(Boolean)
+    .join(" · ");
+}
+
+function renderOllamaCatalog(models, query) {
+  const q = (query || "").trim();
+  const matches = q && models.some((m) => m.id.toLowerCase() === q.toLowerCase());
+  const custom = q && !matches ? q : null;
+
+  if (!models.length && !custom) {
+    els.ollamaResults.innerHTML =
+      '<p class="muted-note">No models match. Type any model name (e.g. <code>qwen2.5-coder:32b</code>) and press Enter to pull it from the Ollama registry.</p>';
+    return;
+  }
+
+  const rows = custom
+    ? [...models, { id: custom, name: custom, tags: [], size: "", desc: `Pull "${custom}" directly from the Ollama library.`, custom: true }]
+    : models;
+
+  els.ollamaResults.innerHTML = rows.map((m) => {
+    const installed = ollamaInstalled.has(m.id);
+    const side = m.custom
+      ? `<button class="hf-install-btn" type="button">Download</button>`
+      : `
+        <span class="hf-repo-meta">${escapeHtml(ollamaTagsLabel(m.tags))}${m.size ? ` · ${escapeHtml(m.size)}` : ""}</span>
+        <button class="hf-install-btn ${installed ? "is-installed" : ""}" type="button" ${installed ? "disabled" : ""}>${installed ? "Installed" : "Download"}</button>`;
+    return `
+    <div class="ollama-repo" data-model="${escapeHtml(m.id)}">
+      <div class="hf-repo-info">
+        <span class="hf-repo-id"><span class="hf-repo-name">${escapeHtml(m.name)}</span> <span class="hf-repo-org">${escapeHtml(m.id)}</span></span>
+        <span class="hf-repo-desc">${escapeHtml(m.desc || "")}</span>
+      </div>
+      <div class="ollama-repo-side">${side}</div>
+    </div>`;
+  }).join("");
+
+  els.ollamaResults.querySelectorAll(".ollama-repo").forEach((row) => {
+    const btn = row.querySelector(".hf-install-btn");
+    if (!btn) return;
+    btn.addEventListener("click", () => pullOllamaModel(row.dataset.model, btn));
+  });
+}
+
+function pullOllamaModel(model, button) {
+  els.ollamaResults.querySelectorAll(".hf-install-btn").forEach((b) => { if (!b.disabled) b.disabled = true; });
+  button.classList.add("is-installing");
+  button.textContent = "Downloading…";
+
+  els.ollamaProgress.classList.remove("is-error", "is-done");
+  els.ollamaProgress.hidden = false;
+  els.ollamaProgress.innerHTML = `
+    <div class="hf-progress-head">
+      <span class="hf-progress-title">Downloading <strong>${escapeHtml(model)}</strong></span>
+      <span class="hf-progress-pct">0%</span>
+    </div>
+    <div class="hf-track"><div class="hf-bar"></div></div>
+    <div class="hf-progress-status">Starting…</div>
+  `;
+
+  fetch("/api/ollama/pull", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ model }),
+  }).then(async (res) => {
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const events = buffer.split("\n\n");
+      buffer = events.pop() || "";
+      for (const raw of events) {
+        const line = raw.split("\n").find((l) => l.startsWith("data: "));
+        if (!line) continue;
+        let event;
+        try {
+          event = JSON.parse(line.slice(6));
+        } catch {
+          continue;
+        }
+        updateOllamaProgress(event, model, button);
+      }
+    }
+  }).catch((error) => {
+    updateOllamaProgress({ type: "error", error: error.message }, model, button);
+  });
+}
+
+function updateOllamaProgress(event, model, button) {
+  const box = els.ollamaProgress;
+  const statusEl = box.querySelector(".hf-progress-status");
+  const barEl = box.querySelector(".hf-bar");
+  const pctEl = box.querySelector(".hf-progress-pct");
+  if (!statusEl || !barEl || !pctEl) return;
+
+  if (event.type === "status" && event.total > 0 && event.completed > 0) {
+    const p = Math.min(100, Math.round((event.completed / event.total) * 100));
+    barEl.style.width = `${p}%`;
+    pctEl.textContent = `${p}%`;
+    statusEl.textContent = `${event.status}: ${formatBytes(event.completed)} of ${formatBytes(event.total)}`;
+  } else if (event.type === "status") {
+    statusEl.textContent = event.status;
+  } else if (event.type === "error") {
+    box.classList.add("is-error");
+    barEl.style.width = "0%";
+    pctEl.textContent = "Failed";
+    statusEl.textContent = event.error;
+    button.disabled = false;
+    button.classList.remove("is-installing");
+    button.textContent = "Retry";
+  } else if (event.type === "done") {
+    box.classList.add("is-done");
+    barEl.style.width = "100%";
+    pctEl.textContent = "Done";
+    statusEl.textContent = `Installed ${event.model}. You can now select it from the model picker.`;
+    let doneBtn = box.querySelector(".hf-done-btn");
+    if (!doneBtn) {
+      doneBtn = document.createElement("button");
+      doneBtn.className = "hf-done-btn";
+      doneBtn.type = "button";
+      doneBtn.textContent = "Done";
+      doneBtn.addEventListener("click", () => {
+        closeModals();
+        resetOllamaInstaller();
+      });
+      box.appendChild(doneBtn);
+    }
+    button.textContent = "Installed";
+    button.classList.remove("is-installing");
+    button.disabled = true;
+    ollamaInstalled.add(event.model);
+    refreshModelsAfterInstall(event.model);
+  }
+}
+
+function bindOllamaBrowser() {
+  els.downloadModelsButton.addEventListener("click", openOllamaBrowser);
+  els.ollamaSearchInput.addEventListener("input", debounce(() => {
+    loadOllamaCatalog(els.ollamaSearchInput.value.trim());
+  }, 300));
+  els.ollamaSearchInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      loadOllamaCatalog(els.ollamaSearchInput.value.trim());
+    }
   });
 }
 
@@ -3960,6 +4168,7 @@ async function boot() {
   bindUpdateEvents();
   bindSetupFlow();
   bindHuggingFace();
+  bindOllamaBrowser();
   initDictation();
   updateDictationNote();
   startLoaderRotation();

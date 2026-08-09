@@ -4,6 +4,7 @@ const system = require('./system');
 const uploads = require('./upload');
 const hf = require('./huggingface');
 const titles = require('./titles');
+const ollama = require('./ollama-models');
 const uninstall = require('./uninstall');
 const { searchWeb } = require('./search');
 const workspace = require('./workspace');
@@ -180,6 +181,51 @@ function register(app) {
       for await (const event of hf.installModel(repo, file)) {
         res.write(`data: ${JSON.stringify(event)}\n\n`);
       }
+    } catch (e) {
+      res.write(`data: ${JSON.stringify({ type: 'error', error: e.message })}\n\n`);
+    }
+    res.end();
+  });
+
+  // Ollama: browse the curated Ollama library (no public registry JSON API)
+  app.get('/api/ollama/library', async (req, res) => {
+    try {
+      const results = await ollama.searchLibrary(req.query.q || '');
+      res.set('Cache-Control', 'public, max-age=300');
+      res.json({ results });
+    } catch (e) {
+      res.status(502).json({ error: e.message });
+    }
+  });
+
+  // Ollama: names of locally installed models
+  app.get('/api/ollama/tags', async (_req, res) => {
+    try {
+      const names = await ollama.listInstalled();
+      res.json({ names });
+    } catch (e) {
+      res.status(502).json({ error: e.message });
+    }
+  });
+
+  // Ollama: pull a model from the registry (SSE progress)
+  app.post('/api/ollama/pull', async (req, res) => {
+    const model = String((req.body && req.body.model) || '').trim();
+    if (!model) return res.status(400).json({ error: 'model is required' });
+
+    res.writeHead(200, {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      Connection: 'keep-alive',
+      'X-Accel-Buffering': 'no',
+    });
+
+    try {
+      for await (const event of ollama.pullModel(undefined, model)) {
+        const { status, total, completed, digest } = event;
+        res.write(`data: ${JSON.stringify({ type: 'status', status, total: total || 0, completed: completed || 0, digest: digest || null })}\n\n`);
+      }
+      res.write(`data: ${JSON.stringify({ type: 'done', model })}\n\n`);
     } catch (e) {
       res.write(`data: ${JSON.stringify({ type: 'error', error: e.message })}\n\n`);
     }
