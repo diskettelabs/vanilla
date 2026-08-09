@@ -4,7 +4,10 @@ const fs = require('node:fs');
 const sharp = require('sharp');
 const { FileError } = require('./errors');
 
-const UPLOAD_DIR = path.join(__dirname, '..', 'data', 'uploads');
+// Resolve relative to cwd: in the packaged app gelectron chdir()s to the user
+// data dir, so this lands in ~/Library/Application Support/VanillaChat/data/
+// instead of the read-only app bundle (App Translocation).
+const UPLOAD_DIR = path.resolve('data', 'uploads');
 
 const TYPE_LIMITS = {
   image: 5 * 1024 * 1024,
