@@ -15,6 +15,7 @@ STAGING="$ROOT/build/staging-gelectron"
 DIST="$ROOT/dist"
 APP_NAME="VanillaChat"
 APP_BUNDLE="$APP_NAME.app"
+VERSION="0.1.0"
 WEB_FILES="server.js src public ui themes config"
 COPY_TO_APPS=0
 
@@ -58,7 +59,7 @@ cp "$ROOT/logo.png" "$STAGING/icon.png"
 cat > "$STAGING/package.json" <<EOF
 {
   "name": "vanilla-chat",
-  "version": "2.0.0",
+  "version": "$VERSION",
   "description": "Vanilla Chat desktop app",
   "main": "main.js"
 }
@@ -108,8 +109,20 @@ echo "4/4 Cleaning up staging..."
 rm -rf "$STAGING"
 
 echo
+echo "Creating distributable zip..."
+ZIP="$DIST/$APP_NAME-$VERSION-mac-arm64.zip"
+rm -f "$ZIP"
+if command -v ditto >/dev/null 2>&1; then
+  ditto -c -k --sequesterRsrc --keepParent "$APP" "$ZIP"
+else
+  (cd "$DIST" && zip -rqy "$(basename "$ZIP")" "$APP_BUNDLE")
+fi
+echo "✓ Zip: $ZIP"
+
+echo
 echo "✓ Build complete: $APP"
 echo "  Run it:  open \"$APP\""
+echo "  Zip:     $ZIP"
 
 if [ "$COPY_TO_APPS" = "1" ]; then
   echo "  Copying to /Applications…"

@@ -1,6 +1,6 @@
 {
   "name": "vanilla-chat",
-  "version": "2.0.0",
+  "version": "0.1.0",
   "description": "Simple web chat UI for Ollama",
   "main": "server.js",
   "scripts": {
