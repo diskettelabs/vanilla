@@ -1,6 +1,7 @@
 const { request } = require('node:http');
 const { Provider } = require('./base');
 const { ProviderError, NetworkError, parseError } = require('../errors');
+const { toOllamaMessages } = require('../media');
 
 class OllamaError extends ProviderError {
   constructor(message, options = {}) {
@@ -55,7 +56,7 @@ class OllamaProvider extends Provider {
     const url = new URL('/api/chat', this.host);
     const body = JSON.stringify({ 
       model, 
-      messages, 
+      messages: toOllamaMessages(messages), 
       stream: true,
       options: {
         temperature: 0.7,

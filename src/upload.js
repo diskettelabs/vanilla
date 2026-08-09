@@ -4,15 +4,26 @@ const fs = require('node:fs');
 const sharp = require('sharp');
 const { FileError } = require('./errors');
 
-const UPLOAD_DIR = path.join(__dirname, '..', 'data', 'uploads');
+// Resolve relative to cwd: the packaged app chdir()s to the user data dir,
+// so uploads land in userData/data/uploads instead of the read-only bundle.
+const UPLOAD_DIR = path.resolve('data', 'uploads');
 
 const TYPE_LIMITS = {
   image: 5 * 1024 * 1024,
   text: 2 * 1024 * 1024,
   pdf: 10 * 1024 * 1024,
+  video: 50 * 1024 * 1024,
 };
 
 const IMAGE_MIME = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/avif'];
+
+const VIDEO_MIME = [
+  'video/mp4',
+  'video/webm',
+  'video/quicktime',
+  'video/x-matroska',
+  'video/x-msvideo',
+];
 
 const TEXT_TYPES = ['text/plain', 'text/markdown', 'text/csv', 'application/json'];
 const EXT_MAP = {
@@ -27,10 +38,16 @@ const EXT_MAP = {
   '.gif': 'image/gif',
   '.webp': 'image/webp',
   '.avif': 'image/avif',
+  '.mp4': 'video/mp4',
+  '.webm': 'video/webm',
+  '.mov': 'video/quicktime',
+  '.mkv': 'video/x-matroska',
+  '.avi': 'video/x-msvideo',
 };
 
 function typeCategory(mimeType) {
   if (mimeType.startsWith('image/')) return 'image';
+  if (mimeType.startsWith('video/')) return 'video';
   if (TEXT_TYPES.includes(mimeType)) return 'text';
   if (mimeType === 'application/pdf') return 'pdf';
   return null;
@@ -38,7 +55,7 @@ function typeCategory(mimeType) {
 
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 10 * 1024 * 1024 },
+  limits: { fileSize: 50 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
     let mime = file.mimetype;
     if (mime === 'application/octet-stream') {
@@ -49,7 +66,7 @@ const upload = multer({
     if (!cat) {
       const err = new FileError(`Unsupported file type: ${file.mimetype}`, {
         userMessage: 'File type not supported',
-        action: `${file.mimetype} files are not allowed. Supported types: images (PNG, JPG, GIF, WebP), documents (PDF, TXT, MD), and code files.`,
+        action: `${file.mimetype} files are not allowed. Supported types: images (PNG, JPG, GIF, WebP), videos (MP4, WebM, MOV, MKV), documents (PDF, TXT, MD), and code files.`,
         statusCode: 415,
       });
       return cb(err);
@@ -75,8 +92,8 @@ async function processUpload(file) {
   const safeBase = path.basename(file.originalname, safeExt).replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 64);
   let buf = file.buffer;
 
-  // Process images
-  if (IMAGE_MIME.includes(file.mimetype) && file.mimetype !== 'image/gif') {
+  // Process images (videos and documents are stored as-is)
+  if (cat === 'image' && file.mimetype !== 'image/gif') {
     try {
       buf = await sharp(buf)
         .resize(1920, 1920, { fit: 'inside', withoutEnlargement: true })

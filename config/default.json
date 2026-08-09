@@ -34,6 +34,12 @@
       "baseUrl": "http://localhost:1234/v1",
       "requestTimeout": 120000
     },
+    "minimax": {
+      "apiKey": "",
+      "baseUrl": "https://api.minimax.io/v1",
+      "requestTimeout": 120000,
+      "defaultModel": "MiniMax-M3"
+    },
     "opencode": {
       "command": "opencode",
       "defaultModel": "default"

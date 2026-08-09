@@ -1,6 +1,7 @@
 const { request } = require('node:https');
 const { Provider } = require('./base');
 const { ProviderError, NetworkError } = require('../errors');
+const { toOpenAIContent } = require('../media');
 
 class OpenAIError extends ProviderError {
   constructor(message, options = {}) {
@@ -82,7 +83,7 @@ class OpenAIProvider extends Provider {
     console.log(`[${this.constructor.name}] Chat request to ${url.href} with model: ${requestModel}`);
     const body = JSON.stringify({
       model: requestModel,
-      messages,
+      messages: toOpenAIContent(messages),
       stream: true,
     });
 

@@ -1,6 +1,7 @@
 const http = require('node:http');
 const https = require('node:https');
 const workspace = require('./workspace');
+const { toOpenAIContent, toOllamaMessages } = require('./media');
 
 const MAX_TOOL_ROUNDS = 6;
 
@@ -167,7 +168,7 @@ async function runToolRound(provider, providerName, model, messages, { signal } 
     const data = await _jsonRequest(url, {
       body: {
         model,
-        messages,
+        messages: toOllamaMessages(messages),
         tools: TOOL_DEFINITIONS,
         stream: false,
         options: { temperature: 0.7, top_p: 0.9 },
@@ -234,13 +235,13 @@ async function runToolRound(provider, providerName, model, messages, { signal } 
     return { messages: next, toolCalls, results };
   }
 
-  // OpenAI-compatible family: openai, gemini, huggingface, lmstudio
+  // OpenAI-compatible family: openai, gemini, huggingface, lmstudio, minimax
   const url = new URL('chat/completions', provider.baseUrl);
   const data = await _jsonRequest(url, {
     headers: provider.apiKey ? { Authorization: `Bearer ${provider.apiKey}` } : {},
     body: {
       model: model || provider.defaultModel,
-      messages,
+      messages: toOpenAIContent(messages),
       tools: TOOL_DEFINITIONS,
       tool_choice: 'auto',
       stream: false,

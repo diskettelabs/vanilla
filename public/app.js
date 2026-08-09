@@ -1383,19 +1383,23 @@ async function handleAttachmentUpload(message) {
 
     const ext = result.name.split(".").pop()?.toLowerCase();
     const isResultImage = /^(jpg|jpeg|png|gif|webp|avif)$/.test(ext);
+    const isResultVideo = /^(mp4|webm|mov|mkv|avi)$/.test(ext);
 
-    // Create visual message with image preview or file attachment
+    // Create visual message with image/video preview or file attachment
     let visualContent;
     if (isResultImage) {
       visualContent = `<img src="${result.url}" alt="${escapeHtml(result.name)}" style="max-width: 100%; border-radius: 12px; margin-top: 10px;">`;
+    } else if (isResultVideo) {
+      visualContent = `<video src="${result.url}" controls preload="metadata" style="max-width: 100%; max-height: 320px; border-radius: 12px; margin-top: 10px;"></video>`;
     } else {
       visualContent = `<a href="${result.url}" target="_blank" class="file-attachment"><span class="file-icon">${ext.toUpperCase()}</span><span class="file-info"><span class="file-name">${escapeHtml(result.name)}</span><span class="file-meta">${escapeHtml(result.type)} · ${formatFileSize(result.size)}</span></span></a>`;
     }
 
-    // Message sent to AI (just URL for context)
+    // Message sent to AI (marker lets the server attach the media for multimodal models)
+    const marker = isResultVideo ? "Video" : "Image";
     const aiMessage = message 
-      ? `${message}\n\n[Image: ${result.url}]`
-      : `[Image: ${result.url}]`;
+      ? `${message}\n\n[${marker}: ${result.url}]`
+      : `[${marker}: ${result.url}]`;
 
     // Message displayed to user (with visual preview)
     const displayMessage = message 
@@ -3470,6 +3474,7 @@ async function uploadFile(event) {
 
   const ext = file.name.split(".").pop()?.toLowerCase();
   const isImage = /^(jpg|jpeg|png|gif|webp|avif)$/.test(ext);
+  const isVideo = /^(mp4|webm|mov|mkv|avi)$/.test(ext);
 
   // Show attachment preview with thumbnail
   state.pendingAttachment = {
@@ -3478,9 +3483,10 @@ async function uploadFile(event) {
     size: file.size,
     type: file.type,
     isImage,
+    isVideo,
   };
 
-  if (isImage) {
+  if (isImage || isVideo) {
     const reader = new FileReader();
     reader.onload = (e) => {
       state.pendingAttachment.dataUrl = e.target.result;
@@ -3498,7 +3504,7 @@ function renderAttachmentPreview() {
     return;
   }
 
-  const { name, size, isImage, dataUrl } = state.pendingAttachment;
+  const { name, size, isImage, isVideo, dataUrl } = state.pendingAttachment;
   const ext = name.split(".").pop()?.toLowerCase() || "FILE";
 
   els.attachmentPreview.hidden = false;
@@ -3507,6 +3513,8 @@ function renderAttachmentPreview() {
       ${
         isImage && dataUrl
           ? `<div class="attachment-thumb"><img src="${dataUrl}" alt="${escapeHtml(name)}"></div>`
+          : isVideo && dataUrl
+          ? `<div class="attachment-thumb"><video src="${dataUrl}" muted playsinline></video></div>`
           : `<div class="attachment-thumb attachment-thumb-icon">${escapeHtml(ext.toUpperCase())}</div>`
       }
       <div class="attachment-info">
