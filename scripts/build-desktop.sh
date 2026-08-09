@@ -119,10 +119,77 @@ else
 fi
 echo "✓ Zip: $ZIP"
 
+if [ "$(uname)" = "Darwin" ]; then
+  echo
+  echo "Creating DMG..."
+  DMG="$DIST/$APP_NAME-$VERSION-mac-arm64.dmg"
+  TMP_DMG="$DIST/.$APP_NAME-$VERSION.tmp.dmg"
+  DMG_STAGE="$DIST/.dmg-stage"
+  VOLNAME="$APP_NAME"
+  BG_IMG="$ROOT/public/assets/dmg_back.png"
+
+  BG_W=$(sips -g pixelWidth "$BG_IMG" 2>/dev/null | awk '/pixelWidth/{print $2}')
+  BG_H=$(sips -g pixelHeight "$BG_IMG" 2>/dev/null | awk '/pixelHeight/{print $2}')
+  [ -n "$BG_W" ] || BG_W=524
+  [ -n "$BG_H" ] || BG_H=324
+
+  rm -f "$TMP_DMG" "$DMG"
+  rm -rf "$DMG_STAGE"
+  mkdir -p "$DMG_STAGE/.background"
+  cp -R "$APP" "$DMG_STAGE/"
+  ln -s /Applications "$DMG_STAGE/Applications"
+  if [ -f "$BG_IMG" ]; then
+    cp "$BG_IMG" "$DMG_STAGE/.background/background.png"
+  else
+    echo "  (no background at public/assets/dmg_back.png — using default)"
+  fi
+
+  MOUNT="/Volumes/$VOLNAME"
+  hdiutil detach "$MOUNT" >/dev/null 2>&1 || true
+  hdiutil create -volname "$VOLNAME" -srcfolder "$DMG_STAGE" -ov -format UDRW "$TMP_DMG" >/dev/null
+  hdiutil attach "$TMP_DMG" -mountpoint "$MOUNT" -nobrowse >/dev/null
+
+  if [ -f "$BG_IMG" ]; then
+    if osascript <<OSA
+tell application "Finder"
+  tell disk "$VOLNAME"
+    open
+    delay 1
+    set current view of container window to icon view
+    set toolbar visible of container window to false
+    set statusbar visible of container window to false
+    set the bounds of container window to {100, 100, $((100 + BG_W)), $((100 + BG_H))}
+    set opts to the icon view options of container window
+    set background picture of opts to file ".background:background.png"
+    set icon size of opts to 128
+    set text size of opts to 14
+    set arrangement of opts to not arranged
+    set position of item "$APP_NAME.app" of container window to {$((BG_W / 4)), $((BG_H / 2))}
+    set position of item "Applications" of container window to {$((BG_W * 3 / 4)), $((BG_H / 2))}
+    delay 2
+    close
+  end tell
+end tell
+OSA
+    then
+      echo "  styled with background"
+    else
+      echo "  (could not style DMG window — automation permission? continuing without layout)"
+    fi
+  fi
+
+  hdiutil detach "$MOUNT" >/dev/null 2>&1 || true
+  hdiutil convert "$TMP_DMG" -format UDZO -imagekey zlib-level=9 -o "$DMG" >/dev/null
+  rm -f "$TMP_DMG"
+  rm -rf "$DMG_STAGE"
+  echo "✓ DMG: $DMG"
+fi
+
 echo
 echo "✓ Build complete: $APP"
 echo "  Run it:  open \"$APP\""
 echo "  Zip:     $ZIP"
+if [ "$(uname)" = "Darwin" ]; then echo "  DMG:     $DMG"; fi
 
 if [ "$COPY_TO_APPS" = "1" ]; then
   echo "  Copying to /Applications…"
