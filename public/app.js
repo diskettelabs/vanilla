@@ -177,12 +177,22 @@ const els = {
   updateStatusSub: document.querySelector("#updateStatusSub"),
   updateCheckButton: document.querySelector("#updateCheckButton"),
   updateInstallButton: document.querySelector("#updateInstallButton"),
+  recentlyDeletedButton: document.querySelector("#recentlyDeletedButton"),
+  recentlyDeletedCount: document.querySelector("#recentlyDeletedCount"),
+  deletedModal: document.querySelector("#deletedModal"),
+  deletedModalNote: document.querySelector("#deletedModalNote"),
+  deletedList: document.querySelector("#deletedList"),
+  deletedRestoreButton: document.querySelector("#deletedRestoreButton"),
+  deletedDeleteButton: document.querySelector("#deletedDeleteButton"),
+  deletedRetentionPicker: document.querySelector("#deletedRetentionPicker"),
 };
 
 const dropdowns = {};
 
 const state = {
   conversations: [],
+  deletedConversations: [],
+  selectedDeletedId: null,
   activeConversation: null,
   providers: [],
   modelOptions: [],
@@ -231,6 +241,7 @@ const state = {
     braveApiKey: localStorage.getItem("vanilla-brave-key") || "",
     workspaceTools: localStorage.getItem("vanilla-workspace-tools") !== "false",
     dictationEngine: localStorage.getItem("vanilla-dictation-engine") || "vosk",
+    deletedRetentionDays: Number(localStorage.getItem("vanilla-deleted-retention-days")) || 30,
   },
 };
 
@@ -762,7 +773,8 @@ async function togglePin(id) {
 
 async function deleteConversation(id) {
   try {
-    await api(`/api/conversations/${encodeURIComponent(id)}`, { method: "DELETE" });
+    const retentionDays = Number(state.settings.deletedRetentionDays) || 30;
+    const data = await api(`/api/conversations/${encodeURIComponent(id)}?retentionDays=${retentionDays}`, { method: "DELETE" });
     if (state.activeConversation?.id === id) {
       state.activeConversation = null;
       els.messages.innerHTML = "";
@@ -770,11 +782,147 @@ async function deleteConversation(id) {
       chooseGreeting();
     }
     await refreshConversations();
-    showNotification("Chat deleted");
+    await refreshDeletedConversations();
+    const days = data.retentionDays || retentionDays;
+    showNotification(`Chat moved to Recently Deleted. Restorable for ${days} day${days === 1 ? "" : "s"}.`);
     Sounds.delete();
   } catch (error) {
     showNotification(error.action || error.message || "Failed to delete chat", "error");
   }
+}
+
+async function refreshDeletedConversations() {
+  try {
+    state.deletedConversations = await api("/api/conversations/deleted");
+  } catch {
+    state.deletedConversations = [];
+  }
+  const count = state.deletedConversations.length;
+  if (els.recentlyDeletedButton) els.recentlyDeletedButton.hidden = count === 0;
+  if (els.recentlyDeletedCount) {
+    els.recentlyDeletedCount.hidden = count === 0;
+    els.recentlyDeletedCount.textContent = String(count);
+  }
+  if (els.deletedModal && !els.deletedModal.hidden) renderDeletedList();
+}
+
+function openRecentlyDeleted() {
+  renderDeletedList();
+  openModal(els.deletedModal);
+}
+
+function daysRemainingLabel(days) {
+  if (days <= 0) return "expires today";
+  if (days === 1) return "1 day left";
+  return `${days} days left`;
+}
+
+function renderDeletedList() {
+  if (!els.deletedList) return;
+  els.deletedList.innerHTML = "";
+
+  if (!state.deletedConversations.length) {
+    const empty = document.createElement("div");
+    empty.className = "deleted-empty";
+    empty.textContent = "Nothing in Recently Deleted.";
+    els.deletedList.append(empty);
+    setDeletedSelection(null);
+    if (els.deletedModalNote) els.deletedModalNote.textContent = "Deleted chats are kept for a short window, then permanently removed.";
+    return;
+  }
+
+  for (const conv of state.deletedConversations) {
+    const row = document.createElement("button");
+    row.type = "button";
+    row.className = "deleted-row";
+    row.dataset.id = conv.id;
+    row.setAttribute("role", "listitem");
+    row.classList.toggle("is-selected", state.selectedDeletedId === conv.id);
+    row.addEventListener("click", () => setDeletedSelection(conv.id));
+
+    const info = document.createElement("span");
+    info.className = "deleted-row-info";
+    const title = document.createElement("span");
+    title.className = "deleted-row-title";
+    title.textContent = conv.title || "Untitled";
+    const meta = document.createElement("span");
+    meta.className = "deleted-row-meta";
+    const deletedDate = new Date(conv.deletedAt).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+    meta.textContent = `deleted ${deletedDate}`;
+    info.append(title, meta);
+
+    const countdown = document.createElement("span");
+    countdown.className = "deleted-row-countdown";
+    countdown.textContent = daysRemainingLabel(conv.daysRemaining);
+
+    row.append(info, countdown);
+    els.deletedList.append(row);
+  }
+
+  if (!state.deletedConversations.some((c) => c.id === state.selectedDeletedId)) {
+    setDeletedSelection(state.deletedConversations[0]?.id || null);
+  }
+  updateDeletedModalNote();
+}
+
+function setDeletedSelection(id) {
+  state.selectedDeletedId = id || null;
+  els.deletedList?.querySelectorAll(".deleted-row").forEach((row) => {
+    row.classList.toggle("is-selected", state.selectedDeletedId === row.dataset.id);
+  });
+  if (els.deletedRestoreButton) els.deletedRestoreButton.disabled = !state.selectedDeletedId;
+  if (els.deletedDeleteButton) els.deletedDeleteButton.disabled = !state.selectedDeletedId;
+}
+
+function updateDeletedModalNote() {
+  if (!els.deletedModalNote) return;
+  const selected = state.deletedConversations.find((c) => c.id === state.selectedDeletedId);
+  if (selected) {
+    const days = Number(selected.retentionDays) || 30;
+    els.deletedModalNote.textContent = `This chat is recoverable for up to ${days} days. After that it is permanently deleted.`;
+  } else {
+    els.deletedModalNote.textContent = "Select a chat to restore it or delete it forever.";
+  }
+}
+
+async function restoreDeleted(id) {
+  try {
+    const data = await api(`/api/conversations/${encodeURIComponent(id)}/restore`, { method: "POST" });
+    state.deletedConversations = state.deletedConversations.filter((c) => c.id !== id);
+    if (state.selectedDeletedId === id) state.selectedDeletedId = null;
+    await refreshConversations();
+    renderDeletedList();
+    if (data.conversation?.id) loadConversation(data.conversation.id);
+    if (els.deletedModal) els.deletedModal.hidden = true;
+    showNotification("Chat restored", "success");
+    Sounds.success();
+  } catch (error) {
+    showNotification(error.action || error.message || "Failed to restore chat", "error");
+  }
+}
+
+async function permanentlyDeleteDeleted(id) {
+  try {
+    await api(`/api/conversations/${encodeURIComponent(id)}/permanent`, { method: "DELETE" });
+    state.deletedConversations = state.deletedConversations.filter((c) => c.id !== id);
+    if (state.selectedDeletedId === id) state.selectedDeletedId = null;
+    renderDeletedList();
+    await refreshDeletedConversations();
+    showNotification("Chat permanently deleted", "success");
+    Sounds.delete();
+  } catch (error) {
+    showNotification(error.action || error.message || "Failed to permanently delete chat", "error");
+  }
+}
+
+function bindRecentlyDeleted() {
+  els.recentlyDeletedButton?.addEventListener("click", openRecentlyDeleted);
+  els.deletedRestoreButton?.addEventListener("click", () => {
+    if (state.selectedDeletedId) restoreDeleted(state.selectedDeletedId);
+  });
+  els.deletedDeleteButton?.addEventListener("click", () => {
+    if (state.selectedDeletedId) permanentlyDeleteDeleted(state.selectedDeletedId);
+  });
 }
 
 function showRenameInput(conversationId, currentTitle, rowElement, openButton) {
@@ -2192,6 +2340,17 @@ function bindSettingsDropdowns() {
     { value: "vosk", label: "VOSK (Browser, ~40MB)" },
     { value: "none", label: "Disabled" },
   ]);
+
+  dropdowns.deletedRetention = createSettingsDropdown(els.deletedRetentionPicker, () => {
+    state.settings.deletedRetentionDays = Number(dropdowns.deletedRetention.value) || 30;
+    applySettings();
+  });
+  dropdowns.deletedRetention.setOptions([
+    { value: "7", label: "7 days" },
+    { value: "14", label: "14 days" },
+    { value: "30", label: "30 days" },
+  ]);
+  dropdowns.deletedRetention.setValue(String(state.settings.deletedRetentionDays || 30));
 }
 
 function updateDictationNote() {
@@ -2360,6 +2519,7 @@ function applySettings() {
   }
   if (dropdowns.searchBackend) dropdowns.searchBackend.setValue(settings.searchBackend);
   if (dropdowns.dictationEngine) dropdowns.dictationEngine.setValue(settings.dictationEngine);
+  if (dropdowns.deletedRetention) dropdowns.deletedRetention.setValue(String(settings.deletedRetentionDays || 30));
   updateDictationNote();
   if (els.braveKeyRow) els.braveKeyRow.hidden = settings.searchBackend !== "brave";
   if (els.braveApiKeyInput && document.activeElement !== els.braveApiKeyInput) {
@@ -2402,6 +2562,7 @@ function applySettings() {
   localStorage.setItem("vanilla-search-backend", settings.searchBackend);
   localStorage.setItem("vanilla-brave-key", settings.braveApiKey || "");
   localStorage.setItem("vanilla-dictation-engine", settings.dictationEngine || "vosk");
+  localStorage.setItem("vanilla-deleted-retention-days", String(settings.deletedRetentionDays || 30));
   applyCompareVisibility();
 }
 
@@ -2457,6 +2618,7 @@ function closeModals() {
   if (els.exportModal) els.exportModal.hidden = true;
   if (els.compareModal) els.compareModal.hidden = true;
   if (els.promptModal) els.promptModal.hidden = true;
+  if (els.deletedModal) els.deletedModal.hidden = true;
 }
 
 // Helper function to find and highlight fuzzy matches
@@ -4165,6 +4327,7 @@ async function boot() {
   chooseGreeting();
   applySettings(); // Apply settings immediately to prevent sidebar animation on load
   bindEvents();
+  bindRecentlyDeleted();
   bindUpdateEvents();
   bindSetupFlow();
   bindHuggingFace();
@@ -4173,9 +4336,10 @@ async function boot() {
   updateDictationNote();
   startLoaderRotation();
   startPlaceholderRotation();
-  await Promise.all([loadProvidersAndModels(), refreshConversations(), refreshStats(), loadThemes()]);
+  await Promise.all([loadProvidersAndModels(), refreshConversations(), refreshDeletedConversations(), refreshStats(), loadThemes()]);
   renderApiKeys();
   setInterval(refreshStats, 3000);
+  setInterval(refreshDeletedConversations, 300000);
   attachCodeCopy();
   initUpdater();
   if (localStorage.getItem("vanilla-setup-done") && state.settings.autoName) prewarmTitleModel();

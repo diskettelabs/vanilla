@@ -322,6 +322,42 @@ button img,
   flex-shrink: 0;
 }
 
+.recently-deleted-button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  margin: 14px 0 0;
+  padding: 9px 12px;
+  border: 1px dashed rgba(0, 0, 0, 0.14);
+  border-radius: 8px;
+  background: transparent;
+  color: #6b6b6b;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  transition: background 150ms ease, color 150ms ease, border-color 150ms ease;
+}
+
+.recently-deleted-button:hover {
+  background: rgba(0, 0, 0, 0.04);
+  color: #307ab1;
+  border-color: rgba(48, 122, 177, 0.4);
+}
+
+.recently-deleted-count {
+  margin-left: auto;
+  min-width: 20px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: rgba(176, 51, 44, 0.12);
+  color: #b0332c;
+  font-size: 12px;
+  font-weight: 800;
+  text-align: center;
+}
+
 .conversation-empty {
   display: grid;
   place-items: center;
@@ -4326,6 +4362,89 @@ body[data-reduce-motion="true"] *::after {
 
 .compare-run-secondary:hover {
   background: rgba(48, 122, 177, 0.08);
+}
+
+.compare-run-danger {
+  background: #b0332c;
+}
+
+.compare-run-danger:hover {
+  background: #942b24;
+}
+
+.deleted-modal {
+  width: min(560px, calc(100vw - 32px));
+}
+
+.deleted-modal .settings-note {
+  margin: 0 0 14px;
+}
+
+.deleted-list {
+  display: grid;
+  gap: 6px;
+  max-height: 42vh;
+  overflow: auto;
+  padding-right: 4px;
+}
+
+.deleted-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 10px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+  transition: background 150ms ease, border-color 150ms ease;
+}
+
+.deleted-row:hover {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.deleted-row.is-selected {
+  background: rgba(48, 122, 177, 0.1);
+  border-color: rgba(48, 122, 177, 0.45);
+}
+
+.deleted-row-info {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.deleted-row-title {
+  font-size: 15px;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.deleted-row-meta {
+  color: #a5a5a5;
+  font-size: 12px;
+}
+
+.deleted-row-countdown {
+  flex-shrink: 0;
+  color: #b0332c;
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.deleted-empty {
+  padding: 26px 12px;
+  text-align: center;
+  color: #a5a5a5;
 }
 
 .compare-stop {

@@ -48,7 +48,8 @@
     }
   },
   "storage": {
-    "dir": "./data/conversations"
+    "dir": "./data/conversations",
+    "deletedRetentionDays": 30
   },
   "update": {
     "feedUrl": "https://github.com/diskettelabs/vanilla/releases/latest/download/latest.yml",

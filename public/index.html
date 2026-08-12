@@ -89,6 +89,17 @@
         <nav class="chat-nav" aria-label="Recent chats">
           <h2>Recent Chats</h2>
           <div id="conversationList" class="conversation-list" role="list"></div>
+          <button id="recentlyDeletedButton" class="recently-deleted-button" type="button" hidden>
+            <svg width="15" height="15" viewBox="0 0 17 20" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+              <g fill="currentColor" fill-rule="nonzero">
+                <path d="M13.835924,2.25549247 C14.2360012,2.47980698 14.5468206,2.83481964 14.7162917,3.26103356 C14.8938216,3.70751495 14.8835183,3.93998597 14.7542829,4.909251 L13.1795461,16.7197775 C13.0705711,17.5370899 13.0303632,17.7282592 12.8147041,18.0691841 C12.6082454,18.3955645 12.3117065,18.6551891 11.9609029,18.8167011 C11.5944663,18.9854105 11.39966,19 10.5751146,19 L4.42488544,19 C3.60034003,19 3.40553368,18.9854105 3.03909709,18.8167011 C2.68829345,18.6551891 2.39175457,18.3955645 2.18529591,18.0691841 C2.01424925,17.7987849 1.94049649,17.5377118 1.8763599,17.1208081 C1.86084676,17.0199689 1.84935958,16.9365698 1.82045394,16.7197775 L0.245717081,4.90925101 L0.222896008,4.73591598 C0.11592754,3.91009112 0.117274018,3.67960987 0.283708258,3.26103356 C0.453179366,2.83481964 0.763998769,2.47980698 1.16407597,2.25549247 C1.58317777,2.02051129 1.81497126,2 2.79281402,2 L12.207186,2 C13.1850287,2 13.4168222,2.02051129 13.835924,2.25549247 Z M2.79281402,4 C2.40971727,4 2.28021161,4.00219923 2.16859719,4.01207593 C2.16462813,4.01242715 2.1608085,4.01278049 2.15718565,4.01313503 C2.15731305,4.01677295 2.15746762,4.02060577 2.15764405,4.02458642 C2.16260537,4.13652709 2.17754138,4.26518737 2.22817288,4.64492356 L3.80290976,16.4554501 C3.82988231,16.6577443 3.84041904,16.734243 3.85310503,16.816705 C3.86492072,16.89351 3.87513569,16.9499378 3.88407827,16.9901992 C3.88853045,16.9905805 3.89327816,16.9909605 3.89829857,16.9913365 C3.99293895,16.9984243 4.10206199,17 4.42488544,17 L10.5751146,17 C10.897938,17 11.0070611,16.9984243 11.1017014,16.9913365 C11.1067152,16.990961 11.111457,16.9905815 11.1159041,16.9902007 C11.1168694,16.9858429 11.1178722,16.9811928 11.1189071,16.9762727 C11.1384408,16.8833992 11.1544247,16.7754417 11.1970903,16.4554501 L12.7718271,4.64492356 C12.8224586,4.26518737 12.8373946,4.13652709 12.8423559,4.02458642 C12.8425324,4.02060578 12.8426869,4.01677297 12.8428143,4.01313503 C12.8391915,4.01278049 12.8353719,4.01242715 12.8315511,4.01206382 C12.831393,4.01572343 12.8312403,4.01955887 12.8310939,4.02354983 C12.8373946,4.13652709 12.8523306,4.26518737 12.9029621,4.64492356 L14.4776989,16.4554501 C14.5046714,16.6577443 14.5152082,16.734243 14.5278942,16.816705 C14.5397099,16.89351 14.5499249,16.9499378 14.5588675,16.9901992 C14.5633197,16.9905805 14.5680674,16.9909605 14.5730878,16.9913365 C14.6677281,16.9984243 14.7768512,17 15.0996746,17 L15.9003254,17 C16.2231488,17 16.3322719,16.9984243 16.4269122,16.9913365 C16.4319326,16.9909605 16.4366803,16.9905805 16.4411325,16.9901992 C16.4500751,16.9499378 16.4602901,16.89351 16.4721058,16.816705 C16.4847918,16.734243 16.4953285,16.6577443 16.522301,16.4554501 L18.0970379,4.64492356 C18.1476694,4.26518737 18.1626054,4.13652709 18.1679067,4.02458642 C18.1680831,4.02060577 18.1682377,4.01677295 18.1683651,4.01313503 C18.1647422,4.01278049 18.1609226,4.01242715 18.1571857,4.01207593 C18.0455713,4.00219923 17.9160656,4 17.5329688,4 L2.79281402,4 Z"/>
+                <path d="M5.37413307,0.0416305447 L5.12413307,6.04163054 C5.10114116,6.5934365 4.63517541,7.02212499 4.08336946,6.99913307 C3.5315635,6.97614116 3.10287501,6.51017541 3.12586693,5.95836946 L3.37586693,-0.0416305447 C3.39885884,-0.593436504 3.86482459,-1.02212499 4.41663054,-0.999133073 C4.9684365,-0.976141158 5.39712499,-0.510175415 5.37413307,0.0416305447 Z"/>
+                <path d="M1.37413307,-0.0416305447 L1.62413307,5.95836946 C1.64712499,6.51017541 1.2184365,6.97614116 0.666630545,6.99913307 C0.114824585,7.02212499 -0.351141158,6.5934365 -0.374133073,6.04163054 L-0.624133073,0.0416305447 C-0.647124988,-0.510175415 -0.218436504,-0.976141158 0.333369455,-0.999133073 C0.885175415,-1.02212499 1.35114116,-0.593436504 1.37413307,-0.0416305447 Z"/>
+              </g>
+            </svg>
+            <span>Recently Deleted</span>
+            <span id="recentlyDeletedCount" class="recently-deleted-count" hidden>0</span>
+          </button>
         </nav>
       </aside>
 
@@ -624,6 +635,25 @@
             <!-- Data Tab -->
             <div class="settings-tab-pane" id="tab-data">
               <div class="settings-section">
+                <h3>Recently Deleted</h3>
+                <div class="settings-card">
+                  <p class="settings-note">Deleted chats move to Recently Deleted where you can restore them. After the retention window ends, they are permanently deleted.</p>
+                  <label class="settings-label">
+                    <span class="label-text">Keep deleted chats recoverable for</span>
+                    <div class="settings-picker" id="deletedRetentionPicker" data-open="false">
+                      <button type="button" class="settings-picker-button" aria-haspopup="listbox" aria-expanded="false">
+                        <span class="settings-picker-label"></span>
+                        <img class="settings-picker-chevron" src="./assets/chevron.svg" alt="">
+                      </button>
+                      <div class="settings-picker-menu" role="listbox">
+                        <div class="settings-picker-options"></div>
+                      </div>
+                    </div>
+                  </label>
+                </div>
+              </div>
+
+              <div class="settings-section">
                 <h3>Export &amp; Backup</h3>
                 <div class="settings-card">
                   <p class="settings-note">Download the current conversation as Markdown, JSON, or a standalone HTML page. You can also pin or rename chats from the sidebar.</p>
@@ -1000,6 +1030,21 @@
         <div class="compare-actions">
           <button id="exportDownloadButton" class="compare-run" type="button">Download</button>
           <button id="exportCopyButton" class="compare-run compare-run-secondary" type="button">Copy</button>
+        </div>
+      </section>
+    </div>
+
+    <div id="deletedModal" class="modal-backdrop" hidden>
+      <section class="modal deleted-modal" role="dialog" aria-modal="true" aria-labelledby="deletedTitle">
+        <div class="modal-head">
+          <h2 id="deletedTitle">Recently Deleted</h2>
+          <button class="text-button" type="button" data-close-modal>Close</button>
+        </div>
+        <p id="deletedModalNote" class="settings-note"></p>
+        <div id="deletedList" class="deleted-list" role="list"></div>
+        <div class="compare-actions">
+          <button id="deletedRestoreButton" class="compare-run" type="button">Restore</button>
+          <button id="deletedDeleteButton" class="compare-run compare-run-danger" type="button">Delete forever</button>
         </div>
       </section>
     </div>

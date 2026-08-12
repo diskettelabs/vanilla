@@ -237,6 +237,58 @@ function register(app) {
     res.json(storage.list());
   });
 
+  // Recently deleted (recoverable) conversations
+  app.get('/api/conversations/deleted', (_req, res) => {
+    res.json(storage.listDeleted(CONFIG.storage?.deletedRetentionDays || 30));
+  });
+
+  app.get('/api/conversations/deleted/:id', (req, res) => {
+    const conv = storage.getDeleted(req.params.id);
+    if (!conv) {
+      return res.status(404).json({
+        error: 'Deleted conversation not found',
+        action: 'This conversation may have already been permanently deleted.',
+        recoverable: false,
+      });
+    }
+    res.json(conv);
+  });
+
+  // Restore a deleted conversation before its retention window ends
+  app.post('/api/conversations/:id/restore', (req, res) => {
+    try {
+      const conv = storage.restore(req.params.id);
+      if (!conv) {
+        return res.status(404).json({
+          error: 'Deleted conversation not found',
+          action: 'This conversation may have already been permanently deleted.',
+          recoverable: false,
+        });
+      }
+      res.json({ ok: true, conversation: conv });
+    } catch (e) {
+      console.error('[Restore Error]', formatErrorForLog(e, {
+        endpoint: '/api/conversations/:id/restore',
+        conversationId: req.params.id,
+      }));
+      res.status(500).json(formatErrorForClient(e));
+    }
+  });
+
+  // Delete a conversation for good, skipping the recently-deleted window
+  app.delete('/api/conversations/:id/permanent', (req, res) => {
+    try {
+      const removed = storage.permanentDelete(req.params.id);
+      res.json({ ok: true, removed });
+    } catch (e) {
+      console.error('[Permanent Delete Error]', formatErrorForLog(e, {
+        endpoint: '/api/conversations/:id/permanent',
+        conversationId: req.params.id,
+      }));
+      res.status(500).json(formatErrorForClient(e));
+    }
+  });
+
   app.post('/api/conversations', (req, res) => {
     const { title, model, provider, autoTitle } = req.body || {};
     const conv = storage.create(title, model, provider, { autoTitle });
@@ -296,8 +348,24 @@ function register(app) {
   });
 
   app.delete('/api/conversations/:id', (req, res) => {
-    storage.remove(req.params.id);
-    res.json({ ok: true });
+    try {
+      const retentionDays = Number(req.query.retentionDays) || CONFIG.storage?.deletedRetentionDays || 30;
+      const deleted = storage.softDelete(req.params.id, retentionDays);
+      if (!deleted) {
+        return res.status(404).json({
+          error: 'Conversation not found',
+          action: 'This conversation may already have been deleted.',
+          recoverable: false,
+        });
+      }
+      res.json({ ok: true, deletedAt: deleted.deletedAt, retentionDays: deleted.retentionDays, expiresAt: new Date(new Date(deleted.deletedAt).getTime() + deleted.retentionDays * 86400000).toISOString() });
+    } catch (e) {
+      console.error('[Delete Conversation Error]', formatErrorForLog(e, {
+        endpoint: '/api/conversations/:id',
+        conversationId: req.params.id,
+      }));
+      res.status(500).json(formatErrorForClient(e));
+    }
   });
 
   // Pre-download the tiny local model used for auto-naming chats

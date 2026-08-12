@@ -8,6 +8,8 @@ const uploads = require('./src/upload');
 const CONFIG = require('./config/default.json');
 
 storage.init();
+const purged = storage.purgeExpired(CONFIG.storage?.deletedRetentionDays || 30);
+if (purged) console.log(`Purged ${purged} expired recently-deleted conversation(s)`);
 fs.mkdirSync(uploads.UPLOAD_DIR, { recursive: true });
 
 const app = express();
