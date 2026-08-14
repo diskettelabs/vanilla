@@ -107,6 +107,10 @@ const els = {
   customPromptBadge: document.querySelector("#customPromptBadge"),
   webSearchToggle: document.querySelector("#webSearchToggle"),
   workspaceToolsToggle: document.querySelector("#workspaceToolsToggle"),
+  notifyResponseToggle: document.querySelector("#notifyResponseToggle"),
+  notifyOnlyUnfocusedToggle: document.querySelector("#notifyOnlyUnfocusedToggle"),
+  notifyErrorToggle: document.querySelector("#notifyErrorToggle"),
+  testNotificationButton: document.querySelector("#testNotificationButton"),
   workspaceModal: document.querySelector("#workspaceModal"),
   workspaceFileList: document.querySelector("#workspaceFileList"),
   workspaceNewButton: document.querySelector("#workspaceNewButton"),
@@ -206,6 +210,7 @@ const state = {
   tokenText: "",
   tokenPump: null,
   streamComplete: false,
+  streamHadError: false,
   pendingAttachment: null,
   themes: [],
   voskModel: null,
@@ -242,6 +247,9 @@ const state = {
     workspaceTools: localStorage.getItem("vanilla-workspace-tools") !== "false",
     dictationEngine: localStorage.getItem("vanilla-dictation-engine") || "vosk",
     deletedRetentionDays: Number(localStorage.getItem("vanilla-deleted-retention-days")) || 30,
+    notifyResponse: localStorage.getItem("vanilla-notify-response") !== "false",
+    notifyOnlyUnfocused: localStorage.getItem("vanilla-notify-unfocused-only") !== "false",
+    notifyError: localStorage.getItem("vanilla-notify-error") !== "false",
   },
 };
 
@@ -1578,6 +1586,60 @@ async function handleAttachmentUpload(message) {
   }
 }
 
+function requestNotificationPermission() {
+  return new Promise((resolve) => {
+    if (typeof window.Notification === "undefined") { resolve("unsupported"); return; }
+    if (window.Notification.permission !== "default") { resolve(window.Notification.permission); return; }
+    const finish = (result) => resolve(result || "denied");
+    try {
+      const result = window.Notification.requestPermission(finish);
+      if (result && typeof result.then === "function") {
+        result.then(finish).catch(() => finish("denied"));
+      }
+    } catch (error) {
+      finish("denied");
+    }
+  });
+}
+
+function sendSystemNotification(title, body) {
+  try {
+    if (window.electronAPI && typeof window.electronAPI.notify === "function") {
+      window.electronAPI.notify(title, body);
+      return;
+    }
+  } catch (error) {
+    // Fall through to the gelectron bridge below.
+  }
+  try {
+    if (window.gelectron && typeof window.gelectron.send === "function") {
+      window.gelectron.send("vanilla-notify", { title, body });
+      return;
+    }
+  } catch (error) {
+    // Fall through to the Web Notification API below.
+  }
+  requestNotificationPermission().then((permission) => {
+    if (permission !== "granted") return;
+    try {
+      new window.Notification(title, { body, silent: false });
+    } catch (error) {
+      // Notifications are best-effort; never break the chat on failure.
+    }
+  });
+}
+
+function maybeNotifyForStream(completed, failed) {
+  const settings = state.settings;
+  if (!settings.notifyResponse && !settings.notifyError) return;
+  if (settings.notifyOnlyUnfocused && document.hasFocus()) return;
+  if (completed && settings.notifyResponse) {
+    sendSystemNotification("Vanilla Chat", "Your response is ready.");
+  } else if (failed && settings.notifyError) {
+    sendSystemNotification("Vanilla Chat", "Your response failed to complete.");
+  }
+}
+
 async function streamChat(conversationId, message) {
   setRunning(conversationId, true);
   const assistant = addAssistantMessage("");
@@ -1596,6 +1658,8 @@ async function streamChat(conversationId, message) {
 
   const controller = new AbortController();
   state.streamAbort = controller;
+
+  let streamFailed = false;
 
   try {
     const response = await fetch("/api/chat/stream", {
@@ -1652,10 +1716,17 @@ async function streamChat(conversationId, message) {
       throw new Error("No response received from model");
     }
   } catch (error) {
-    if (error.name !== "AbortError") showAssistantError(error.message, assistant);
+    if (error.name !== "AbortError") {
+      streamFailed = true;
+      showAssistantError(error.message, assistant);
+    }
   } finally {
+    const streamComplete = state.streamComplete;
+    const streamHadError = state.streamHadError;
     finishStream();
     setRunning(null, false);
+    maybeNotifyForStream(streamComplete, streamFailed || streamHadError);
+    state.streamHadError = false;
     await refreshConversations();
     if (state.activeConversation?.id) {
       try {
@@ -1690,6 +1761,7 @@ function handleSsePart(part) {
       } else if (event.type === "error") {
         const error = new Error(event.error || "Stream failed");
         error.action = event.action || null;
+        state.streamHadError = true;
         showAssistantError(error, state.activeAssistant?.closest(".assistant-message"));
       }
     } catch (error) {
@@ -2507,6 +2579,9 @@ function applySettings() {
   if (els.autoNameToggle) els.autoNameToggle.checked = settings.autoName;
   if (els.webSearchToggle) els.webSearchToggle.checked = settings.webSearch;
   if (els.workspaceToolsToggle) els.workspaceToolsToggle.checked = settings.workspaceTools;
+  if (els.notifyResponseToggle) els.notifyResponseToggle.checked = settings.notifyResponse;
+  if (els.notifyOnlyUnfocusedToggle) els.notifyOnlyUnfocusedToggle.checked = settings.notifyOnlyUnfocused;
+  if (els.notifyErrorToggle) els.notifyErrorToggle.checked = settings.notifyError;
   const searchPill = document.querySelector('[data-tool="search"]');
   if (searchPill) {
     searchPill.dataset.active = String(settings.webSearch);
@@ -2563,6 +2638,9 @@ function applySettings() {
   localStorage.setItem("vanilla-brave-key", settings.braveApiKey || "");
   localStorage.setItem("vanilla-dictation-engine", settings.dictationEngine || "vosk");
   localStorage.setItem("vanilla-deleted-retention-days", String(settings.deletedRetentionDays || 30));
+  localStorage.setItem("vanilla-notify-response", String(settings.notifyResponse));
+  localStorage.setItem("vanilla-notify-unfocused-only", String(settings.notifyOnlyUnfocused));
+  localStorage.setItem("vanilla-notify-error", String(settings.notifyError));
   applyCompareVisibility();
 }
 
@@ -3744,6 +3822,31 @@ function bindEvents() {
       if (state.settings.autoName) prewarmTitleModel();
     });
   }
+  if (els.notifyResponseToggle) {
+    els.notifyResponseToggle.addEventListener("change", () => {
+      state.settings.notifyResponse = els.notifyResponseToggle.checked;
+      applySettings();
+      if (state.settings.notifyResponse) requestNotificationPermission();
+    });
+  }
+  if (els.notifyOnlyUnfocusedToggle) {
+    els.notifyOnlyUnfocusedToggle.addEventListener("change", () => {
+      state.settings.notifyOnlyUnfocused = els.notifyOnlyUnfocusedToggle.checked;
+      applySettings();
+    });
+  }
+  if (els.notifyErrorToggle) {
+    els.notifyErrorToggle.addEventListener("change", () => {
+      state.settings.notifyError = els.notifyErrorToggle.checked;
+      applySettings();
+    });
+  }
+  if (els.testNotificationButton) {
+    els.testNotificationButton.addEventListener("click", async () => {
+      await requestNotificationPermission();
+      sendSystemNotification("Vanilla Chat", "Notifications are working!");
+    });
+  }
 
   if (els.displayNameInput) {
     els.displayNameInput.addEventListener("input", () => {
@@ -4260,6 +4363,8 @@ async function runCompare() {
   const controller = new AbortController();
   compareState.abort = controller;
 
+  let compareFailed = false;
+
   try {
     const response = await fetch("/api/chat/compare", {
       method: "POST",
@@ -4300,6 +4405,7 @@ async function runCompare() {
     if (buffer.trim()) handleComparePart(buffer);
   } catch (error) {
     if (error.name !== "AbortError") {
+      compareFailed = true;
       showNotification(error.message || "Comparison failed", "error");
     }
   } finally {
@@ -4309,6 +4415,7 @@ async function runCompare() {
     Object.keys(compareState.results).forEach((key) => flushCompare(key));
     els.compareRunButton.disabled = false;
     els.compareStopButton.hidden = true;
+    maybeNotifyForStream(!compareFailed, compareFailed);
   }
 }
 
