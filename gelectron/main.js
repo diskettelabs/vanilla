@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Menu, shell, ipcMain, Notification } = require('electron');
+const { app, BrowserWindow, Menu, shell } = require('electron');
 const path = require('node:path');
 const fs = require('node:fs');
 const http = require('node:http');
@@ -223,15 +223,6 @@ async function createWindow(url, useLoadFile = false) {
 
 app.whenReady().then(async () => {
   buildMenu();
-  ipcMain.on('vanilla-notify', (event, data) => {
-    const payload = Array.isArray(data) ? data[0] : data;
-    if (!payload || !payload.title) return;
-    try {
-      new Notification({ title: String(payload.title), body: String(payload.body || '') }).show();
-    } catch (error) {
-      console.warn('[Notifications] Could not show notification:', error.message);
-    }
-  });
   await createWindow(SPLASH_FILE, true);
 
   mainWindow.webContents.on('will-navigate', (event, url) => {
