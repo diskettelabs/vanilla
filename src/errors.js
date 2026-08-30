@@ -1,7 +1,7 @@
 /**
  * Centralized error handling utilities
  * Provides user-friendly error messages with actionable guidance
- * you need to do a rewrite. This code is extremely messy
+ * You need to do a rewrite. This code is extremely messy
  */
 
 class AppError extends Error {
