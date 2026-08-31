@@ -7,7 +7,7 @@
     "start": "gelectron-core ."
   },
   "dependencies": {
-    "gelectron-core": "^0.1.1",
+    "gelectron": "file:../../gelectron",
     "gelectron-ollama": "file:../../gelectron-ollama"
   }
 }

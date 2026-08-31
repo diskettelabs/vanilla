@@ -155,8 +155,8 @@ else
   echo "✗ Could not resolve gelectron-ollama. Run: npm install --prefix \"$APP_DIR/gelectron\"" >&2
   exit 1
 fi
-if command -v "$APP_DIR/gelectron/node_modules/.bin/gelectron" >/dev/null 2>&1; then
-  echo "✓ gelectron binary linked: $APP_DIR/gelectron/node_modules/.bin/gelectron"
+if command -v "$APP_DIR/gelectron/node_modules/.bin/gelectron-core" >/dev/null 2>&1; then
+  echo "✓ gelectron binary linked: $APP_DIR/gelectron/node_modules/.bin/gelectron-core"
 else
   echo "✗ gelectron not linked in $APP_DIR/gelectron. Run: npm install --prefix \"$APP_DIR/gelectron\"" >&2
   exit 1

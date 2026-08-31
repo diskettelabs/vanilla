@@ -13,6 +13,7 @@ const TOOL_DEFINITIONS = [
       parameters: { type: 'object', properties: {}, required: [] },
     },
   },
+  
   {
     type: 'function',
     function: {
