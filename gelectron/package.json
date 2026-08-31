@@ -4,10 +4,10 @@
   "description": "Vanilla Chat desktop app (Gelectron)",
   "main": "main.js",
   "scripts": {
-    "start": "gelectron ."
+    "start": "gelectron-core ."
   },
   "dependencies": {
-    "gelectron-ollama": "file:../../gelectron-ollama",
-    "gelectron": "file:../../gelectron"
+    "gelectron-core": "^0.1.1",
+    "gelectron-ollama": "file:../../gelectron-ollama"
   }
 }
