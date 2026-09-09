@@ -1,5 +1,5 @@
 <p align="left">
-  <img src="./wordmark.svg" alt="Vanilla Chat logo" width="140"> <h1>vanilla chat interface</h1>
+  <img src="./wordmark.svg" alt="Vanilla logo" width="140"> <h1>vanilla chat interface</h1>
 </p>
 
 A simple, privacy-first web chat interface for local and cloud AI models from Ollama, LM Studio, OpenAI, Anthropic, HuggingFace, and Google, plus direct integration with the Aider, Goose, and OpenCode CLIs. Comes with 13 ice cream-themed color schemes.
@@ -41,13 +41,16 @@ Pick a provider in Settings → AI Model and paste your API key.
 - **Multi-provider** — Ollama, LM Studio, OpenAI, Anthropic, HuggingFace, Google, and the Aider / Goose / OpenCode CLIs
 - **Compare models** — run the same prompt against multiple models side by side
 - **Conversation management** — create, switch, rename, regenerate, export (Markdown/JSON/HTML), and delete chats
+- **Branching edits** — edit an earlier prompt without losing the original path, then move between branches
 - **HuggingFace installer** — search GGUF models and import them into Ollama from the UI
 - **Custom system prompts** — global default plus per-conversation override
 - **Auto-naming** — smart chat titles generated locally via Ollama
 - **Themes** — 13 ice cream color schemes (vanilla, strawberry, mint, lemon, lime, peach, raspberry, lavender, dragonfruit, dreamsicle, blue-moon, chocolate, monochrome) plus custom JSON themes that can replace colors, accent, logo, mascot, app name, and CSS. Authoring guide: `/themes/themes.html`
 - **Settings UI** — organized tabs (General, AI Model, Chat, Appearance, Shortcuts, Data & Privacy) with pickers for theme, density, text size, accent, and more
+- **Persistent customization** — device-wide settings API plus a theme-independent custom browser/desktop icon
 - **Voice input** — browser-based dictation (VOSK, on-device)
 - **File uploads** — attach images and files with OCR/image understanding
+- **Native vision messages** — uploaded images are translated into Ollama, Anthropic, and OpenAI-compatible multimodal formats
 - **Privacy** — all data stays local, nothing leaves your machine unless you use a cloud provider
 
 ## requirements
@@ -112,6 +115,11 @@ vanilla-sh/
 | Endpoint | Description |
 |---|---|
 | `GET /api/health` | Health check |
+| `GET /api/settings` | Fetch persistent, non-secret user settings |
+| `PUT /api/settings` | Update persistent user settings |
+| `GET /api/icon` / `PUT /api/icon` | Fetch or set the theme-independent app icon |
+| `GET /api/tools` | Discover model-callable tools and their JSON schemas |
+| `POST /api/tools/execute` | Execute a named tool with JSON arguments |
 | `GET /api/providers` | List configured providers |
 | `GET /api/models?provider=…` | List available models for a provider |
 | `GET /api/system/stats` | CPU/RAM/GPU usage stats |
@@ -122,6 +130,7 @@ vanilla-sh/
 | `POST /api/conversations/import` | Import conversations from Markdown/JSON |
 | `POST /api/conversations/:id/name` | Rename a conversation |
 | `POST /api/conversations/:id/regenerate` | Regenerate the last response |
+| `POST /api/conversations/:id/branches/:branchId/activate` | Switch to a saved conversation branch |
 | `POST /api/conversations/:id/erase-last-response` | Erase the last response |
 | `POST /api/chat/stream` | Send a message and stream the response (SSE); optional `search` / `searchBackend` / `searchApiKey` fields enable web-search injection |
 | `POST /api/chat/stop/:conversationId` | Stop an in-progress stream |

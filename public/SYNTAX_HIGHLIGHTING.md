@@ -1,6 +1,6 @@
 # Syntax Highlighting Feature
 
-The Vanilla Chat application now includes **code syntax highlighting** and **language awareness** powered by [Prism.js](https://prismjs.com).
+Vanilla now includes **code syntax highlighting** and **language awareness** powered by [Prism.js](https://prismjs.com).
 
 ## Features
 

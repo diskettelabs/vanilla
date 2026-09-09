@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Menu, shell } = require('electron');
+const { app, BrowserWindow, Menu, shell, ipcMain, Notification, nativeImage } = require('electron');
 const path = require('node:path');
 const fs = require('node:fs');
 const http = require('node:http');
@@ -21,6 +21,7 @@ process.env.VANILLA_OLLAMA_DIR = path.join(app.getPath('userData'), 'ollama');
 if (IS_PACKAGED) {
   process.env.VANILLA_APP_PATH = path.resolve(APP_ROOT, '..', '..', '..');
 }
+app.setName('Vanilla');
 
 lifecycle.setUninstallHandler(async () => {
   if (ollamaServer) {
@@ -48,6 +49,21 @@ let server = null;
 let ollamaServer = null;
 let retryTimer = null;
 let retrying = false;
+
+function sendCommand(command) {
+  mainWindow?.webContents.send('app-command', command);
+}
+
+ipcMain.on('show-notification', (_event, { title, body } = {}) => {
+  if (Notification.isSupported()) new Notification({ title: title || 'Vanilla', body: body || 'Your response is ready.' }).show();
+});
+
+ipcMain.on('set-app-icon', (_event, dataUrl) => {
+  const image = dataUrl ? nativeImage.createFromDataURL(dataUrl) : nativeImage.createFromPath(path.join(__dirname, 'icon.png'));
+  if (image.isEmpty()) return;
+  mainWindow?.setIcon(image);
+  if (process.platform === 'darwin' && app.dock) app.dock.setIcon(image);
+});
 
 function updateSplash(percent, message) {
   if (!mainWindow || mainWindow.isDestroyed()) return;
@@ -133,10 +149,21 @@ function buildMenu() {
         {
           label: 'New Chat',
           accelerator: isMac ? 'Cmd+Shift+O' : 'Ctrl+Shift+O',
-          click: () => mainWindow?.webContents.executeJavaScript('document.querySelector(\'[data-action="new-chat"]\')?.click()'),
+          click: () => sendCommand('new-chat'),
         },
         { type: 'separator' },
         isMac ? { role: 'close' } : { role: 'quit' },
+      ],
+    },
+    {
+      label: 'Conversation',
+      submenu: [
+        { label: 'Search Conversations', accelerator: isMac ? 'Cmd+K' : 'Ctrl+K', click: () => sendCommand('search') },
+        { label: 'Focus Message', accelerator: isMac ? 'Cmd+L' : 'Ctrl+L', click: () => sendCommand('focus-message') },
+        { label: 'Stop Generating', accelerator: 'Esc', click: () => sendCommand('stop') },
+        { type: 'separator' },
+        { label: 'Toggle Sidebar', accelerator: isMac ? 'Cmd+B' : 'Ctrl+B', click: () => sendCommand('toggle-sidebar') },
+        { label: 'Settings', accelerator: isMac ? 'Cmd+,' : 'Ctrl+,', click: () => sendCommand('settings') },
       ],
     },
     {
@@ -182,7 +209,7 @@ function buildMenu() {
       label: 'Help',
       submenu: [
         {
-          label: 'Vanilla Chat Docs',
+          label: 'Vanilla Docs',
           click: () => shell.openExternal('https://github.com/antarasi/electron-ollama'),
         },
       ],
@@ -197,7 +224,14 @@ async function createWindow(url, useLoadFile = false) {
     height: 800,
     minWidth: 800,
     minHeight: 500,
-    title: 'Vanilla Chat',
+    title: 'Vanilla',
+    titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'hidden',
+    ...(process.platform === 'darwin' ? {
+      trafficLightPosition: { x: 16, y: 18 },
+    } : {
+      titleBarOverlay: { color: '#00000000', symbolColor: '#1b1b1b', height: 48 },
+    }),
+    backgroundColor: '#f8f8f6',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -219,6 +253,10 @@ async function createWindow(url, useLoadFile = false) {
   };
   mainWindow.once('ready-to-show', showWhenReady);
   mainWindow.webContents.once('did-finish-load', showWhenReady);
+  mainWindow.webContents.on('page-title-updated', (event) => {
+    event.preventDefault();
+    mainWindow?.setTitle('Vanilla');
+  });
 
   mainWindow.on('closed', () => {
     mainWindow = null;
@@ -253,11 +291,11 @@ app.whenReady().then(async () => {
     if (error && error.code === 'EADDRINUSE') {
       const isOurs = await probePort(CONFIG.port);
       if (isOurs) {
-        console.log(`Port ${CONFIG.port} is already serving Vanilla Chat — opening the running instance.`);
+        console.log(`Port ${CONFIG.port} is already serving Vanilla — opening the running instance.`);
       } else {
         console.error(`Port ${CONFIG.port} is in use by another application.`);
         showSplashError(
-          `Port ${CONFIG.port} is already in use by another application (not Vanilla Chat). ` +
+          `Port ${CONFIG.port} is already in use by another application (not Vanilla). ` +
           `Close the other app or free the port, then press Retry.`
         );
         startRetryLoop();

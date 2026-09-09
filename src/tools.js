@@ -1,10 +1,23 @@
 const http = require('node:http');
 const https = require('node:https');
 const workspace = require('./workspace');
+const { searchWeb } = require('./search');
 
 const MAX_TOOL_ROUNDS = 6;
 
 const TOOL_DEFINITIONS = [
+  {
+    type: 'function',
+    function: {
+      name: 'web_search',
+      description: 'Search the public web for current information. Use this when the answer may have changed or needs sources.',
+      parameters: {
+        type: 'object',
+        properties: { query: { type: 'string', description: 'A concise search query.' } },
+        required: ['query'],
+      },
+    },
+  },
   {
     type: 'function',
     function: {
@@ -65,7 +78,7 @@ function anthropicTools() {
   }));
 }
 
-function executeTool(name, argsRaw) {
+async function executeTool(name, argsRaw) {
   let args = {};
   if (typeof argsRaw === 'string') {
     try { args = JSON.parse(argsRaw); } catch { args = {}; }
@@ -75,6 +88,11 @@ function executeTool(name, argsRaw) {
 
   try {
     switch (name) {
+      case 'web_search': {
+        if (!args.query) return { ok: false, output: 'Missing required argument: query' };
+        const results = await searchWeb(String(args.query), { backend: 'duckduckgo' });
+        return { ok: true, output: JSON.stringify(results.slice(0, 8), null, 2) };
+      }
       case 'list_workspace_files': {
         const files = workspace.listFiles();
         return { ok: true, output: JSON.stringify(files, null, 2) };
@@ -190,7 +208,7 @@ async function runToolRound(provider, providerName, model, messages, { signal } 
       const name = call.function?.name;
       const args = _parseArgs(call.function?.arguments);
       toolCalls.push({ name, args });
-      const result = executeTool(name, args);
+      const result = await executeTool(name, args);
       results.push({ name, args, ok: result.ok, output: result.output });
       next.push({ role: 'tool', content: result.output });
     }
@@ -225,7 +243,7 @@ async function runToolRound(provider, providerName, model, messages, { signal } 
     const next = [...messages, { role: 'assistant', content: blocks }];
     for (const use of toolUses) {
       toolCalls.push({ name: use.name, args: use.input || {} });
-      const result = executeTool(use.name, use.input);
+      const result = await executeTool(use.name, use.input);
       results.push({ name: use.name, args: use.input || {}, ok: result.ok, output: result.output });
       next.push({
         role: 'user',
@@ -258,7 +276,7 @@ async function runToolRound(provider, providerName, model, messages, { signal } 
     const name = call.function?.name;
     const args = _parseArgs(call.function?.arguments);
     toolCalls.push({ name, args });
-    const result = executeTool(name, args);
+    const result = await executeTool(name, args);
     results.push({ name, args, ok: result.ok, output: result.output });
     next.push({ role: 'tool', tool_call_id: call.id, content: result.output });
   }

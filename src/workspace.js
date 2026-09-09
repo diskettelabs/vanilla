@@ -3,7 +3,7 @@ const path = require('node:path');
 const { execFile } = require('node:child_process');
 
 // Resolve relative to cwd: in the packaged app gelectron chdir()s to the user
-// data dir, so this lands in ~/Library/Application Support/VanillaChat/data/
+// data dir, so this lands in Vanilla's Application Support data directory.
 // instead of the read-only app bundle.
 const WORKSPACE_DIR = path.resolve('data', 'workspace');
 

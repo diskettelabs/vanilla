@@ -92,6 +92,10 @@ const els = {
   reduceMotionToggle: document.querySelector("#reduceMotionToggle"),
   enterToSendToggle: document.querySelector("#enterToSendToggle"),
   showStatsToggle: document.querySelector("#showStatsToggle"),
+  desktopNotificationsToggle: document.querySelector("#desktopNotificationsToggle"),
+  customIconInput: document.querySelector("#customIconInput"),
+  customIconReset: document.querySelector("#customIconReset"),
+  customIconPreview: document.querySelector("#customIconPreview"),
   soundEffectsToggle: document.querySelector("#soundEffectsToggle"),
   ambientToggle: document.querySelector("#ambientToggle"),
   musicTrackPicker: document.querySelector("#musicTrackPicker"),
@@ -242,8 +246,35 @@ const state = {
     workspaceTools: localStorage.getItem("vanilla-workspace-tools") !== "false",
     dictationEngine: localStorage.getItem("vanilla-dictation-engine") || "vosk",
     deletedRetentionDays: Number(localStorage.getItem("vanilla-deleted-retention-days")) || 30,
+    customIcon: localStorage.getItem("vanilla-custom-icon") || "",
+    desktopNotifications: localStorage.getItem("vanilla-desktop-notifications") !== "false",
   },
 };
+
+let settingsHydrated = false;
+let settingsSaveTimer = null;
+
+async function loadPersistentSettings() {
+  try {
+    const data = await api("/api/settings");
+    if (data?.settings && typeof data.settings === "object") {
+      Object.assign(state.settings, data.settings);
+    }
+  } catch {
+    // Browser-local settings remain a complete offline fallback.
+  } finally {
+    settingsHydrated = true;
+  }
+}
+
+function queueSettingsSave() {
+  if (!settingsHydrated) return;
+  clearTimeout(settingsSaveTimer);
+  settingsSaveTimer = setTimeout(() => {
+    const { braveApiKey: _secret, ...safeSettings } = state.settings;
+    api("/api/settings", { method: "PUT", body: JSON.stringify({ settings: safeSettings }) }).catch(() => {});
+  }, 250);
+}
 
 const themeNames = [
   "blue-moon", "chocolate", "dragonfruit", "dreamsicle", "lavender", "lemon", "lime",
@@ -1033,6 +1064,7 @@ function renderMessages(conv) {
   els.messages.innerHTML = "";
   const messages = conv?.messages || [];
   els.emptyState.hidden = messages.length > 0;
+  renderBranchSwitcher(conv);
   const staggerStart = Math.max(0, messages.length - 6);
   for (let i = 0; i < messages.length; i++) {
     const msg = messages[i];
@@ -1049,6 +1081,35 @@ function renderMessages(conv) {
     // Apply syntax highlighting to all loaded messages
     attachCodeCopy(els.messages);
   });
+}
+
+function renderBranchSwitcher(conv) {
+  const branches = Array.isArray(conv?.branches) ? conv.branches : [];
+  if (branches.length < 2) return;
+  const activeIndex = Math.max(0, branches.findIndex((branch) => branch.id === conv.activeBranchId));
+  const nav = document.createElement("nav");
+  nav.className = "branch-switcher";
+  nav.setAttribute("aria-label", "Conversation branches");
+  nav.innerHTML = `
+    <button type="button" aria-label="Previous branch" ${activeIndex === 0 ? "disabled" : ""}>‹</button>
+    <span><strong>${escapeHtml(branches[activeIndex]?.label || `Branch ${activeIndex + 1}`)}</strong><small>${activeIndex + 1} of ${branches.length}</small></span>
+    <button type="button" aria-label="Next branch" ${activeIndex === branches.length - 1 ? "disabled" : ""}>›</button>`;
+  const activate = async (index) => {
+    const branch = branches[index];
+    if (!branch || !conv.id) return;
+    nav.dataset.loading = "true";
+    try {
+      const updated = await api(`/api/conversations/${encodeURIComponent(conv.id)}/branches/${encodeURIComponent(branch.id)}/activate`, { method: "POST" });
+      state.activeConversation = updated;
+      renderMessages(updated);
+      showNotification(`Switched to ${branch.label || `branch ${index + 1}`}`, "info", 1800);
+    } catch (error) {
+      showNotification(error.message || "Could not switch branch", "error");
+    }
+  };
+  nav.querySelector("button:first-child").addEventListener("click", () => activate(activeIndex - 1));
+  nav.querySelector("button:last-child").addEventListener("click", () => activate(activeIndex + 1));
+  els.messages.append(nav);
 }
 
 function addUserMessage(content, { id = crypto.randomUUID(), animate = true } = {}) {
@@ -1182,6 +1243,9 @@ async function editPrompt(content, id) {
   resizePrompt();
   els.promptInput.focus();
   els.composer.dataset.editingMessageId = id;
+  els.composer.dataset.mode = "editing";
+  els.promptInput.setAttribute("aria-label", "Edit prompt and create a branch");
+  showNotification("Editing creates a new branch; the original stays available.", "info", 3200);
 }
 
 function resizePrompt() {
@@ -1452,6 +1516,8 @@ async function submitPrompt(event) {
   const editingId = els.composer.dataset.editingMessageId;
   els.promptInput.value = "";
   delete els.composer.dataset.editingMessageId;
+  delete els.composer.dataset.mode;
+  els.promptInput.setAttribute("aria-label", "Message Vanilla");
 
   // Handle file upload if pending
   if (state.pendingAttachment) {
@@ -1477,7 +1543,7 @@ async function submitPrompt(event) {
       addUserMessage(message);
     }
     Sounds.send();
-    await streamChat(conv.id, message);
+    await streamChat(conv.id, message, { messageAlreadySaved: Boolean(editingId) });
   } catch (error) {
     showAssistantError(error);
   }
@@ -1578,13 +1644,14 @@ async function handleAttachmentUpload(message) {
   }
 }
 
-async function streamChat(conversationId, message) {
+async function streamChat(conversationId, message, { messageAlreadySaved = false } = {}) {
   setRunning(conversationId, true);
   const assistant = addAssistantMessage("");
   state.activeAssistant = assistant.querySelector(".assistant-body");
   state.tokenQueue = "";
   state.tokenText = "";
   state.toolChips = [];
+  state.responseNotified = false;
 
   state.activeAssistant.textContent = state.settings.webSearch ? "Searching the web…" : "Loading model...";
   pumpTokens();
@@ -1612,6 +1679,7 @@ async function streamChat(conversationId, message) {
         searchBackend: state.settings.searchBackend,
         searchApiKey: state.settings.searchBackend === "brave" ? (state.settings.braveApiKey || "") : undefined,
         workspaceTools: state.settings.workspaceTools,
+        messageAlreadySaved,
       }),
       signal: controller.signal,
     });
@@ -1681,6 +1749,7 @@ function handleSsePart(part) {
       } else if (event.type === "done") {
         state.streamComplete = true;
         Sounds.receive();
+        notifyResponseFinished();
       } else if (event.type === "tool_call") {
         addToolChip(event.name || "tool", event.args || {});
       } else if (event.type === "tool_result") {
@@ -1698,8 +1767,21 @@ function handleSsePart(part) {
   }
 }
 
+function notifyResponseFinished() {
+  if (state.responseNotified || !state.settings.desktopNotifications || !document.hidden) return;
+  state.responseNotified = true;
+  const title = state.activeConversation?.title || "Vanilla";
+  const body = "Your response is ready.";
+  if (window.electronAPI?.notify) {
+    window.electronAPI.notify(title, body);
+  } else if ("Notification" in window && Notification.permission === "granted") {
+    new Notification(title, { body, icon: state.settings.customIcon || undefined });
+  }
+}
+
 function toolChipLabel(name, args) {
   const map = {
+    web_search: ["searching web for", String(args?.query || "")],
     list_workspace_files: ["listing files", ""],
     read_file: ["reading", String(args?.path || "")],
     write_file: ["writing", String(args?.path || "")],
@@ -2441,18 +2523,6 @@ function applyTheme(theme) {
   if (theme?.appName) document.title = theme.appName;
   else document.title = originalTitle;
 
-  if (theme?.favicon) {
-    if (!themeFaviconLink) {
-      themeFaviconLink = document.createElement("link");
-      themeFaviconLink.rel = "icon";
-      document.head.appendChild(themeFaviconLink);
-    }
-    themeFaviconLink.href = theme.favicon;
-  } else if (themeFaviconLink) {
-    themeFaviconLink.remove();
-    themeFaviconLink = null;
-  }
-
   const hadThemedGreeting = themeGreeting;
   themeGreeting = Boolean(theme?.greeting);
   if (themeGreeting && els.greeting) els.greeting.textContent = theme.greeting;
@@ -2474,6 +2544,29 @@ function applyTheme(theme) {
   }
 }
 
+function applyCustomIcon() {
+  const candidate = state.settings.customIcon || "";
+  const icon = /^data:image\/(?:png|jpeg|webp|svg\+xml);base64,/i.test(candidate) ? candidate : "";
+  if (els.customIconPreview) {
+    els.customIconPreview.replaceChildren();
+    if (icon) {
+      const image = document.createElement("img");
+      image.src = icon;
+      image.alt = "Custom app icon preview";
+      els.customIconPreview.append(image);
+    } else {
+      els.customIconPreview.textContent = "V";
+    }
+  }
+  if (!themeFaviconLink) {
+    themeFaviconLink = document.createElement("link");
+    themeFaviconLink.rel = "icon";
+    document.head.appendChild(themeFaviconLink);
+  }
+  themeFaviconLink.href = icon || "./assets/vanilla%20logomark.svg";
+  window.electronAPI?.setAppIcon?.(icon || null);
+}
+
 function applySettings() {
   const { settings } = state;
   document.body.dataset.density = settings.density;
@@ -2491,6 +2584,7 @@ function applySettings() {
   els.reduceMotionToggle.checked = settings.reduceMotion;
   els.enterToSendToggle.checked = settings.enterToSend;
   els.showStatsToggle.checked = settings.showStats;
+  if (els.desktopNotificationsToggle) els.desktopNotificationsToggle.checked = settings.desktopNotifications;
   if (els.soundEffectsToggle) els.soundEffectsToggle.checked = settings.soundEffects;
   Sounds.setEnabled(settings.soundEffects);
   if (els.ambientToggle) els.ambientToggle.checked = settings.ambientMusic;
@@ -2537,6 +2631,7 @@ function applySettings() {
   }
   const theme = state.themes.find((item) => item.name === settings.theme);
   applyTheme(theme);
+  applyCustomIcon();
   localStorage.setItem("vanilla-theme", settings.theme);
   localStorage.setItem("vanilla-density", settings.density);
   localStorage.setItem("vanilla-text-size", settings.textSize);
@@ -2563,7 +2658,10 @@ function applySettings() {
   localStorage.setItem("vanilla-brave-key", settings.braveApiKey || "");
   localStorage.setItem("vanilla-dictation-engine", settings.dictationEngine || "vosk");
   localStorage.setItem("vanilla-deleted-retention-days", String(settings.deletedRetentionDays || 30));
+  localStorage.setItem("vanilla-custom-icon", settings.customIcon || "");
+  localStorage.setItem("vanilla-desktop-notifications", String(settings.desktopNotifications));
   applyCompareVisibility();
+  queueSettingsSave();
 }
 
 function applyCompareVisibility() {
@@ -3339,7 +3437,7 @@ async function doUninstall() {
     showNotification("Uninstalling… closing app", "info", 10000);
   } catch (error) {
     els.uninstallButton.disabled = false;
-    els.uninstallButton.textContent = "Uninstall Vanilla Chat…";
+    els.uninstallButton.textContent = "Uninstall Vanilla…";
     showNotification(error.action || error.message || "Failed to uninstall", "error");
   }
 }
@@ -3435,7 +3533,7 @@ function refreshUpdateUI(status) {
   }
   if (status.status === "available") {
     banner.hidden = false;
-    bannerText.textContent = `A new version of Vanilla Chat is available: ${formatUpdateVersion(status)}`;
+    bannerText.textContent = `A new version of Vanilla is available: ${formatUpdateVersion(status)}`;
     bannerAction.textContent = "Download";
     bannerAction.onclick = () => triggerUpdateDownload();
   } else if (status.status === "downloaded") {
@@ -3691,6 +3789,39 @@ function bindEvents() {
     state.settings.showStats = els.showStatsToggle.checked;
     applySettings();
   });
+  if (els.desktopNotificationsToggle) {
+    els.desktopNotificationsToggle.addEventListener("change", async () => {
+      state.settings.desktopNotifications = els.desktopNotificationsToggle.checked;
+      if (state.settings.desktopNotifications && "Notification" in window && Notification.permission === "default") {
+        await Notification.requestPermission().catch(() => {});
+      }
+      applySettings();
+    });
+  }
+  if (els.customIconInput) {
+    els.customIconInput.addEventListener("change", () => {
+      const file = els.customIconInput.files?.[0];
+      if (!file) return;
+      if (file.size > 2_000_000) {
+        showNotification("Icon must be smaller than 2 MB", "warning");
+        els.customIconInput.value = "";
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = () => {
+        state.settings.customIcon = String(reader.result || "");
+        applySettings();
+        showNotification("App icon updated", "success");
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+  els.customIconReset?.addEventListener("click", () => {
+    state.settings.customIcon = "";
+    if (els.customIconInput) els.customIconInput.value = "";
+    applySettings();
+    showNotification("Default app icon restored", "success");
+  });
   if (els.soundEffectsToggle) {
     els.soundEffectsToggle.addEventListener("change", () => {
       state.settings.soundEffects = els.soundEffectsToggle.checked;
@@ -3803,7 +3934,20 @@ function bindEvents() {
       event.preventDefault();
       openWorkspace();
     }
+    if (command && event.key === ",") {
+      event.preventDefault();
+      openModal(els.settingsModal);
+    }
+    if (command && !event.shiftKey && event.key.toLowerCase() === "b") {
+      event.preventDefault();
+      els.sidebarToggle.click();
+    }
+    if (event.key === "/" && !event.metaKey && !event.ctrlKey && !event.altKey && !/INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName || "")) {
+      event.preventDefault();
+      els.promptInput.focus();
+    }
     if (event.key === "Escape") {
+      if (state.runningConversationId) stopStream();
       closeModals();
       els.modelPicker.dataset.open = "false";
     }
@@ -3817,6 +3961,18 @@ function bindEvents() {
   }
   
   els.fileInput.addEventListener("change", uploadFile);
+}
+
+function runAppCommand(command) {
+  const actions = {
+    "new-chat": () => newChat(),
+    search: () => openModal(els.searchModal),
+    settings: () => { openModal(els.settingsModal); loadUpdateStatus(); },
+    "toggle-sidebar": () => els.sidebarToggle.click(),
+    "focus-message": () => els.promptInput.focus(),
+    stop: () => state.runningConversationId ? stopStream() : closeModals(),
+  };
+  actions[command]?.();
 }
 
 function debounce(fn, wait) {
@@ -4323,11 +4479,20 @@ async function stopCompare() {
 }
 
 async function boot() {
+  if (window.electronAPI) {
+    document.body.dataset.desktopShell = "true";
+    document.body.dataset.desktopPlatform = window.electronAPI.platform || "unknown";
+  }
   setShortcuts();
   chooseGreeting();
+  await loadPersistentSettings();
   applySettings(); // Apply settings immediately to prevent sidebar animation on load
+  if (window.matchMedia("(max-width: 840px)").matches) {
+    els.shell.dataset.sidebar = "closed";
+  }
   bindEvents();
   bindRecentlyDeleted();
+  window.electronAPI?.onCommand?.(runAppCommand);
   bindUpdateEvents();
   bindSetupFlow();
   bindHuggingFace();
@@ -4546,20 +4711,22 @@ function bindSetupFlow() {
 
       // If Whisper is selected, check/install it
       if (btn.dataset.dictation === "whisper") {
-        whisperStatus.hidden = false;
-        whisperStatus.textContent = "Checking Whisper installation...";
+        if (whisperStatus) {
+          whisperStatus.hidden = false;
+          whisperStatus.textContent = "Checking Whisper installation...";
+        }
         try {
           const status = await api("/api/whisper/status");
           if (status.installed) {
-            whisperStatus.textContent = "Whisper is installed and ready.";
+            if (whisperStatus) whisperStatus.textContent = "Whisper is installed and ready.";
           } else {
-            whisperStatus.textContent = "Whisper will be downloaded (~1.5GB) when you continue.";
+            if (whisperStatus) whisperStatus.textContent = "Whisper will be downloaded (~1.5GB) when you continue.";
           }
         } catch (error) {
-          whisperStatus.textContent = "Could not check Whisper status.";
+          if (whisperStatus) whisperStatus.textContent = "Could not check Whisper status.";
         }
       } else {
-        whisperStatus.hidden = true;
+        if (whisperStatus) whisperStatus.hidden = true;
       }
     });
   });

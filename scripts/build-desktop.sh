@@ -1,5 +1,5 @@
 #!/bin/bash
-# Builds the Vanilla Chat desktop app (Gelectron) with bundled Ollama.
+# Builds the Vanilla desktop app (Gelectron) with bundled Ollama.
 #
 # Usage:
 #   npm run build           — build and sign (ad-hoc)
@@ -13,7 +13,7 @@ PACKAGER="$GELECTRON_REPO/packager/bin/gelectron-packager.js"
 BINARY="$GELECTRON_REPO/target/release/gelectron"
 STAGING="$ROOT/build/staging-gelectron"
 DIST="$ROOT/dist"
-APP_NAME="VanillaChat"
+APP_NAME="Vanilla"
 APP_BUNDLE="$APP_NAME.app"
 VERSION="0.1.0"
 WEB_FILES="server.js src public ui themes config"
@@ -40,7 +40,7 @@ if [ ! -d "$OLLAMA_REPO" ]; then
   exit 1
 fi
 
-echo "── Vanilla Chat build (Gelectron) ──"
+echo "── Vanilla build (Gelectron) ──"
 
 echo
 echo "1/4 Assembling app payload..."
@@ -54,13 +54,14 @@ for f in $WEB_FILES; do
   fi
 done
 cp "$ROOT/gelectron/main.js" "$STAGING/main.js"
+cp "$ROOT/gelectron/preload.js" "$STAGING/preload.js"
 cp "$ROOT/gelectron/splash.html" "$STAGING/splash.html"
 cp "$ROOT/logo.png" "$STAGING/icon.png"
 cat > "$STAGING/package.json" <<EOF
 {
   "name": "vanilla-chat",
   "version": "$VERSION",
-  "description": "Vanilla Chat desktop app",
+  "description": "Vanilla desktop app",
   "main": "main.js"
 }
 EOF

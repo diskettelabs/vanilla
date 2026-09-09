@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>Vanilla Chat</title>
+<title>Vanilla</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   html, body { height: 100%; }
@@ -11,6 +11,7 @@
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     background: #faf7f2; color: #2b2b2b;
     -webkit-user-select: none; user-select: none;
+    -webkit-app-region: drag;
   }
   .wordmark { font-size: 42px; font-weight: 700; letter-spacing: -1px; }
   .wordmark span { color: #b07a4d; }
@@ -34,6 +35,7 @@
   .error-btn {
     border-radius: 8px; padding: 9px 20px; font-size: 14px; font-weight: 600;
     background: #b07a4d; color: #fff; text-decoration: none;
+    -webkit-app-region: no-drag;
   }
   .error-btn:hover { filter: brightness(1.08); }
   .error-btn.secondary { background: #e7e1d8; color: #4a4a4a; }
@@ -47,7 +49,7 @@
   <div class="track" id="track"><div class="bar" id="bar"></div></div>
   <div class="pct" id="pct"></div>
   <div class="error" id="error">
-    <div class="error-title">Vanilla Chat can&rsquo;t start</div>
+    <div class="error-title">Vanilla can&rsquo;t start</div>
     <p class="error-message" id="errorMessage"></p>
     <div class="error-actions">
       <a class="error-btn" href="?action=retry">Retry</a>

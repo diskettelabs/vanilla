@@ -1,11 +1,10 @@
 const multer = require('multer');
 const path = require('node:path');
 const fs = require('node:fs');
-const sharp = require('sharp');
 const { FileError } = require('./errors');
 
 // Resolve relative to cwd: in the packaged app gelectron chdir()s to the user
-// data dir, so this lands in ~/Library/Application Support/VanillaChat/data/
+// data dir, so this lands in Vanilla's Application Support data directory.
 // instead of the read-only app bundle (App Translocation).
 const UPLOAD_DIR = path.resolve('data', 'uploads');
 
@@ -81,6 +80,9 @@ async function processUpload(file) {
   // Process images
   if (IMAGE_MIME.includes(file.mimetype) && file.mimetype !== 'image/gif') {
     try {
+      // Sharp can be expensive to initialize on some desktop runtimes; load it only
+      // when an image actually needs processing so app startup stays responsive.
+      const sharp = require('sharp');
       buf = await sharp(buf)
         .resize(1920, 1920, { fit: 'inside', withoutEnlargement: true })
         .jpeg({ quality: 80 })

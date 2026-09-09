@@ -71,6 +71,31 @@ body {
   height: 100%;
 }
 
+body[data-desktop-shell="true"] .sidebar-top,
+body[data-desktop-shell="true"] .top-bar {
+  -webkit-app-region: drag;
+  user-select: none;
+}
+
+body[data-desktop-shell="true"] button,
+body[data-desktop-shell="true"] a,
+body[data-desktop-shell="true"] input,
+body[data-desktop-shell="true"] textarea,
+body[data-desktop-shell="true"] select,
+body[data-desktop-shell="true"] [role="button"] {
+  -webkit-app-region: no-drag;
+}
+
+body[data-desktop-platform="darwin"] .sidebar-top {
+  padding-top: 42px;
+}
+
+body[data-desktop-platform="win32"] .top-bar,
+body[data-desktop-platform="linux"] .top-bar {
+  min-height: 48px;
+  padding-right: 152px;
+}
+
 body {
   margin: 0;
   overflow: hidden;
@@ -4831,4 +4856,118 @@ body[data-reduce-motion="true"] *::after {
   height: 100%;
   background: #fff;
   transition: width 200ms ease;
+}
+
+/* Branching, icon customization, and interaction polish */
+.branch-switcher {
+  position: sticky;
+  top: 10px;
+  z-index: 4;
+  align-self: center;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 4px auto 18px;
+  padding: 5px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--panel-strong) 90%, transparent);
+  box-shadow: 0 8px 28px rgba(20, 20, 20, 0.08);
+  backdrop-filter: blur(14px);
+}
+
+.branch-switcher span {
+  display: grid;
+  min-width: 88px;
+  text-align: center;
+  line-height: 1.15;
+}
+
+.branch-switcher strong { font-size: 12px; font-weight: 650; }
+.branch-switcher small { color: var(--muted); font-size: 10px; }
+
+.branch-switcher button {
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.branch-switcher button:hover:not(:disabled) { background: var(--soft); transform: scale(1.04); }
+.branch-switcher button:disabled { opacity: 0.3; cursor: default; }
+.branch-switcher[data-loading="true"] { opacity: 0.65; pointer-events: none; }
+
+.icon-customizer {
+  display: grid;
+  grid-template-columns: 72px 1fr;
+  align-items: center;
+  gap: 18px;
+}
+
+.icon-preview {
+  display: grid;
+  place-items: center;
+  width: 72px;
+  height: 72px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: linear-gradient(145deg, var(--panel-strong), var(--soft));
+  color: var(--text);
+  font-size: 30px;
+  font-weight: 800;
+  box-shadow: 0 10px 24px rgba(20, 20, 20, 0.08);
+}
+
+.icon-preview img { width: 100%; height: 100%; object-fit: cover; }
+.settings-inline-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.settings-inline-actions .button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  padding: 7px 12px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--panel-strong);
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.settings-inline-actions .button:hover { background: var(--soft); border-color: color-mix(in srgb, var(--text) 22%, var(--line)); }
+
+.composer[data-mode="editing"] {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 38%, transparent), 0 14px 36px rgba(20, 20, 20, 0.1);
+}
+
+.composer[data-mode="editing"]::before {
+  content: "Editing prompt · creates a branch";
+  position: absolute;
+  left: 18px;
+  bottom: calc(100% + 7px);
+  padding: 4px 8px;
+  border-radius: 7px;
+  background: var(--text);
+  color: var(--bg);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+button, .button, .conversation-item, .tool-pill {
+  transition: color 140ms ease, background-color 140ms ease, border-color 140ms ease, opacity 140ms ease, transform 140ms ease, box-shadow 140ms ease;
+}
+
+button:active:not(:disabled), .button:active:not(:disabled) { transform: scale(0.97); }
+
+@media (max-width: 620px) {
+  .icon-customizer { grid-template-columns: 56px 1fr; }
+  .icon-preview { width: 56px; height: 56px; border-radius: 14px; }
+  .branch-switcher { top: 6px; }
 }

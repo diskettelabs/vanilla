@@ -38,6 +38,8 @@ function convFromJson(fp) {
     pinned: Boolean(raw.pinned),
     customPrompt: raw.customPrompt || '',
     messages: raw.messages || [],
+    branches: Array.isArray(raw.branches) ? raw.branches : [],
+    activeBranchId: raw.activeBranchId || '',
     createdAt: raw.createdAt || new Date().toISOString(),
     updatedAt: raw.updatedAt || new Date().toISOString(),
     deletedAt: raw.deletedAt || '',
@@ -59,6 +61,13 @@ function convToMarkdown(conv) {
   if (conv.deletedAt) lines.push(`- **Deleted:** ${conv.deletedAt}`);
   if (conv.retentionDays) lines.push(`- **RetentionDays:** ${conv.retentionDays}`);
   if (conv.customPrompt) lines.push(`- **Prompt:** ${JSON.stringify(conv.customPrompt)}`);
+  if (Array.isArray(conv.branches) && conv.branches.length) {
+    const branchData = Buffer.from(JSON.stringify({
+      activeBranchId: conv.activeBranchId,
+      branches: conv.branches,
+    }), 'utf8').toString('base64');
+    lines.push(`<!-- vanilla-branches:${branchData} -->`);
+  }
   lines.push('');
   lines.push('---');
   lines.push('');
@@ -85,6 +94,8 @@ function parseConversationMarkdown(text) {
     pinned: false,
     customPrompt: '',
     messages: [],
+    branches: [],
+    activeBranchId: '',
     createdAt: '',
     updatedAt: '',
     deletedAt: '',
@@ -98,6 +109,19 @@ function parseConversationMarkdown(text) {
     const line = lines[i];
 
     if (mode === 'header') {
+      const branchesMatch = line.match(/^<!-- vanilla-branches:([A-Za-z0-9+/=]+) -->$/);
+      if (branchesMatch) {
+        try {
+          const data = JSON.parse(Buffer.from(branchesMatch[1], 'base64').toString('utf8'));
+          conv.branches = Array.isArray(data.branches) ? data.branches : [];
+          conv.activeBranchId = data.activeBranchId || '';
+        } catch {
+          conv.branches = [];
+          conv.activeBranchId = '';
+        }
+        continue;
+      }
+
       const titleMatch = line.match(/^#\s+(.+)/);
       if (titleMatch) {
         conv.title = titleMatch[1].trim();
@@ -138,7 +162,10 @@ function parseConversationMarkdown(text) {
         /^##\s+(\w+)\s+`([\w-]+)`\s+@\s+(\S+)(?:\s+model:(\S+))?$/
       );
       if (msgMatch) {
-        if (currentMsg) conv.messages.push(currentMsg);
+        if (currentMsg) {
+          currentMsg.content = currentMsg.content.replace(/\n+$/, '');
+          conv.messages.push(currentMsg);
+        }
         currentMsg = {
           id: msgMatch[2],
           role: msgMatch[1],
@@ -195,6 +222,8 @@ function importConversations(files) {
           pinned: Boolean(raw.pinned),
           customPrompt: raw.customPrompt || '',
           messages: raw.messages || [],
+          branches: Array.isArray(raw.branches) ? raw.branches : [],
+          activeBranchId: raw.activeBranchId || '',
           createdAt: raw.createdAt || '',
           updatedAt: raw.updatedAt || '',
         };
@@ -214,6 +243,8 @@ function importConversations(files) {
     conv.pinned = Boolean(conv.pinned);
     conv.customPrompt = conv.customPrompt || '';
     conv.messages = Array.isArray(conv.messages) ? conv.messages : [];
+    conv.branches = Array.isArray(conv.branches) ? conv.branches : [];
+    conv.activeBranchId = conv.activeBranchId || '';
 
     fs.writeFileSync(filePath(conv.id), convToMarkdown(conv));
     created.push({
@@ -282,19 +313,49 @@ function get(id) {
   const jsonPath = path.join(DATA_DIR, `${id}.json`);
 
   if (fs.existsSync(mdPath)) {
-    return convFromMarkdown(mdPath);
+    return normalizeBranches(convFromMarkdown(mdPath));
   }
   if (fs.existsSync(jsonPath)) {
     const conv = convFromJson(jsonPath);
     // migrate to markdown
     fs.writeFileSync(mdPath, convToMarkdown(conv));
     fs.unlinkSync(jsonPath);
-    return conv;
+    return normalizeBranches(conv);
   }
   return null;
 }
 
+function normalizeBranches(conv) {
+  if (!conv) return conv;
+  if (!Array.isArray(conv.branches)) conv.branches = [];
+  if (conv.branches.length && !conv.branches.some((branch) => branch.id === conv.activeBranchId)) {
+    conv.activeBranchId = conv.branches[conv.branches.length - 1].id;
+  }
+  const active = conv.branches.find((branch) => branch.id === conv.activeBranchId);
+  if (active) conv.messages = active.messages;
+  return conv;
+}
+
+function ensureRootBranch(conv) {
+  normalizeBranches(conv);
+  if (conv.branches.length) return conv;
+  const root = {
+    id: uuid(),
+    parentId: null,
+    label: 'Original',
+    createdAt: conv.createdAt || new Date().toISOString(),
+    messages: JSON.parse(JSON.stringify(conv.messages || [])),
+  };
+  conv.branches = [root];
+  conv.activeBranchId = root.id;
+  conv.messages = root.messages;
+  return conv;
+}
+
 function update(conv) {
+  normalizeBranches(conv);
+  const active = conv.branches?.find((branch) => branch.id === conv.activeBranchId);
+  if (active) active.messages = conv.messages;
   conv.updatedAt = new Date().toISOString();
   fs.writeFileSync(filePath(conv.id), convToMarkdown(conv));
   return conv;
@@ -448,38 +509,47 @@ function eraseLastAssistant(id) {
   return conv;
 }
 
-function replaceUserMessageAndTruncate(id, messageId, content) {
+function branchFromUserMessage(id, messageId, content) {
   const conv = get(id);
   if (!conv) return null;
-  
-  // If messageId not provided, find the last user message
-  if (!messageId) {
+  ensureRootBranch(conv);
+  let msgIndex = messageId ? conv.messages.findIndex((message) => message.id === messageId) : -1;
+  if (msgIndex < 0) {
     for (let i = conv.messages.length - 1; i >= 0; i--) {
-      if (conv.messages[i].role === 'user') {
-        conv.messages[i].content = content;
-        conv.messages[i].timestamp = new Date().toISOString();
-        // Remove all messages after this one
-        conv.messages.splice(i + 1);
-        return update(conv);
-      }
+      if (conv.messages[i].role === 'user') { msgIndex = i; break; }
     }
-    return conv;
   }
-  
-  // Find the message to replace by ID
-  const msgIndex = conv.messages.findIndex(m => m.id === messageId);
-  if (msgIndex === -1) {
-    // Message ID not found, fall back to replacing last user message
-    return replaceUserMessageAndTruncate(id, null, content);
-  }
-  
-  // Update the message content
-  conv.messages[msgIndex].content = content;
-  conv.messages[msgIndex].timestamp = new Date().toISOString();
-  
-  // Remove all messages after this one (including any assistant responses and further exchanges)
-  conv.messages.splice(msgIndex + 1);
-  
+  if (msgIndex < 0 || conv.messages[msgIndex].role !== 'user') return conv;
+
+  const messages = JSON.parse(JSON.stringify(conv.messages.slice(0, msgIndex + 1)));
+  messages[msgIndex] = {
+    ...messages[msgIndex],
+    id: uuid(),
+    content,
+    timestamp: new Date().toISOString(),
+  };
+  const branch = {
+    id: uuid(),
+    parentId: conv.activeBranchId,
+    label: `Edit ${conv.branches.length}`,
+    createdAt: new Date().toISOString(),
+    forkedFromMessageId: messageId || conv.messages[msgIndex].id,
+    messages,
+  };
+  conv.branches.push(branch);
+  conv.activeBranchId = branch.id;
+  conv.messages = branch.messages;
+  return update(conv);
+}
+
+function switchBranch(id, branchId) {
+  const conv = get(id);
+  if (!conv) return null;
+  ensureRootBranch(conv);
+  const branch = conv.branches.find((entry) => entry.id === branchId);
+  if (!branch) return false;
+  conv.activeBranchId = branch.id;
+  conv.messages = branch.messages;
   return update(conv);
 }
 
@@ -670,4 +740,4 @@ function search(query) {
   return results;
 }
 
-module.exports = { init, list, create, get, update, remove, softDelete, listDeleted, getDeleted, restore, permanentDelete, purgeExpired, addMessage, eraseLastAssistant, replaceLastUserMessage: replaceUserMessageAndTruncate, importConversations, search, DATA_DIR };
+module.exports = { init, list, create, get, update, remove, softDelete, listDeleted, getDeleted, restore, permanentDelete, purgeExpired, addMessage, eraseLastAssistant, branchFromUserMessage, switchBranch, importConversations, search, DATA_DIR };

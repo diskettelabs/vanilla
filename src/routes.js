@@ -8,7 +8,8 @@ const ollama = require('./ollama-models');
 const uninstall = require('./uninstall');
 const { searchWeb } = require('./search');
 const workspace = require('./workspace');
-const { runToolLoop } = require('./tools');
+const settings = require('./settings');
+const { TOOL_DEFINITIONS, executeTool, runToolLoop } = require('./tools');
 const { updater } = require('./updater');
 const https = require('https');
 const fs = require('fs');
@@ -19,6 +20,39 @@ const CONFIG = require('../config/default.json');
 
 const activeStreams = new Map();
 const THEMES_DIR = path.join(__dirname, '..', 'themes');
+
+function prepareVisionMessages(messages, providerName) {
+  const mimeByExtension = { '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.gif': 'image/gif', '.webp': 'image/webp', '.avif': 'image/avif' };
+  return messages.map((message) => {
+    if (message.role !== 'user' || typeof message.content !== 'string') return message;
+    const markers = [...message.content.matchAll(/\[Image:\s*(\/uploads\/[^\]\s]+)\]/g)];
+    if (!markers.length) return message;
+    const images = [];
+    for (const marker of markers) {
+      let filename;
+      try { filename = path.basename(decodeURIComponent(marker[1].slice('/uploads/'.length))); }
+      catch { continue; }
+      const file = path.join(uploads.UPLOAD_DIR, filename);
+      if (!fs.existsSync(file)) continue;
+      const mime = mimeByExtension[path.extname(filename).toLowerCase()];
+      if (!mime) continue;
+      images.push({ mime, data: fs.readFileSync(file).toString('base64') });
+    }
+    if (!images.length) return message;
+    const text = message.content.replace(/\n*\[Image:\s*\/uploads\/[^\]\s]+\]/g, '').trim() || 'Describe this image.';
+    if (providerName === 'ollama') return { ...message, content: text, images: images.map((image) => image.data) };
+    if (providerName === 'anthropic') {
+      return { ...message, content: [
+        { type: 'text', text },
+        ...images.map((image) => ({ type: 'image', source: { type: 'base64', media_type: image.mime, data: image.data } })),
+      ] };
+    }
+    return { ...message, content: [
+      { type: 'text', text },
+      ...images.map((image) => ({ type: 'image_url', image_url: { url: `data:${image.mime};base64,${image.data}` } })),
+    ] };
+  });
+}
 
 function mergeConfig(providerName, apiKey) {
   return {
@@ -70,6 +104,47 @@ function register(app) {
 
   // Health
   app.get('/api/health', (_req, res) => res.json({ status: 'ok' }));
+
+  // Persistent, device-wide UI preferences. Secrets remain browser-local.
+  app.get('/api/settings', (_req, res) => res.json({ settings: settings.read() }));
+  app.put('/api/settings', (req, res) => {
+    try {
+      res.json({ settings: settings.write(req.body?.settings || req.body || {}) });
+    } catch (e) {
+      res.status(500).json(formatErrorForClient(e, {
+        userMessage: 'Failed to save settings',
+        action: 'Check that the Vanilla data directory is writable.',
+      }));
+    }
+  });
+
+  app.get('/api/icon', (_req, res) => res.json({ icon: settings.read().customIcon || null }));
+  app.put('/api/icon', (req, res) => {
+    const icon = req.body?.icon || '';
+    const clean = settings.sanitize({ customIcon: icon });
+    if (icon && !clean.customIcon) {
+      return res.status(400).json({ error: 'Icon must be a base64 PNG, JPEG, WebP, or SVG data URL.' });
+    }
+    res.json({ icon: settings.write({ customIcon: clean.customIcon || '' }).customIcon || null });
+  });
+
+  // Public tool discovery/execution API for clients and provider integrations.
+  app.get('/api/tools', (_req, res) => res.json({ tools: TOOL_DEFINITIONS }));
+  app.post('/api/tools/execute', async (req, res) => {
+    const { name, arguments: args, args: alternateArgs } = req.body || {};
+    if (!name || typeof name !== 'string') {
+      return res.status(400).json({ error: 'Tool name is required', recoverable: true });
+    }
+    if (!TOOL_DEFINITIONS.some((tool) => tool.function.name === name)) {
+      return res.status(404).json({ error: `Unknown tool: ${name}`, recoverable: true });
+    }
+    try {
+      const result = await executeTool(name, args ?? alternateArgs ?? {});
+      res.status(result.ok ? 200 : 400).json({ name, ...result });
+    } catch (e) {
+      res.status(502).json(formatErrorForClient(e));
+    }
+  });
 
   // Theme catalog: list available theme JSON files in themes/
   app.get('/api/themes', (_req, res) => {
@@ -319,7 +394,7 @@ function register(app) {
       console.error('[Import Error]', formatErrorForLog(e, { endpoint: '/api/conversations/import' }));
       res.status(500).json(formatErrorForClient(e, {
         userMessage: 'Failed to import conversations',
-        action: 'The file(s) could not be parsed. Try a file exported from Vanilla Chat.',
+        action: 'The file(s) could not be parsed. Try a file exported from Vanilla.',
       }));
     }
   });
@@ -522,7 +597,7 @@ function register(app) {
     }
   });
 
-  // Regenerate: replace user message and truncate all messages after it, then re-trigger
+  // Regenerate from an edited prompt on a new branch, preserving the original path.
   app.post('/api/conversations/:id/regenerate', (req, res) => {
     const { message, messageId } = req.body || {};
     if (!message) {
@@ -533,7 +608,7 @@ function register(app) {
       });
     }
     try {
-      const conv = storage.replaceLastUserMessage(req.params.id, messageId, message);
+      const conv = storage.branchFromUserMessage(req.params.id, messageId, message);
       if (!conv) {
         return res.status(404).json({
           error: 'Conversation not found',
@@ -541,13 +616,23 @@ function register(app) {
           recoverable: false,
         });
       }
-      // No need to call eraseLastAssistant - replaceLastUserMessage now truncates everything after
       res.json(storage.get(req.params.id));
     } catch (e) {
       console.error('[Regenerate Error]', formatErrorForLog(e, { 
         endpoint: '/api/conversations/:id/regenerate',
         conversationId: req.params.id 
       }));
+      res.status(500).json(formatErrorForClient(e));
+    }
+  });
+
+  app.post('/api/conversations/:id/branches/:branchId/activate', (req, res) => {
+    try {
+      const conv = storage.switchBranch(req.params.id, req.params.branchId);
+      if (conv === null) return res.status(404).json({ error: 'Conversation not found' });
+      if (conv === false) return res.status(404).json({ error: 'Branch not found' });
+      res.json(conv);
+    } catch (e) {
       res.status(500).json(formatErrorForClient(e));
     }
   });
@@ -762,8 +847,8 @@ function register(app) {
       });
     }
 
-    // Save user message
-    storage.addMessage(conversationId, 'user', message);
+    // Edited prompts are already saved as the first message on their new branch.
+    if (!req.body?.messageAlreadySaved) storage.addMessage(conversationId, 'user', message);
 
     // Reload conversation to get updated messages
     conv = storage.get(conversationId);
@@ -811,6 +896,9 @@ function register(app) {
       }
     }
 
+    // Turn uploaded image markers into each provider's native vision message format.
+    chatMessages = prepareVisionMessages(chatMessages, effectiveProvider);
+
     // Set up SSE
     res.writeHead(200, {
       'Content-Type': 'text/event-stream',
@@ -827,11 +915,11 @@ function register(app) {
     };
 
     // Workspace tool calling: let the model create/read/delete files mid-chat
-    if (req.body?.workspaceTools) {
+    if (req.body?.workspaceTools || req.body?.tools) {
       try {
         const hint = {
           role: 'system',
-          content: 'Workspace tools are enabled. You can create, read, list, and delete files in the user\'s workspace directory by calling the provided tools (write_file, read_file, list_workspace_files, delete_file). When the user asks to make, save, write, create, open, or delete a file, or to build something with files, call the matching tool to actually do it — do not just describe what you would do. Use write_file with a sensible filename (e.g. notes.txt) when the user does not specify one.',
+          content: 'Tools are enabled. You can search the current web and create, read, list, or delete files in the user\'s workspace directory. Call web_search for current or source-dependent questions. When the user asks to make, save, write, create, open, or delete a file, call the matching workspace tool instead of only describing the action. Images attached by the user are included in their message; inspect them with the provider\'s vision capability when available.',
         };
         const result = await runToolLoop(provider, effectiveProvider, effectiveModel, [hint, ...chatMessages], {
           signal: abortController.signal,

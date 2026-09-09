@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="application-name" content="vanilla-chat">
-    <title>Vanilla Chat</title>
+    <title>Vanilla</title>
     <link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=satoshi@300,400,500,600,700,800,900&display=swap">
     <link rel="stylesheet" href="./styles.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css">
@@ -550,6 +550,21 @@
                   </div>
                 </div>
               </div>
+
+              <div class="settings-section">
+                <h3>App icon</h3>
+                <div class="settings-card icon-customizer">
+                  <div class="icon-preview" id="customIconPreview" aria-hidden="true">V</div>
+                  <div>
+                    <p class="settings-note">Choose an icon independently from your theme. PNG, JPEG, WebP, or SVG; square images work best.</p>
+                    <div class="settings-inline-actions">
+                      <label class="button secondary-button" for="customIconInput">Choose image</label>
+                      <input id="customIconInput" type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" hidden>
+                      <button id="customIconReset" class="button secondary-button" type="button">Use default</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
               
               <div class="settings-section">
                 <h3>Visual &amp; Audio</h3>
@@ -563,6 +578,11 @@
                     <input id="showStatsToggle" type="checkbox" class="toggle-input">
                     <span class="toggle-slider"></span>
                     <span class="toggle-label">Show system stats in the top bar</span>
+                  </label>
+                  <label class="check-row">
+                    <input id="desktopNotificationsToggle" type="checkbox" class="toggle-input">
+                    <span class="toggle-slider"></span>
+                    <span class="toggle-label">Notify me when a response finishes in the background</span>
                   </label>
                   <label class="check-row">
                     <input id="compareToggle" type="checkbox" class="toggle-input">
@@ -686,8 +706,8 @@
               <div class="settings-section settings-danger-zone">
                 <h3>Danger Zone</h3>
                 <div class="settings-card" style="border: 1px solid rgba(176, 51, 44, 0.2); background: rgba(176, 51, 44, 0.02);">
-                  <p class="settings-note" style="color: #b0332c;">This removes Vanilla Chat from your computer, including conversations, settings, and the downloaded Ollama runtime. This action cannot be undone.</p>
-                  <button id="uninstallButton" class="uninstall-button" style="margin-top: 0" type="button">Uninstall Vanilla Chat...</button>
+                  <p class="settings-note" style="color: #b0332c;">This removes Vanilla from your computer, including conversations, settings, and the downloaded Ollama runtime. This action cannot be undone.</p>
+                  <button id="uninstallButton" class="uninstall-button" style="margin-top: 0" type="button">Uninstall Vanilla...</button>
                 </div>
               </div>
             </div>
@@ -700,7 +720,7 @@
     <div id="uninstallModal" class="modal-backdrop" hidden>
       <section class="modal confirm-modal" role="dialog" aria-modal="true" aria-labelledby="uninstallTitle">
         <div class="modal-head">
-          <h2 id="uninstallTitle">Uninstall Vanilla Chat?</h2>
+          <h2 id="uninstallTitle">Uninstall Vanilla?</h2>
           <button class="text-button" type="button" data-close-modal>Close</button>
         </div>
         <p class="settings-note">This will close the app and permanently delete:</p>
