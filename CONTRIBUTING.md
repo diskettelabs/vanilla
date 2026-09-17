@@ -11,7 +11,7 @@
 ---
 
 ## Contents
-- [legel stuff] (#diskette-labs)
+- [legel stuff](#diskette-labs)
 - [Quick start](#quick-start)
 - [Getting started](#getting-started)
 - [Project overview](#project-overview)
@@ -28,7 +28,7 @@
 
 
 
-#Diskette Labs — Contributors and Project Governance
+##Diskette Labs — Contributors and Project Governance
 
 Copyright (c) 2026 Diskette Labs. All rights reserved.
 
