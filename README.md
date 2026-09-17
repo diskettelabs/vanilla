@@ -158,3 +158,15 @@ Server settings live in `config/default.json`:
 ## fonts
 
 The fonts used in this project are subject to their respective licenses. Please consult the font files included in the repository or their upstream sources for specific license details and attribution requirements.
+
+## License
+
+This project is currently distributed under the **Diskette Labs Temporary Development License**.
+
+The source code is publicly available for transparency, learning, evaluation, testing, and authorized development. However, it may **not be modified, forked, redistributed, republished, sold, sublicensed, relicensed, or used to create derivative works** without express written permission from Diskette Labs.
+
+Contributors may modify and work on the project only within the permissions granted to them through the project's contributor structure and `CONTRIBUTORS.md`.
+
+Diskette Labs intends to release a future version of the project under an open-source license. **That future release will not automatically relicense previous versions.** Versions covered by this license will remain under their existing terms and copyright unless Diskette Labs explicitly states otherwise.
+
+See [`LICENSE`](./LICENSE) and [`CONTRIBUTORS.md`](./CONTRIBUTORS.md) for the complete terms and project governance.
