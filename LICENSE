@@ -2,18 +2,43 @@ Copyright (c) 2026 Diskette Labs. All rights reserved.
 
 TEMPORARY DEVELOPMENT LICENSE
 
-This license applies to the Software during its development period. Diskette
-Labs intends to release a future version of the Software under a separate
-open-source license. Until such a release occurs, the following terms apply.
+This license applies to the Software during its development period and to all
+previous versions of the Software, unless a particular version was expressly
+released by Diskette Labs under a different license.
 
-1. LICENSE GRANT
+Diskette Labs intends to release a future version of the Software under a
+separate open-source license. Until such a release occurs, the following
+terms apply.
+
+1. SCOPE AND COVERAGE
+
+This license applies to:
+
+- The current version of the Software.
+- All previous versions of the Software.
+- Previous releases and development releases.
+- Source code and compiled versions.
+- Previous commits and branches.
+- Archived versions.
+- Copies of the Software distributed by Diskette Labs.
+- Other versions of the Software that were created or distributed as part
+  of the project.
+
+Unless Diskette Labs expressly identifies a specific version of the Software
+as being distributed under a different license, that version remains subject
+to this Temporary Development License.
+
+The existence of an older version of the Software does not, by itself,
+create a separate license or grant additional rights.
+
+2. LICENSE GRANT
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of the Software and associated documentation files (the "Software"), to
 view, inspect, study, and use the Software for personal, educational,
 testing, evaluation, and development purposes, subject to the terms of this
 license and the applicable project governance and contributor requirements
-described in CONTRIBUTORS.md.
+described in `CONTRIBUTORS.md`.
 
 The source code may be publicly available for transparency, review,
 collaboration, and development purposes. Public availability of the source
@@ -21,13 +46,13 @@ code does not, by itself, grant permission to modify, fork, redistribute,
 republish, sublicense, sell, relicense, or create derivative works from the
 Software.
 
-2. COPYRIGHT AND LICENSE NOTICE
+3. COPYRIGHT AND LICENSE NOTICE
 
 The above copyright notice and this permission notice shall be included in
 all copies or substantial portions of the Software that are authorized under
 this license.
 
-3. SOURCE CODE ACCESS
+4. SOURCE CODE ACCESS
 
 The Software may be publicly viewable so that users, developers, and other
 interested parties may inspect and understand the source code.
@@ -36,32 +61,32 @@ Viewing, downloading for personal inspection, or studying the source code
 does not grant permission to modify, fork, redistribute, republish,
 sublicense, sell, relicense, or create derivative works from the Software.
 
-4. MODIFICATION AND REDISTRIBUTION
+5. MODIFICATION AND REDISTRIBUTION
 
 No person may modify, fork, redistribute, republish, sublicense, sell,
 relicense, or create derivative works from the Software without prior
 express written permission from Diskette Labs or a person expressly
 authorized by Diskette Labs to grant such permission.
 
-5. PROJECT GOVERNANCE
+6. PROJECT GOVERNANCE
 
 The project's development teams, Team Leads, Project Heads, contributor
 permissions, team membership, cross-team permissions, onboarding procedures,
-and related project governance are described in CONTRIBUTORS.md.
+and related project governance are described in `CONTRIBUTORS.md`.
 
-CONTRIBUTORS.md is incorporated into this license by reference for purposes
+`CONTRIBUTORS.md` is incorporated into this license by reference for purposes
 of determining authorized project participation and development permissions.
 
-Where CONTRIBUTORS.md grants a contributor permission to perform development
-work, that permission is limited to the scope expressly granted by the
-project's governance structure.
+Where `CONTRIBUTORS.md` grants a contributor permission to perform
+development work, that permission is limited to the scope expressly granted
+by the project's governance structure.
 
-Nothing in CONTRIBUTORS.md grants a person the right to independently
+Nothing in `CONTRIBUTORS.md` grants a person the right to independently
 relicense, sell, redistribute, sublicense, fork, or create derivative works
 from the Software unless that authority is expressly granted by Diskette
 Labs under this license.
 
-6. AUTHORIZED DEVELOPMENT
+7. AUTHORIZED DEVELOPMENT
 
 Authorized members of the project's development teams may modify and work
 with the Software only within the scope of their assigned responsibilities
@@ -74,7 +99,7 @@ Any permissions granted to a contributor are limited to the project,
 activities, files, systems, and responsibilities for which they have been
 authorized.
 
-7. TRANSITION TO OPEN SOURCE
+8. TRANSITION TO OPEN SOURCE
 
 Diskette Labs may, at its sole discretion, release a future version of the
 Software under a separate open-source license.
@@ -86,13 +111,13 @@ open-source license shall be governed by that open-source license.
 The publication of a future open-source release does not automatically
 relicense, release, or grant additional rights to any previous version,
 development version, commit, branch, copy, fork, derivative work, or other
-version of the Software that was distributed under this Temporary
-Development License.
+version of the Software that is subject to this Temporary Development
+License.
 
-8. CONTINUED COPYRIGHT AFTER OPEN-SOURCE RELEASE
+9. CONTINUED COPYRIGHT AFTER OPEN-SOURCE RELEASE
 
-All versions of the Software distributed under this Temporary Development
-License remain the copyrighted property of Diskette Labs.
+All versions of the Software subject to this Temporary Development License
+remain the copyrighted property of Diskette Labs.
 
 The subsequent release of another version under an open-source license does
 not terminate or retroactively change the copyright status or licensing
@@ -110,7 +135,7 @@ Diskette Labs is required for any use of a version that remains subject to
 this Temporary Development License beyond the permissions expressly granted
 herein.
 
-9. NO AUTOMATIC LICENSE EXPANSION
+10. NO AUTOMATIC LICENSE EXPANSION
 
 Nothing in a future open-source release shall be interpreted as granting
 additional rights to earlier versions of the Software unless Diskette Labs
@@ -120,23 +145,28 @@ A public Git repository, archived source code, previous release, cached copy,
 mirror, fork, or other copy of the Software does not constitute an
 independent grant of rights.
 
-10. CONTACT AND PROJECT INFORMATION
+11. CONTACT AND PROJECT INFORMATION
 
 Organization:
+
 Diskette Labs
 
 Website:
+
 https://diskettelabs.com/
 
 GitHub Organization:
+
 https://github.com/diskettelabs
 
 General Contact:
+
 hello@diskettelabs.com
 
 Project Heads and Administrators:
 
 Miles Wolf Allen
+
 Owen VanVooren
 
 Requests concerning licensing, development access, project participation,
@@ -144,7 +174,7 @@ redistribution, forks, derivative works, or other permissions should be
 directed to the Diskette Labs development team through the official website,
 GitHub organization, or general contact address.
 
-11. NO WARRANTY
+12. NO WARRANTY
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
@@ -152,7 +182,7 @@ FITNESS FOR A PARTICULAR PURPOSE, AND NONINFRINGEMENT.
 
 IN NO EVENT SHALL DISKETTE LABS, ITS AUTHORS, PROJECT HEADS, DEVELOPERS,
 CONTRIBUTORS, OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES, OR
-OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT, OR OTHERWISE,
+OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
 ARISING FROM, OUT OF, OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 OTHER DEALINGS IN THE SOFTWARE.
 
