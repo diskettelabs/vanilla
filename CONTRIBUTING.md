@@ -1,3 +1,324 @@
+# Diskette Labs — Contributors and Project Governance
+
+Copyright (c) 2026 Diskette Labs. All rights reserved.
+
+This document establishes the development structure, team responsibilities,
+contributor permissions, and project governance for Software distributed
+under the Diskette Labs Temporary Development License.
+
+This document is incorporated by reference into the project's `LICENSE` and
+should be read together with that license.
+
+---
+
+## 1. Project Leadership
+
+The project has two primary Project Heads and Administrators:
+
+- **Miles Wolf Allen** — Development Team Lead
+- **Owen VanVooren** — Design Team Lead
+
+Miles Wolf Allen and Owen VanVooren are responsible for overall project
+administration and may make project-wide decisions concerning development,
+contributors, teams, permissions, and project organization.
+
+---
+
+## 2. Development Teams
+
+The project currently consists of two primary teams:
+
+1. Development Team
+2. Design Team
+
+Each team has different responsibilities and permissions based on the work
+that team performs.
+
+Additional teams may be created as the project grows.
+
+---
+
+## 3. Development Team
+
+The Development Team is responsible primarily for technical and software
+development work, including:
+
+- Writing and modifying source code.
+- Implementing features.
+- Fixing bugs.
+- Technical testing.
+- Code review.
+- Development infrastructure.
+- Technical research.
+- Other software-development responsibilities authorized by the team.
+
+**Team Lead:** Miles Wolf Allen
+
+The Development Team Lead has final decision-making authority over matters
+that fall within the Development Team's normal scope.
+
+---
+
+## 4. Design Team
+
+The Design Team is responsible primarily for visual, creative, and
+user-facing work, including:
+
+- User interface design.
+- User experience design.
+- Visual design.
+- Branding.
+- Graphics.
+- Icons.
+- Design systems.
+- Visual standards.
+- Other creative responsibilities authorized by the team.
+
+**Team Lead:** Owen VanVooren
+
+The Design Team Lead has final decision-making authority over matters that
+fall within the Design Team's normal scope.
+
+---
+
+## 5. Team Lead Authority
+
+Each Team Lead has final say over matters within their respective team's
+scope.
+
+### Development Team
+
+Miles Wolf Allen has final authority over Development Team matters,
+including technical development decisions, development procedures, technical
+assignments, and technical contributions.
+
+### Design Team
+
+Owen VanVooren has final authority over Design Team matters, including
+creative direction, design procedures, visual assignments, branding, and
+design contributions.
+
+Team Lead authority applies to matters within the respective team's scope.
+
+Project-wide matters involving copyright, licensing, ownership, major
+project direction, or the authority of multiple teams remain subject to the
+Project Heads.
+
+---
+
+## 6. Team Membership
+
+Miles Wolf Allen may add, remove, or authorize individuals to join the
+Development Team.
+
+Owen VanVooren may add, remove, or authorize individuals to join the Design
+Team.
+
+Additionally, either Project Head may authorize individuals to join either
+team.
+
+Therefore:
+
+- Miles may add people to the Development Team.
+- Miles may also add people to the Design Team.
+- Owen may add people to the Design Team.
+- Owen may also add people to the Development Team.
+
+Team membership grants only the permissions associated with the member's
+authorized role.
+
+---
+
+## 7. Cross-Team Work
+
+A contributor may work within another team's responsibilities when they
+receive express permission from the appropriate Team Lead or an authorized
+representative of that team.
+
+For example:
+
+- A Development Team member may perform Design Team work with express
+  permission from Owen VanVooren or an authorized Design Team
+  representative.
+- A Design Team member may perform Development Team work with express
+  permission from Miles Wolf Allen or an authorized Development Team
+  representative.
+
+The same principle applies to any additional teams created by the project.
+
+Cross-team permission may apply to:
+
+- A specific task.
+- A specific feature.
+- A specific project.
+- A specific period of time.
+- A defined set of files or systems.
+- Another specifically defined scope.
+
+Cross-team permission does not automatically change a contributor's
+permanent team assignment.
+
+---
+
+## 8. Additional Teams
+
+The project may establish additional teams when the Project Heads determine
+that a separate team is necessary or useful.
+
+Potential teams may include, but are not limited to:
+
+- Documentation
+- Quality Assurance
+- Testing
+- Security
+- Infrastructure
+- Community
+- Research
+- Marketing
+- Other project-specific teams
+
+When a new team is created, the Project Heads may:
+
+- Define its responsibilities.
+- Establish its permissions.
+- Appoint a Team Lead.
+- Add members.
+- Remove members.
+- Establish procedures for that team.
+
+A future version of this document or the `LICENSE` may formally identify
+additional teams and their members.
+
+When a new version of the license or contributor documentation is issued
+that identifies an additional team, that team and its authorized members
+become part of the project's recognized development structure under that
+version.
+
+---
+
+## 9. Adding New Developers
+
+The project may add new contributors and developers at any time during the
+development period.
+
+Miles Wolf Allen and Owen VanVooren may authorize individuals to join the
+project and may assign them to either existing or newly created teams.
+
+Authorized Team Leads may recommend or approve contributors for work within
+their respective teams, subject to the authority of the Project Heads.
+
+Contributor authorization should identify the scope of the contributor's
+responsibilities when appropriate.
+
+---
+
+## 10. Contributor Permissions
+
+Being listed as a contributor, developer, or team member does not grant
+unrestricted rights to the Software.
+
+Contributors may only:
+
+- Access project resources they are authorized to access.
+- Modify files they are authorized to modify.
+- Perform tasks within their assigned responsibilities.
+- Use project systems for authorized project purposes.
+- Participate in project discussions and development according to their
+  permissions.
+
+Unless separately authorized in writing, contributors may not:
+
+- Sell the Software.
+- Sublicense the Software.
+- Redistribute the Software.
+- Publish unauthorized copies.
+- Create unauthorized forks.
+- Create independent derivative works.
+- Re-license the Software.
+- Grant third parties rights that they do not possess.
+
+---
+
+## 11. Authority to Grant Permissions
+
+Only Diskette Labs and individuals expressly authorized by Diskette Labs may
+grant permissions that extend beyond ordinary contributor responsibilities.
+
+A contributor cannot grant another person rights greater than the rights
+the contributor themselves possesses.
+
+Team Leads may grant permissions within their team's established scope,
+including cross-team permissions where authorized by this document.
+
+Project-wide licensing permissions remain under the authority of the Project
+Heads unless expressly delegated.
+
+---
+
+## 12. Changes to Project Structure
+
+The Project Heads may change:
+
+- Team structures.
+- Team responsibilities.
+- Team membership.
+- Team Leads.
+- Contributor permissions.
+- Development procedures.
+- Cross-team procedures.
+- Project governance.
+
+Material changes may be documented in an updated version of this file.
+
+---
+
+## 13. Relationship to the LICENSE
+
+This document is not intended to replace the project's `LICENSE`.
+
+The `LICENSE` establishes the legal terms under which the Software may be
+used.
+
+This document establishes the project's contributor structure and
+development governance.
+
+Where this document addresses contributor permissions, those permissions
+must be interpreted consistently with the `LICENSE`.
+
+Nothing in this document overrides the copyright, licensing, redistribution,
+or ownership restrictions contained in the `LICENSE`.
+
+---
+
+## 14. Project Information
+
+**Organization:** Diskette Labs
+
+**Website:**  
+https://diskettelabs.com/
+
+**GitHub:**  
+https://github.com/diskettelabs
+
+**General Contact:**  
+hello@diskettelabs.com
+
+### Project Heads
+
+**Miles Wolf Allen**  
+Development Team Lead
+
+**Owen VanVooren**  
+Design Team Lead
+
+For licensing questions, permission requests, development access, team
+membership, cross-team permissions, or other project matters, contact
+Diskette Labs through the official website, GitHub organization, or general
+contact address.
+
+---
+
+Copyright (c) 2026 Diskette Labs. All rights reserved.
 # Contributing to Vanilla Chat
 
 <p align="center">
