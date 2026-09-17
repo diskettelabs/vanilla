@@ -28,7 +28,7 @@
 
 
 
-##Diskette Labs — Contributors and Project Governance
+## Diskette Labs — Contributors and Project Governance
 
 Copyright (c) 2026 Diskette Labs. All rights reserved.
 
