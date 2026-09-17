@@ -1,4 +1,34 @@
-# Diskette Labs — Contributors and Project Governance
+# Contributing to Vanilla Chat
+
+<p align="center">
+  <img src="./logo.png" alt="Vanilla Chat logo" width="140">
+</p>
+
+> Thanks for wanting to help! Vanilla Chat is a small, privacy-first web chat UI for local
+> and cloud AI models. It stays deliberately uncomplicated — an Express server plus a
+> vanilla-JS frontend, **no build step**, no frameworks.
+
+---
+
+## Contents
+- [legel stuff] (#diskette-labs)
+- [Quick start](#quick-start)
+- [Getting started](#getting-started)
+- [Project overview](#project-overview)
+- [Design notes](#design-notes)
+- [Project structure](#project-structure)
+- [How it works](#how-it-works)
+- [How we code](#how-we-code)
+- [How we design the frontend](#how-we-design-the-frontend)
+- [Verifying your changes](#verifying-your-changes)
+- [Git workflow](#git-workflow)
+- [Troubleshooting](#troubleshooting)
+
+---
+
+
+
+#Diskette Labs — Contributors and Project Governance
 
 Copyright (c) 2026 Diskette Labs. All rights reserved.
 
@@ -319,33 +349,7 @@ contact address.
 ---
 
 Copyright (c) 2026 Diskette Labs. All rights reserved.
-# Contributing to Vanilla Chat
 
-<p align="center">
-  <img src="./logo.png" alt="Vanilla Chat logo" width="140">
-</p>
-
-> Thanks for wanting to help! Vanilla Chat is a small, privacy-first web chat UI for local
-> and cloud AI models. It stays deliberately uncomplicated — an Express server plus a
-> vanilla-JS frontend, **no build step**, no frameworks.
-
----
-
-## Contents
-
-- [Quick start](#quick-start)
-- [Getting started](#getting-started)
-- [Project overview](#project-overview)
-- [Design notes](#design-notes)
-- [Project structure](#project-structure)
-- [How it works](#how-it-works)
-- [How we code](#how-we-code)
-- [How we design the frontend](#how-we-design-the-frontend)
-- [Verifying your changes](#verifying-your-changes)
-- [Git workflow](#git-workflow)
-- [Troubleshooting](#troubleshooting)
-
----
 
 ## Quick start
 
