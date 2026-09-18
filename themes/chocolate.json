@@ -1,15 +1,17 @@
 {
   "name": "chocolate",
   "displayName": "Chocolate",
-  "description": "Rich brown and tan tones",
+  "description": "Dark cocoa neutrals with a warm copper accent",
+  "accent": "#D69A6D",
   "colors": {
-    "primary": "#8B4513",
-    "secondary": "#A0522D",
-    "background": "#3E2723",
-    "text": "#F5DEB3",
-    "userMessage": "#6F4E37",
-    "assistantMessage": "#5D4037",
-    "border": "#A0522D",
-    "statusBar": "#6D4C41"
+    "primary": "#D69A6D",
+    "secondary": "#312A26",
+    "surface": "#29231F",
+    "background": "#1C1816",
+    "text": "#F4ECE6",
+    "userMessage": "#49372D",
+    "assistantMessage": "#24201D",
+    "border": "#3E342E",
+    "statusBar": "#24201D"
   }
 }

@@ -1,15 +1,17 @@
 {
   "name": "lemon",
   "displayName": "Lemon",
-  "description": "Bright yellow and gold tones",
+  "description": "Warm ivory with a grounded golden accent",
+  "accent": "#A98218",
   "colors": {
-    "primary": "#FFFF00",
-    "secondary": "#FFFACD",
-    "background": "#FFFFF0",
-    "text": "#8B8000",
-    "userMessage": "#FFFFE0",
-    "assistantMessage": "#FAFAD2",
-    "border": "#FFD700",
-    "statusBar": "#FFFACD"
+    "primary": "#A98218",
+    "secondary": "#F1EBD7",
+    "surface": "#FFFDF7",
+    "background": "#FAF8F0",
+    "text": "#2E2A20",
+    "userMessage": "#EFE3B9",
+    "assistantMessage": "#F3EFE0",
+    "border": "#E2DCCB",
+    "statusBar": "#F3EFE0"
   }
 }

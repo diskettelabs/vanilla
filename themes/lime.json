@@ -1,15 +1,17 @@
 {
   "name": "lime",
   "displayName": "Lime",
-  "description": "Bright lime green tones",
+  "description": "Fresh leaf green on quiet natural neutrals",
+  "accent": "#5F934D",
   "colors": {
-    "primary": "#00FF00",
-    "secondary": "#ADFF2F",
-    "background": "#F0FFF0",
-    "text": "#006400",
-    "userMessage": "#CCFF99",
-    "assistantMessage": "#E6FFE6",
-    "border": "#32CD32",
-    "statusBar": "#ADFF2F"
+    "primary": "#5F934D",
+    "secondary": "#E4EEDF",
+    "surface": "#FCFEFB",
+    "background": "#F5F8F3",
+    "text": "#252C22",
+    "userMessage": "#D8E9CF",
+    "assistantMessage": "#EAF1E6",
+    "border": "#D5E0D0",
+    "statusBar": "#EAF1E6"
   }
 }

@@ -1,15 +1,17 @@
 {
   "name": "dragonfruit",
   "displayName": "Dragonfruit",
-  "description": "Vibrant magenta and pink tones",
+  "description": "Soft stone neutrals with a vivid berry accent",
+  "accent": "#B93F78",
   "colors": {
-    "primary": "#FF00FF",
-    "secondary": "#FF69B4",
-    "background": "#FFF0F5",
-    "text": "#8B008B",
-    "userMessage": "#FF1493",
-    "assistantMessage": "#FFE4F0",
-    "border": "#C71585",
-    "statusBar": "#FF69B4"
+    "primary": "#B93F78",
+    "secondary": "#F2E5EC",
+    "surface": "#FFFDFE",
+    "background": "#FAF6F8",
+    "text": "#30242A",
+    "userMessage": "#F0D5E2",
+    "assistantMessage": "#F5EAF0",
+    "border": "#E6D4DD",
+    "statusBar": "#F5EAF0"
   }
 }

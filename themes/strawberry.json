@@ -1,15 +1,17 @@
 {
   "name": "strawberry",
   "displayName": "Strawberry",
-  "description": "Sweet pink and red tones",
+  "description": "Soft blush surfaces with a clear strawberry accent",
+  "accent": "#C84E68",
   "colors": {
-    "primary": "#FFB6C1",
-    "secondary": "#FFC0CB",
-    "background": "#FFF0F5",
-    "text": "#8B0000",
-    "userMessage": "#FFB6D9",
-    "assistantMessage": "#FFE4E1",
-    "border": "#FF69B4",
-    "statusBar": "#FFC0CB"
+    "primary": "#C84E68",
+    "secondary": "#F1E2E5",
+    "surface": "#FFFDFD",
+    "background": "#FAF5F6",
+    "text": "#302426",
+    "userMessage": "#EFD2D9",
+    "assistantMessage": "#F4E8EA",
+    "border": "#E3D2D6",
+    "statusBar": "#F4E8EA"
   }
 }

@@ -1,65 +1,17 @@
-const ASSET = {
-  logo: "./assets/scoop-outline.svg",
-  add: "./assets/add.svg",
-  submit: "./assets/submit.svg",
-  stop: "./assets/stop.svg",
-  copy: "./assets/copy.svg",
-  edit: "./assets/new%20chat.svg",
-  trash: "./assets/trashcan.svg",
-  pin: "./assets/pin.svg",
-  keyShown: "./assets/key-shown.svg",
-  keyHidden: "./assets/key-hidden.svg",
-  local: "./assets/local.svg",
-  cloud: "./assets/cloud.svg",
-  autoname: "./assets/autoname.svg",
-  close: "./assets/close.svg",
-  download: "./assets/download.svg",
-};
-
-let themeMascot = null;
 let themeGreeting = false;
 let themePlaceholder = false;
 let themeStylesEl = null;
 let themeFaviconLink = null;
 const originalBrandLogo = document.querySelector(".brand-logo")?.outerHTML || null;
-const originalEmptyMascot = document.querySelector("#emptyState .empty-mascot")?.outerHTML || null;
 const originalTitle = document.title;
 
-function MASCOT_SVG(className = "mascot-svg") {
-  if (themeMascot) {
-    const svg = themeMascot.trim();
-    return svg.startsWith("<svg") ? svg.replace(/^<svg/, `<svg class="${className}"`) : svg;
-  }
-  return `<svg class="${className}" viewBox="-5 -5 58 54" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-  <g fill="currentColor">
-    <path d="M42.361,18.136 C42.361,20.338 41.992,22.493 41.274,24.536 C43.102,26.216 44.187,28.561 44.187,31.091 C44.187,36.143 39.911,40.187 34.696,40.187 C32.046,40.187 29.594,39.136 27.848,37.384 C26.101,39.136 23.649,40.187 21,40.187 C18.351,40.187 15.899,39.136 14.152,37.384 C12.406,39.136 9.954,40.187 7.304,40.187 C2.089,40.187 -2.187,36.143 -2.187,31.091 C-2.187,28.561 -1.102,26.216 0.726,24.536 C0.008,22.493 -0.361,20.338 -0.361,18.136 C-0.361,6.884 9.229,-2.187 21,-2.187 C32.771,-2.187 42.361,6.884 42.361,18.136 Z M4.013,18.136 C4.013,20.308 4.474,22.415 5.359,24.369 C5.815,25.377 5.447,26.567 4.501,27.141 C3.059,28.015 2.187,29.491 2.187,31.091 C2.187,33.671 4.452,35.813 7.304,35.813 C9.49,35.813 11.393,34.539 12.116,32.7 C12.843,30.85 15.46,30.85 16.187,32.699 C16.911,34.539 18.814,35.813 21,35.813 C23.186,35.813 25.089,34.539 25.812,32.7 C26.538,30.85 29.156,30.85 29.883,32.699 C30.606,34.539 32.51,35.813 34.696,35.813 C37.548,35.813 39.813,33.671 39.813,31.091 C39.813,29.491 38.941,28.015 37.499,27.141 C36.553,26.567 36.185,25.377 36.641,24.369 C37.526,22.415 37.987,20.308 37.987,18.136 C37.987,9.356 30.408,2.187 21,2.187 C11.592,2.187 4.013,9.356 4.013,18.136 Z" fill-rule="nonzero"/>
-  </g>
-  <g class="mascot-gaze">
-    <g transform="translate(16.98,17.93)"><rect class="mascot-eye" x="-2.09" y="-5.68" width="4.18" height="11.36" rx="2.09" fill="#000000"/></g>
-    <g transform="translate(25.73,17.93)"><rect class="mascot-eye mascot-eye-r" x="-2.09" y="-5.68" width="4.18" height="11.36" rx="2.09" fill="#000000"/></g>
-  </g>
-</svg>`;
+function icon(name, className = "", size = 18) {
+  const classes = className ? ` class="${className}"` : "";
+  return `<i data-icon="${name}"${classes} data-icon-size="${size}" aria-hidden="true"></i>`;
 }
 
-const TRASH_SVG = `
-<svg class="trash-icon" width="14" height="14" viewBox="0 0 17 20" xmlns="http://www.w3.org/2000/svg">
-  <g fill="currentColor" fill-rule="nonzero">
-    <path class="trash-can-body" d="M13.835924,2.25549247 C14.2360012,2.47980698 14.5468206,2.83481964 14.7162917,3.26103356 C14.8938216,3.70751495 14.8835183,3.93998597 14.7542829,4.909251 L13.1795461,16.7197775 C13.0705711,17.5370899 13.0303632,17.7282592 12.8147041,18.0691841 C12.6082454,18.3955645 12.3117065,18.6551891 11.9609029,18.8167011 C11.5944663,18.9854105 11.39966,19 10.5751146,19 L4.42488544,19 C3.60034003,19 3.40553368,18.9854105 3.03909709,18.8167011 C2.68829345,18.6551891 2.39175457,18.3955645 2.18529591,18.0691841 C2.01424925,17.7987849 1.94049649,17.5377118 1.8763599,17.1208081 C1.86084676,17.0199689 1.84935958,16.9365698 1.82045394,16.7197775 L0.245717081,4.90925101 L0.222896008,4.73591598 C0.11592754,3.91009112 0.117274018,3.67960987 0.283708258,3.26103356 C0.453179366,2.83481964 0.763998769,2.47980698 1.16407597,2.25549247 C1.58317777,2.02051129 1.81497126,2 2.79281402,2 L12.207186,2 C13.1850287,2 13.4168222,2.02051129 13.835924,2.25549247 Z M2.79281402,4 C2.40971727,4 2.28021161,4.00219923 2.16859719,4.01207593 C2.16462813,4.01242715 2.1608085,4.01278049 2.15718565,4.01313503 C2.15731305,4.01677295 2.15746762,4.02060577 2.15764405,4.02458642 C2.16260537,4.13652709 2.17754138,4.26518737 2.22817288,4.64492356 L3.80290976,16.4554501 C3.82988231,16.6577443 3.84041904,16.734243 3.85310503,16.816705 C3.86492072,16.89351 3.87513569,16.9499378 3.88407827,16.9901992 C3.88853045,16.9905805 3.89327816,16.9909605 3.89829857,16.9913365 C3.99293895,16.9984243 4.10206199,17 4.42488544,17 L10.5751146,17 C10.897938,17 11.0070611,16.9984243 11.1017014,16.9913365 C11.1067152,16.990961 11.111457,16.9905815 11.1159041,16.9902007 C11.1168694,16.9858429 11.1178722,16.9811928 11.1189071,16.9762727 C11.1384408,16.8833992 11.1544247,16.7754417 11.1970903,16.4554501 L12.7718271,4.64492356 C12.8224586,4.26518737 12.8373946,4.13652709 12.8423559,4.02458642 C12.8425324,4.02060578 12.8426869,4.01677297 12.8428143,4.01313503 C12.8391915,4.01278049 12.8353719,4.01242715 12.8314028,4.01207593 C12.7197884,4.00219923 12.5902827,4 12.207186,4 L2.79281402,4 Z"/>
-    <path class="trash-can-lid" d="M11,1 L11,2 L15,2 C15.5522847,2 16,2.44771525 16,3 C16,3.55228475 15.5522847,4 15,4 L10,4 C9.44771525,4 9,3.55228475 9,3 L9,1 L6,1 L6,3 C6,3.55228475 5.55228475,4 5,4 L0,4 C-0.55228475,4 -1,3.55228475 -1,3 C-1,2.44771525 -0.55228475,2 0,2 L4,2 L4,1 C4,-0.1045695 4.8954305,-1 6,-1 L9,-1 C10.1045695,-1 11,-0.1045695 11,1 Z"/>
-    <g transform="translate(5.125, 7)">
-      <path d="M1.37413307,-0.0416305447 L1.62413307,5.95836946 C1.64712499,6.51017541 1.2184365,6.97614116 0.666630545,6.99913307 C0.114824585,7.02212499 -0.351141158,6.5934365 -0.374133073,6.04163054 L-0.624133073,0.0416305447 C-0.647124988,-0.510175415 -0.218436504,-0.976141158 0.333369455,-0.999133073 C0.885175415,-1.02212499 1.35114116,-0.593436504 1.37413307,-0.0416305447 Z"/>
-      <path d="M5.37413307,0.0416305447 L5.12413307,6.04163054 C5.10114116,6.5934365 4.63517541,7.02212499 4.08336946,6.99913307 C3.5315635,6.97614116 3.10287501,6.51017541 3.12586693,5.95836946 L3.37586693,-0.0416305447 C3.39885884,-0.593436504 3.86482459,-1.02212499 4.41663054,-0.999133073 C4.9684365,-0.976141158 5.39712499,-0.510175415 5.37413307,0.0416305447 Z"/>
-    </g>
-  </g>
-</svg>`;
-
-const NEW_CHAT_SVG = `
-<svg class="new-chat-icon" width="14" height="14" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
-  <g fill="currentColor" fill-rule="nonzero">
-    <path class="chat-bubble" d="M17.6584169,3.5590025 L14.4019386,6.96743654 L12.7431088,6.96889346 C7.85372399,6.96889346 6.68429888,7.06443927 5.89828216,7.46493479 C5.04193572,7.90126509 4.34570434,8.59749647 3.90937404,9.45384291 C3.50887852,10.2398596 3.41333271,11.4092847 3.41333271,16.2986695 L3.41333271,19.2568912 C3.41333271,24.146276 3.50887852,25.3157011 3.90937404,26.1017178 C4.34570434,26.9580643 5.04193572,27.6542957 5.89828216,28.090626 C6.68429888,28.4911215 7.85372399,28.5866673 12.7431088,28.5866673 L15.7013305,28.5866673 C20.5907153,28.5866673 21.7601404,28.4911215 22.5461571,28.090626 C23.4025035,27.6542957 24.0987349,26.9580643 24.5350652,26.1017178 C24.9355607,25.3157011 25.0311065,24.146276 25.0311065,19.2568912 L25.0309196,18.3023949 L28.4427529,14.7298286 C28.4444393,15.2202587 28.4444393,15.7421025 28.4444393,16.2986695 L28.4444393,19.2568912 C28.4444393,23.7173975 28.4444393,25.9476506 27.5763669,27.6513385 C26.8127889,29.1499447 25.594384,30.3683496 24.0957777,31.1319277 C22.3920899,32 20.1618367,32 15.7013305,32 L12.7431088,32 C8.28260253,32 6.0523494,32 4.34866154,31.1319277 C2.85005528,30.3683496 1.63165035,29.1499447 0.868072324,27.6513385 C0,25.9476506 0,23.7173975 0,19.2568912 L0,16.2986695 C0,11.8381633 0,9.60791015 0.868072324,7.90422229 C1.63165035,6.40561603 2.85005528,5.1872111 4.34866154,4.42363307 C6.0523494,3.55556075 8.28260253,3.55556075 12.7431088,3.55556075 L15.7013305,3.55556075 C16.4073099,3.55556075 17.0574204,3.55556075 17.6584169,3.5590025 Z"/>
-    <path class="pencil" d="M30.5120367,1.35354226 L30.8520247,1.7151806 C32.4422808,3.58872274 32.3864273,6.39944796 30.6464578,8.2090163 L22.5656511,16.6130552 L18.5252478,20.8150746 L16.5050462,22.9160843 C15.9220641,23.5223857 14.4769258,24.1185081 12.4012095,24.7879522 C11.5957257,25.0477306 10.8070719,25.2742355 10.1877672,25.4224582 C9.84313072,25.5049425 9.54955982,25.5638124 9.30626521,25.5964291 C9.13875455,25.6188859 8.98692964,25.6305435 8.83512804,25.6276659 C8.4266836,25.6199234 8.09082973,25.5478415 7.70265338,25.2177894 C7.26392781,24.8447571 7.14412793,24.4696724 7.10434306,24.0193708 C7.090051,23.8576074 7.09321636,23.6977471 7.10785267,23.5214293 C7.12843667,23.2734619 7.17463852,22.9752302 7.24358914,22.623641 C7.36579341,22.0005038 7.56218942,21.2017913 7.79383568,20.379362 C8.38327745,18.286627 8.93291933,16.8005523 9.51518467,16.1949964 L11.5354199,14.0939517 L15.5758904,9.89186243 L23.6565626,1.48796331 C25.5125302,-0.442242924 28.5818305,-0.502425283 30.5120367,1.35354226 Z M25.9865277,3.72831431 L17.9058554,12.1322134 L13.865385,16.3343027 L11.9120206,18.3658017 C11.8955547,18.3958176 11.8747463,18.4366922 11.8509569,18.4866988 C11.7706259,18.6555598 11.6738925,18.8910952 11.5678942,19.1776842 C11.3563058,19.7497589 11.121115,20.4887535 10.9051006,21.2556839 C10.8410241,21.4831792 10.7800696,21.7080931 10.7238793,21.924964 C10.9462369,21.8583959 11.1766093,21.7866322 11.4090678,21.7116615 C12.1678274,21.4669521 12.8930568,21.2062531 13.4522318,20.9755924 C13.7329577,20.8597924 13.9629445,20.7551796 14.1271732,20.6693305 C14.1748977,20.644383 14.2139212,20.6226458 14.2426125,20.6055008 L16.1952828,18.5747236 L20.2356861,14.3727042 L28.3164927,5.96866531 C28.9351486,5.32526323 28.9150878,4.30216313 28.2716857,3.6835073 L28.1467896,3.57499053 C27.501976,3.06979397 26.5665175,3.12512486 25.9865277,3.72831431 Z"/>
-  </g>
-</svg>`;
+const TRASH_ICON = icon("trash-2", "trash-icon", 14);
+const EDIT_ICON = icon("pencil", "edit-icon", 14);
 
 const els = {
   shell: document.querySelector(".app-shell"),
@@ -277,7 +229,7 @@ function queueSettingsSave() {
 }
 
 const themeNames = [
-  "blue-moon", "chocolate", "dragonfruit", "dreamsicle", "lavender", "lemon", "lime",
+  "aurora", "blue-moon", "chocolate", "dragonfruit", "dreamsicle", "lavender", "lemon", "lime",
   "mint", "monochrome", "peach", "plum", "raspberry", "strawberry", "vanilla",
 ];
 
@@ -574,12 +526,12 @@ function renderMarkdown(markdown, { streaming = false } = {}) {
         const detectedLang = detectLanguage(lang, code);
         const langClass = detectedLang ? `language-${detectedLang}` : "";
         const langDisplay = detectedLang || lang || "code";
-        chunks.push(`<div class="code-box"><div class="code-head"><span>${escapeHtml(langDisplay)}</span><button type="button" data-copy-code><img src="${ASSET.copy}" alt="">Copy</button></div><pre class="line-numbers"><code class="${langClass}">${escapeHtml(code.trimEnd())}</code></pre></div>`);
+        chunks.push(`<div class="code-box"><div class="code-head"><span>${escapeHtml(langDisplay)}</span><button type="button" data-copy-code>${icon("copy", "", 14)}Copy</button></div><pre class="line-numbers"><code class="${langClass}">${escapeHtml(code.trimEnd())}</code></pre></div>`);
       } else {
         const detectedLang = detectLanguage(lang, code);
         const langClass = detectedLang ? `language-${detectedLang}` : "";
         const langDisplay = detectedLang || lang || "code";
-        chunks.push(`<div class="code-box"><div class="code-head"><span>${escapeHtml(langDisplay)}</span><button type="button" data-copy-code><img src="${ASSET.copy}" alt="">Copy</button></div><pre class="line-numbers"><code class="${langClass}">${escapeHtml(code.trimEnd())}</code></pre></div>`);
+        chunks.push(`<div class="code-box"><div class="code-head"><span>${escapeHtml(langDisplay)}</span><button type="button" data-copy-code>${icon("copy", "", 14)}Copy</button></div><pre class="line-numbers"><code class="${langClass}">${escapeHtml(code.trimEnd())}</code></pre></div>`);
       }
       continue;
     }
@@ -683,18 +635,14 @@ function groupLabel(dateString) {
   return date.toLocaleDateString(undefined, { month: "long", year: "numeric" }).toLowerCase();
 }
 
-// Trash icon now uses ASSET.trash instead of inline SVG
-
 function renderConversationList() {
   els.conversationList.innerHTML = "";
   if (!state.conversations.length) {
     const empty = document.createElement("div");
     empty.className = "conversation-empty";
-    empty.innerHTML = `${MASCOT_SVG("mascot mascot-svg")}
-      <span class="mascot-zzz" aria-hidden="true">z&thinsp;Z</span>
+    empty.innerHTML = `<div class="conversation-empty-icon">${icon("message-circle-more", "", 18)}</div>
       <p class="conversation-empty-text">No chats yet. Start a new one.</p>`;
     els.conversationList.append(empty);
-    armMascotNap(empty.querySelector(".mascot"));
     return;
   }
   let lastGroup = "";
@@ -726,7 +674,7 @@ function renderConversationList() {
     pinButton.title = conv.pinned ? "Unpin chat" : "Pin chat";
     pinButton.setAttribute("aria-label", conv.pinned ? "Unpin chat" : "Pin chat");
     pinButton.classList.toggle("is-pinned", Boolean(conv.pinned));
-    pinButton.innerHTML = `<img src="${ASSET.pin}" alt="">`;
+    pinButton.innerHTML = icon("pin", "", 14);
     pinButton.addEventListener("click", (event) => {
       event.stopPropagation();
       Sounds.pin();
@@ -738,7 +686,7 @@ function renderConversationList() {
     renameButton.className = "conversation-rename";
     renameButton.title = "Rename chat";
     renameButton.setAttribute("aria-label", "Rename chat");
-    renameButton.innerHTML = NEW_CHAT_SVG;
+    renameButton.innerHTML = EDIT_ICON;
     renameButton.addEventListener("click", (event) => {
       event.stopPropagation();
       Sounds.rename();
@@ -750,7 +698,7 @@ function renderConversationList() {
     deleteButton.className = "conversation-delete";
     deleteButton.title = "Delete chat";
     deleteButton.setAttribute("aria-label", "Delete chat");
-    deleteButton.innerHTML = TRASH_SVG;
+    deleteButton.innerHTML = TRASH_ICON;
     deleteButton.addEventListener("click", (event) => {
       event.stopPropagation();
       if (deleteButton.dataset.armed === "true") {
@@ -764,7 +712,7 @@ function renderConversationList() {
       deleteButton._timer = setTimeout(() => {
         deleteButton.dataset.armed = "false";
         deleteButton.classList.remove("is-armed");
-        deleteButton.innerHTML = TRASH_SVG;
+        deleteButton.innerHTML = TRASH_ICON;
       }, 2500);
     });
 
@@ -1091,9 +1039,9 @@ function renderBranchSwitcher(conv) {
   nav.className = "branch-switcher";
   nav.setAttribute("aria-label", "Conversation branches");
   nav.innerHTML = `
-    <button type="button" aria-label="Previous branch" ${activeIndex === 0 ? "disabled" : ""}>‹</button>
+    <button type="button" aria-label="Previous branch" ${activeIndex === 0 ? "disabled" : ""}>${icon("chevron-left", "", 16)}</button>
     <span><strong>${escapeHtml(branches[activeIndex]?.label || `Branch ${activeIndex + 1}`)}</strong><small>${activeIndex + 1} of ${branches.length}</small></span>
-    <button type="button" aria-label="Next branch" ${activeIndex === branches.length - 1 ? "disabled" : ""}>›</button>`;
+    <button type="button" aria-label="Next branch" ${activeIndex === branches.length - 1 ? "disabled" : ""}>${icon("chevron-right", "", 16)}</button>`;
   const activate = async (index) => {
     const branch = branches[index];
     if (!branch || !conv.id) return;
@@ -1124,8 +1072,8 @@ function addUserMessage(content, { id = crypto.randomUUID(), animate = true } = 
       ${isLong ? '<button class="see-more" type="button">see more</button>' : ""}
     </div>
     <div class="message-actions">
-      <button class="message-action" type="button" data-edit-message aria-label="Edit prompt" title="Edit prompt"><img src="${ASSET.edit}" alt=""></button>
-      <button class="message-action" type="button" data-copy-message aria-label="Copy prompt" title="Copy prompt"><img src="${ASSET.copy}" alt=""></button>
+      <button class="message-action" type="button" data-edit-message aria-label="Edit prompt" title="Edit prompt">${icon("pencil", "", 15)}</button>
+      <button class="message-action" type="button" data-copy-message aria-label="Copy prompt" title="Copy prompt">${icon("copy", "", 15)}</button>
     </div>`;
   wrap.querySelector("[data-copy-message]").addEventListener("click", () => copyText(content));
   wrap.querySelector("[data-edit-message]").addEventListener("click", () => editPrompt(content, id));
@@ -1148,7 +1096,7 @@ function addAssistantMessage(content = "", { id = crypto.randomUUID(), animate =
   wrap.dataset.messageId = id;
   if (!animate) wrap.style.animation = "none";
   wrap.innerHTML = `
-    ${MASCOT_SVG("assistant-mark mascot-svg")}
+    <span class="assistant-mark">${icon("sparkles", "", 17)}</span>
     <div class="assistant-body">${done ? renderMarkdown(content) : loaderHtml()}</div>`;
   els.messages.append(wrap);
   els.emptyState.hidden = true;
@@ -1796,7 +1744,7 @@ function toolChipHtml(entry) {
   const statusText = entry.status === "running" ? "…" : entry.status === "ok" ? "done" : "failed";
   const { verb, target } = toolChipLabel(entry.name, entry.args);
   return `<span class="tool-chip ${cls}" title="${entry.errorText ? escapeHtml(entry.errorText) : ""}">
-    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg>
+    ${icon(entry.name === "web_search" ? "search" : "folder-closed", "", 13)}
     <span class="tool-chip-verb">${escapeHtml(verb)}</span>
     ${target ? `<code class="tool-chip-target">${escapeHtml(target)}</code>` : ""}
     <span class="tool-chip-status">${statusText}</span>
@@ -1885,7 +1833,7 @@ async function stopStream() {
 function setRunning(conversationId, running) {
   state.runningConversationId = running ? conversationId : null;
   els.submitButton.dataset.mode = running ? "stop" : "submit";
-  els.submitIcon.src = running ? ASSET.stop : ASSET.submit;
+  els.submitButton.innerHTML = icon(running ? "square" : "arrow-up", "", 18);
   els.submitButton.title = running ? "Stop" : "Submit";
   els.submitButton.setAttribute("aria-label", running ? "Stop response" : "Submit message");
 }
@@ -1899,7 +1847,7 @@ function showAssistantError(error, existingMessage) {
   const action = error?.action || null;
   const recoverable = error?.recoverable !== false;
   
-  let html = `<div class="error-message"><p><strong>${escapeHtml(message)}</strong></p>`;
+  let html = `<div class="error-message"><p><strong>${icon("circle-alert", "", 18)}${escapeHtml(message)}</strong></p>`;
   
   if (action) {
     html += `<p class="error-action">${escapeHtml(action)}</p>`;
@@ -1958,17 +1906,8 @@ function showNotification(message, type = "info", duration = 3000) {
   const notification = document.createElement("div");
   notification.className = `app-notification app-notification-${type}`;
   
-  // Use appropriate icon based on type
-  let iconContent = '';
-  if (type === "error") {
-    iconContent = '<svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 1.5C4.86 1.5 1.5 4.86 1.5 9C1.5 13.14 4.86 16.5 9 16.5C13.14 16.5 16.5 13.14 16.5 9C16.5 4.86 13.14 1.5 9 1.5ZM9.75 12.75H8.25V11.25H9.75V12.75ZM9.75 9.75H8.25V5.25H9.75V9.75Z" fill="currentColor"/></svg>';
-  } else if (type === "success") {
-    iconContent = '<svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 1.5C4.86 1.5 1.5 4.86 1.5 9C1.5 13.14 4.86 16.5 9 16.5C13.14 16.5 16.5 13.14 16.5 9C16.5 4.86 13.14 1.5 9 1.5ZM7.5 12.75L3.75 9L4.8075 7.9425L7.5 10.6275L13.1925 4.935L14.25 6L7.5 12.75Z" fill="currentColor"/></svg>';
-  } else if (type === "warning") {
-    iconContent = '<svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M1.5 15.75H16.5L9 2.25L1.5 15.75ZM9.75 13.5H8.25V12H9.75V13.5ZM9.75 10.5H8.25V7.5H9.75V10.5Z" fill="currentColor"/></svg>';
-  } else {
-    iconContent = '<svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 1.5C4.86 1.5 1.5 4.86 1.5 9C1.5 13.14 4.86 16.5 9 16.5C13.14 16.5 16.5 13.14 16.5 9C16.5 4.86 13.14 1.5 9 1.5ZM9.75 12.75H8.25V8.25H9.75V12.75ZM9.75 6.75H8.25V5.25H9.75V6.75Z" fill="currentColor"/></svg>';
-  }
+  const notificationIcons = { error: "circle-alert", success: "circle-check", warning: "triangle-alert", info: "info" };
+  const iconContent = icon(notificationIcons[type] || notificationIcons.info, "", 18);
   
   notification.innerHTML = `
     <div class="notification-content">
@@ -2077,9 +2016,7 @@ function renderApiKeys() {
         <span class="api-key-label">${escapeHtml(provider.label)}${configured ? ' <span class="api-key-badge">configured</span>' : ""}</span>
         <span class="api-key-input-wrap">
           <input class="settings-input api-key-input" type="password" placeholder="Paste your ${escapeHtml(provider.label)} API key" autocomplete="off" spellcheck="false" value="${escapeHtml(stored)}">
-          <button class="api-key-toggle" type="button" aria-label="Show key" title="Show key">
-            <img src="${ASSET.keyShown}" alt="">
-          </button>
+          <button class="api-key-toggle" type="button" aria-label="Show key" title="Show key">${icon("eye", "", 17)}</button>
         </span>
         <span class="api-key-save-wrap">
           <button class="api-key-save" type="button">Save</button>
@@ -2095,10 +2032,9 @@ function renderApiKeys() {
 
     row.querySelector(".api-key-toggle").addEventListener("click", (e) => {
       const button = e.currentTarget;
-      const img = button.querySelector("img");
       const isPassword = input.type === "password";
       input.type = isPassword ? "text" : "password";
-      img.src = isPassword ? ASSET.keyHidden : ASSET.keyShown;
+      button.innerHTML = icon(isPassword ? "eye-off" : "eye", "", 17);
       button.setAttribute("aria-label", isPassword ? "Hide key" : "Show key");
       button.setAttribute("title", isPassword ? "Hide key" : "Show key");
     });
@@ -2486,11 +2422,21 @@ function injectClass(svg, classNames) {
   return cleaned.replace(/^<svg([^>]*)>/, (whole, rest) => `<svg class="${classNames}"${rest}>`);
 }
 
+function readableAccentText(color) {
+  const hex = String(color || "").trim().match(/^#([\da-f]{6})$/i)?.[1];
+  if (!hex) return "#ffffff";
+  const [red, green, blue] = [0, 2, 4].map((index) => parseInt(hex.slice(index, index + 2), 16));
+  return ((red * 299 + green * 587 + blue * 114) / 1000) > 158 ? "#1d1d1f" : "#ffffff";
+}
+
 function applyTheme(theme) {
   const root = document.documentElement;
   const colors = theme?.colors;
 
   if (colors) {
+    const darkTheme = readableAccentText(colors.background) === "#ffffff";
+    root.style.colorScheme = darkTheme ? "dark" : "light";
+    root.style.setProperty("--brand-logo-filter", darkTheme && !theme?.logo ? "invert(1)" : "none");
     root.style.setProperty("--bg", colors.background);
     root.style.setProperty("--text", colors.text);
     root.style.setProperty("--bubble", colors.userMessage);
@@ -2501,23 +2447,25 @@ function applyTheme(theme) {
     if (colors.surface) root.style.setProperty("--surface", colors.surface);
     else root.style.removeProperty("--surface");
   } else {
+    root.style.colorScheme = "light";
+    root.style.removeProperty("--brand-logo-filter");
     ["--bg", "--text", "--bubble", "--line", "--panel", "--panel-strong", "--soft", "--surface"].forEach((property) => {
       root.style.removeProperty(property);
     });
   }
 
-  if (theme?.accent) root.style.setProperty("--accent", theme.accent);
-  else root.style.removeProperty("--accent");
+  const accent = theme?.accent || "";
+  if (accent) {
+    root.style.setProperty("--accent", accent);
+    root.style.setProperty("--accent-foreground", readableAccentText(accent));
+  } else {
+    root.style.removeProperty("--accent");
+    root.style.removeProperty("--accent-foreground");
+  }
 
   const brand = document.querySelector(".brand-logo");
   if (brand) {
     brand.outerHTML = theme?.logo ? injectClass(theme.logo, "brand-logo") : (originalBrandLogo || brand.outerHTML);
-  }
-
-  themeMascot = theme?.mascot || null;
-  const emptyMascot = document.querySelector("#emptyState .empty-mascot");
-  if (emptyMascot) {
-    emptyMascot.outerHTML = theme?.mascot ? injectClass(theme.mascot, "empty-mascot mascot-svg") : (originalEmptyMascot || emptyMascot.outerHTML);
   }
 
   if (theme?.appName) document.title = theme.appName;
@@ -2831,12 +2779,12 @@ function renderWorkspaceFiles(files) {
   els.workspaceFileList.innerHTML = files.map((file) => `
     <div class="workspace-file-row">
       <button class="workspace-file" type="button" data-path="${escapeHtml(file.path)}">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg>
+        ${icon("file", "", 15)}
         <span class="workspace-file-path">${escapeHtml(file.path)}</span>
         <span class="workspace-file-meta">${formatFileSize(file.size)}</span>
       </button>
       <button class="workspace-file-delete" type="button" data-delete-path="${escapeHtml(file.path)}" aria-label="Delete ${escapeHtml(file.path)}" title="Delete ${escapeHtml(file.path)}">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+        ${icon("trash-2", "", 15)}
       </button>
     </div>
   `).join("");
@@ -4040,7 +3988,7 @@ function renderAttachmentPreview() {
         <div class="attachment-size">${formatFileSize(size)}</div>
       </div>
       <button type="button" class="attachment-remove" aria-label="Remove attachment" title="Remove attachment">
-        <img src="${ASSET.close}" alt="">
+        ${icon("x", "", 15)}
       </button>
     </div>
   `;
@@ -4590,10 +4538,9 @@ function bindSetupFlow() {
   const keyToggle = els.setupModal.querySelector(".setup-key-toggle");
   if (keyToggle && apiKeyInput) {
     keyToggle.addEventListener("click", () => {
-      const img = keyToggle.querySelector("img");
       const isPassword = apiKeyInput.type === "password";
       apiKeyInput.type = isPassword ? "text" : "password";
-      img.src = isPassword ? ASSET.keyHidden : ASSET.keyShown;
+      keyToggle.innerHTML = icon(isPassword ? "eye-off" : "eye", "", 17);
       keyToggle.setAttribute("aria-label", isPassword ? "Hide key" : "Show key");
       keyToggle.setAttribute("title", isPassword ? "Hide key" : "Show key");
     });

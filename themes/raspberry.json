@@ -1,15 +1,17 @@
 {
   "name": "raspberry",
   "displayName": "Raspberry",
-  "description": "Rich raspberry red and pink tones",
+  "description": "Muted rose neutrals with a deep raspberry accent",
+  "accent": "#A63F63",
   "colors": {
-    "primary": "#E30B5C",
-    "secondary": "#FF69B4",
-    "background": "#FFF0F5",
-    "text": "#8B0A50",
-    "userMessage": "#FF1493",
-    "assistantMessage": "#FFE4E8",
-    "border": "#C71585",
-    "statusBar": "#FF69B4"
+    "primary": "#A63F63",
+    "secondary": "#EEE1E6",
+    "surface": "#FFFDFE",
+    "background": "#FAF5F7",
+    "text": "#30242A",
+    "userMessage": "#EBCFDA",
+    "assistantMessage": "#F2E7EB",
+    "border": "#E1D1D8",
+    "statusBar": "#F2E7EB"
   }
 }

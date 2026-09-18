@@ -1,15 +1,17 @@
 {
   "name": "mint",
   "displayName": "Mint",
-  "description": "Fresh mint green tones",
+  "description": "Cool mint surfaces with a restrained jade accent",
+  "accent": "#3D876D",
   "colors": {
-    "primary": "#98FF98",
-    "secondary": "#90EE90",
-    "background": "#F0FFF0",
-    "text": "#2F4F2F",
-    "userMessage": "#AFEEEE",
-    "assistantMessage": "#E0FFE0",
-    "border": "#3CB371",
-    "statusBar": "#90EE90"
+    "primary": "#3D876D",
+    "secondary": "#DFECE6",
+    "surface": "#FBFDFC",
+    "background": "#F2F7F5",
+    "text": "#222B27",
+    "userMessage": "#CFE5DB",
+    "assistantMessage": "#E6EFEB",
+    "border": "#D2DFD9",
+    "statusBar": "#E6EFEB"
   }
 }

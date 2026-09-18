@@ -1,15 +1,17 @@
 {
   "name": "vanilla",
   "displayName": "Vanilla",
-  "description": "Classic cream and beige tones",
+  "description": "Warm paper, soft cream, and restrained caramel",
+  "accent": "#8A6845",
   "colors": {
-    "primary": "#FFF8DC",
-    "secondary": "#F5DEB3",
-    "background": "#FFFAF0",
-    "text": "#4A4A4A",
-    "userMessage": "#FFE4B5",
-    "assistantMessage": "#FAEBD7",
-    "border": "#DEB887",
-    "statusBar": "#F5DEB3"
+    "primary": "#8A6845",
+    "secondary": "#EBE7DE",
+    "surface": "#FFFDF8",
+    "background": "#F7F5EF",
+    "text": "#28251F",
+    "userMessage": "#E9DFCF",
+    "assistantMessage": "#F0EDE6",
+    "border": "#DCD7CD",
+    "statusBar": "#F0EDE6"
   }
 }

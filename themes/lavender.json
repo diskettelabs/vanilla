@@ -1,15 +1,17 @@
 {
   "name": "lavender",
   "displayName": "Lavender",
-  "description": "Soft purple and lavender tones",
+  "description": "Airy gray-lavender with a composed violet accent",
+  "accent": "#7568B2",
   "colors": {
-    "primary": "#E6E6FA",
-    "secondary": "#D8BFD8",
-    "background": "#F8F8FF",
-    "text": "#4B0082",
-    "userMessage": "#DDA0DD",
-    "assistantMessage": "#F0E6FF",
-    "border": "#9370DB",
-    "statusBar": "#D8BFD8"
+    "primary": "#7568B2",
+    "secondary": "#E9E6F2",
+    "surface": "#FEFDFE",
+    "background": "#F7F6FA",
+    "text": "#292732",
+    "userMessage": "#E2DCF1",
+    "assistantMessage": "#EEEBF5",
+    "border": "#DDD9E7",
+    "statusBar": "#EEEBF5"
   }
 }

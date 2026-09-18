@@ -1,0 +1,17 @@
+{
+  "name": "plum",
+  "displayName": "Plum",
+  "description": "Dusty plum surfaces with a muted purple accent",
+  "accent": "#85607E",
+  "colors": {
+    "primary": "#85607E",
+    "secondary": "#EBE3E9",
+    "surface": "#FFFDFE",
+    "background": "#F8F4F7",
+    "text": "#2D272C",
+    "userMessage": "#E4D6E1",
+    "assistantMessage": "#F0E8EE",
+    "border": "#DDD2DA",
+    "statusBar": "#F0E8EE"
+  }
+}

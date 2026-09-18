@@ -38,7 +38,7 @@
       <div class="code-box">
         <div class="code-head">
           <span>javascript</span>
-          <button type="button" onclick="copyCode(this)"><img src="./assets/copy.svg" alt="">Copy</button>
+          <button type="button" onclick="copyCode(this)"><i data-icon="copy" aria-hidden="true"></i>Copy</button>
         </div>
         <pre class="line-numbers"><code class="language-javascript">// Example JavaScript code
 function calculateTotal(items) {
@@ -61,7 +61,7 @@ console.log(`Total: $${calculateTotal(cart).toFixed(2)}`);</code></pre>
       <div class="code-box">
         <div class="code-head">
           <span>python</span>
-          <button type="button" onclick="copyCode(this)"><img src="./assets/copy.svg" alt="">Copy</button>
+          <button type="button" onclick="copyCode(this)"><i data-icon="copy" aria-hidden="true"></i>Copy</button>
         </div>
         <pre class="line-numbers"><code class="language-python"># Python example with type hints
 from typing import List, Dict
@@ -92,7 +92,7 @@ def process_data(items: List[Dict[str, any]]) -> Dict[str, int]:
       <div class="code-box">
         <div class="code-head">
           <span>bash</span>
-          <button type="button" onclick="copyCode(this)"><img src="./assets/copy.svg" alt="">Copy</button>
+          <button type="button" onclick="copyCode(this)"><i data-icon="copy" aria-hidden="true"></i>Copy</button>
         </div>
         <pre class="line-numbers"><code class="language-bash">#!/bin/bash
 # Deployment script example
@@ -128,7 +128,7 @@ echo "Deployment complete!"</code></pre>
       <div class="code-box">
         <div class="code-head">
           <span>json</span>
-          <button type="button" onclick="copyCode(this)"><img src="./assets/copy.svg" alt="">Copy</button>
+          <button type="button" onclick="copyCode(this)"><i data-icon="copy" aria-hidden="true"></i>Copy</button>
         </div>
         <pre class="line-numbers"><code class="language-json">{
   "name": "vanilla-chat",
@@ -156,7 +156,7 @@ echo "Deployment complete!"</code></pre>
       <div class="code-box">
         <div class="code-head">
           <span>typescript</span>
-          <button type="button" onclick="copyCode(this)"><img src="./assets/copy.svg" alt="">Copy</button>
+          <button type="button" onclick="copyCode(this)"><i data-icon="copy" aria-hidden="true"></i>Copy</button>
         </div>
         <pre class="line-numbers"><code class="language-typescript">// TypeScript interface and implementation
 interface Message {
@@ -201,7 +201,7 @@ class ChatManager {
       <div class="code-box">
         <div class="code-head">
           <span>css</span>
-          <button type="button" onclick="copyCode(this)"><img src="./assets/copy.svg" alt="">Copy</button>
+          <button type="button" onclick="copyCode(this)"><i data-icon="copy" aria-hidden="true"></i>Copy</button>
         </div>
         <pre class="line-numbers"><code class="language-css">/* Modern CSS with custom properties */
 :root {
@@ -243,7 +243,7 @@ class ChatManager {
       <div class="code-box">
         <div class="code-head">
           <span>sql</span>
-          <button type="button" onclick="copyCode(this)"><img src="./assets/copy.svg" alt="">Copy</button>
+          <button type="button" onclick="copyCode(this)"><i data-icon="copy" aria-hidden="true"></i>Copy</button>
         </div>
         <pre class="line-numbers"><code class="language-sql">-- Example SQL queries with syntax highlighting
 
@@ -277,12 +277,11 @@ LIMIT 20;</code></pre>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <script src="./icons.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/line-numbers/prism-line-numbers.min.js"></script>
     <script>
-      const COPY_ICON = "./assets/copy.svg";
-      
-      function copyCode(button) {
+function copyCode(button) {
         const code = button.closest(".code-box")?.querySelector("code")?.textContent || "";
         navigator.clipboard.writeText(code).then(() => {
           const originalHTML = button.innerHTML;
@@ -296,6 +295,7 @@ LIMIT 20;</code></pre>
       // Apply syntax highlighting on load
       document.addEventListener('DOMContentLoaded', () => {
         Prism.highlightAll();
+        window.VanillaIcons?.render();
       });
     </script>
   </body>

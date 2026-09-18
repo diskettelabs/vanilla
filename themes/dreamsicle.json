@@ -1,15 +1,17 @@
 {
   "name": "dreamsicle",
   "displayName": "Dreamsicle",
-  "description": "Orange cream and peach tones",
+  "description": "Soft cream with a muted tangerine accent",
+  "accent": "#D56D38",
   "colors": {
-    "primary": "#FFB347",
-    "secondary": "#FFDAB9",
-    "background": "#FFF5EE",
-    "text": "#8B4000",
-    "userMessage": "#FFDAB9",
-    "assistantMessage": "#FFE4C4",
-    "border": "#FF8C00",
-    "statusBar": "#FFDAB9"
+    "primary": "#D56D38",
+    "secondary": "#F3E6DA",
+    "surface": "#FFFDFB",
+    "background": "#FBF6F1",
+    "text": "#312720",
+    "userMessage": "#F2D8C5",
+    "assistantMessage": "#F6ECE3",
+    "border": "#E7D7CB",
+    "statusBar": "#F6ECE3"
   }
 }

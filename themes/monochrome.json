@@ -1,15 +1,17 @@
 {
   "name": "monochrome",
   "displayName": "Monochrome",
-  "description": "Classic black, white, and gray",
+  "description": "Near-black surfaces with crisp neutral contrast",
+  "accent": "#A1A1A6",
   "colors": {
-    "primary": "#FFFFFF",
-    "secondary": "#D3D3D3",
-    "background": "#000000",
-    "text": "#FFFFFF",
-    "userMessage": "#2F2F2F",
-    "assistantMessage": "#1A1A1A",
-    "border": "#808080",
-    "statusBar": "#404040"
+    "primary": "#A1A1A6",
+    "secondary": "#2A2A2D",
+    "surface": "#202022",
+    "background": "#121214",
+    "text": "#F4F4F5",
+    "userMessage": "#303033",
+    "assistantMessage": "#1A1A1C",
+    "border": "#363639",
+    "statusBar": "#1A1A1C"
   }
 }

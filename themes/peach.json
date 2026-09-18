@@ -1,15 +1,17 @@
 {
   "name": "peach",
   "displayName": "Peach",
-  "description": "Soft peach and coral tones",
+  "description": "Pale peach neutrals with a soft coral accent",
+  "accent": "#C66C59",
   "colors": {
-    "primary": "#FFDAB9",
-    "secondary": "#FFE5B4",
-    "background": "#FFF5EE",
-    "text": "#8B4513",
-    "userMessage": "#FFDAB9",
-    "assistantMessage": "#FFEFD5",
-    "border": "#FF7F50",
-    "statusBar": "#FFE5B4"
+    "primary": "#C66C59",
+    "secondary": "#F2E4DE",
+    "surface": "#FFFDFB",
+    "background": "#FBF5F2",
+    "text": "#302622",
+    "userMessage": "#EFD8CF",
+    "assistantMessage": "#F5EAE5",
+    "border": "#E5D5CE",
+    "statusBar": "#F5EAE5"
   }
 }
