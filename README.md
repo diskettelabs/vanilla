@@ -2,7 +2,7 @@
   <img src="./wordmark.svg" alt="Vanilla logo" width="140"> <h1>vanilla chat interface</h1>
 </p>
 
-A simple, privacy-first web chat interface for local and cloud AI models from Ollama, LM Studio, OpenAI, Anthropic, HuggingFace, and Google, plus direct integration with the Aider, Goose, and OpenCode CLIs. Comes with 13 ice cream-themed color schemes.
+A simple, privacy-first web chat interface for local and cloud AI models from Ollama, LM Studio, OpenAI, Anthropic, HuggingFace, and Google, plus direct integration with the Aider, Goose, and OpenCode CLIs. Comes with 15 ice cream-themed color schemes.
 
 
 
@@ -45,13 +45,35 @@ Pick a provider in Settings → AI Model and paste your API key.
 - **HuggingFace installer** — search GGUF models and import them into Ollama from the UI
 - **Custom system prompts** — global default plus per-conversation override
 - **Auto-naming** — smart chat titles generated locally via Ollama
-- **Themes** — 13 ice cream color schemes (vanilla, strawberry, mint, lemon, lime, peach, raspberry, lavender, dragonfruit, dreamsicle, blue-moon, chocolate, monochrome) plus custom JSON themes that can replace colors, accent, logo, mascot, app name, and CSS. Authoring guide: `/themes/themes.html`
+- **Themes** — 15 ice cream color schemes (vanilla, strawberry, mint, lemon, lime, peach, raspberry, lavender, dragonfruit, dreamsicle, blue-moon, chocolate, monochrome, aurora, plum) plus custom JSON themes that can replace colors, accent, logo, mascot, app name, and CSS. Authoring guide: `/themes/themes.html`
 - **Settings UI** — organized tabs (General, AI Model, Chat, Appearance, Shortcuts, Data & Privacy) with pickers for theme, density, text size, accent, and more
 - **Persistent customization** — device-wide settings API plus a theme-independent custom browser/desktop icon
 - **Voice input** — browser-based dictation (VOSK, on-device)
 - **File uploads** — attach images and files with OCR/image understanding
 - **Native vision messages** — uploaded images are translated into Ollama, Anthropic, and OpenAI-compatible multimodal formats
 - **Privacy** — all data stays local, nothing leaves your machine unless you use a cloud provider
+
+### theme colors
+
+These are the canonical accent, background, and text colors used by the built-in themes. Full palettes, including surfaces, borders, and message colors, live in [`themes/`](./themes).
+
+| Theme | Accent | Background | Text |
+|---|---|---|---|
+| Aurora | `#5CC8D7` | `#10151B` | `#EDF3F5` |
+| Blue Moon | `#4F7EAE` | `#F3F7FA` | `#202830` |
+| Chocolate | `#D69A6D` | `#1C1816` | `#F4ECE6` |
+| Dragonfruit | `#B93F78` | `#FAF6F8` | `#30242A` |
+| Dreamsicle | `#D56D38` | `#FBF6F1` | `#312720` |
+| Lavender | `#7568B2` | `#F7F6FA` | `#292732` |
+| Lemon | `#A98218` | `#FAF8F0` | `#2E2A20` |
+| Lime | `#5F934D` | `#F5F8F3` | `#252C22` |
+| Mint | `#3D876D` | `#F2F7F5` | `#222B27` |
+| Monochrome | `#A1A1A6` | `#121214` | `#F4F4F5` |
+| Peach | `#C66C59` | `#FBF5F2` | `#302622` |
+| Plum | `#85607E` | `#F8F4F7` | `#2D272C` |
+| Raspberry | `#A63F63` | `#FAF5F7` | `#30242A` |
+| Strawberry | `#C84E68` | `#FAF5F6` | `#302426` |
+| Vanilla | `#8A6845` | `#F7F5EF` | `#28251F` |
 
 ## requirements
 
