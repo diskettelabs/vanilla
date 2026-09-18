@@ -69,11 +69,17 @@ ipcMain.on('set-app-icon', (_event, dataUrl) => {
 });
 
 ipcMain.handle('pick-folder', async () => {
-  const result = await dialog.showOpenDialog(mainWindow, {
-    title: 'Choose an agent working directory',
-    properties: ['openDirectory', 'createDirectory'],
-  });
-  return result.canceled || !result.filePaths[0] ? null : result.filePaths[0];
+  try {
+    const win = BrowserWindow.getFocusedWindow() || mainWindow;
+    if (!win || win.isDestroyed()) return null;
+    const result = await dialog.showOpenDialog(win, {
+      title: 'Choose an agent working directory',
+      properties: ['openDirectory', 'createDirectory'],
+    });
+    return result.canceled || !result.filePaths[0] ? null : result.filePaths[0];
+  } catch {
+    return null;
+  }
 });
 
 function updateSplash(percent, message) {

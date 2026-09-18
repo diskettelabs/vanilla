@@ -423,8 +423,8 @@ function setMode(mode) {
   }
   if (els.agentStatus) {
     els.agentStatus.textContent = state.settings.agentDir
-      ? `Working dir: ${state.settings.agentDir}`
-      : "No folder selected — agent tools will use the default workspace.";
+      ? "Agent tools are scoped to this folder."
+      : "Set a folder to scope the agent's tools.";
   }
   if (isAgent) {
     state.agentFileStack = [];
@@ -434,9 +434,17 @@ function setMode(mode) {
   els.promptInput.placeholder = isAgent
     ? "Describe a coding task for the agent…"
     : (themePlaceholder || PROMPT_PLACEHOLDERS[placeholderIndex] || "What are we working on?");
-  els.greeting.textContent = isAgent
-    ? (state.settings.agentDir ? `Agent ready in ${state.settings.agentDir}. What should we build?` : "Agent ready. Point it at a folder and describe a task.")
-    : (themeGreeting || applyName(greetings[0]));
+  if (isAgent) {
+    els.greeting.textContent = state.settings.agentDir
+      ? `Agent ready in ${state.settings.agentDir}. What should we build?`
+      : "Agent ready. Point it at a folder and describe a task.";
+  } else {
+    const empty = !state.activeConversation || !state.activeConversation.messages?.length;
+    if (empty) {
+      els.emptyState.hidden = false;
+      if (!themeGreeting) chooseGreeting();
+    }
+  }
   localStorage.setItem("vanilla-mode", state.mode);
   if (isAgent) setTimeout(() => els.promptInput.focus(), 0);
 }
@@ -2874,6 +2882,47 @@ function setAgentDir(dir) {
   setMode("agent");
 }
 
+async function pickAgentDir() {
+  let picked = null;
+  let triedNative = false;
+  if (window.electronAPI?.pickFolder) {
+    triedNative = true;
+    try {
+      picked = await window.electronAPI.pickFolder();
+    } catch {
+      picked = null;
+    }
+  }
+  if (!picked && window.showDirectoryPicker) {
+    try {
+      const handle = await window.showDirectoryPicker({ id: "vanilla-agent", mode: "readwrite" });
+      if (handle?.name) {
+        showNotification(`Picked "${handle.name}" in the browser. Confirm its absolute server path to use it.`, "info", 5000);
+        if (els.agentDirInput) {
+          els.agentDirInput.value = state.settings.agentDir || "";
+          els.agentDirInput.focus();
+          els.agentDirInput.select();
+        }
+      }
+    } catch {
+      // User cancelled the browser picker.
+    }
+    return;
+  }
+  if (picked && picked !== state.settings.agentDir) {
+    state.settings.agentDir = picked;
+    applySettings();
+    setMode("agent");
+    showNotification("Agent working directory set", "success");
+  } else if (!picked && !triedNative) {
+    showNotification("Paste an absolute folder path, or pick a folder.", "info", 4000);
+    if (els.agentDirInput) {
+      els.agentDirInput.focus();
+      els.agentDirInput.select();
+    }
+  }
+}
+
 async function refreshAgentSidebar() {
   loadProjects();
   updateAgentData();
@@ -3880,18 +3929,14 @@ function bindEvents() {
     });
   });
   if (els.agentDirBrowse) {
-    els.agentDirBrowse.addEventListener("click", async () => {
-      const picked = window.electronAPI?.pickFolder ? await window.electronAPI.pickFolder() : null;
-      if (picked) {
-        state.settings.agentDir = picked;
-        applySettings();
-        setMode("agent");
-        showNotification("Agent working directory set", "success");
-      } else {
-        showNotification("Use Browse… in the desktop app, or paste an absolute folder path.", "info", 4000);
-      }
-    });
+    els.agentDirBrowse.addEventListener("click", pickAgentDir);
   }
+  document.querySelectorAll("[data-browse-agent-dir]").forEach((button) => {
+    button.addEventListener("click", (event) => {
+      event.stopPropagation();
+      pickAgentDir();
+    });
+  });
   if (els.agentDirInput) {
     els.agentDirInput.addEventListener("change", () => {
       state.settings.agentDir = els.agentDirInput.value.trim();
