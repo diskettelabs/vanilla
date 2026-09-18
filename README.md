@@ -151,9 +151,9 @@ vanilla-sh/
 
 Server settings live in `config/default.json`:
 
-- `port` — server port (default `2051`)
-- `defaultProvider` — default provider (default `ollama`)
-- `providers` — per-provider settings such as `host`, `baseUrl`, `apiKey`, `defaultModel`, and `requestTimeout`. Cloud API keys can also be entered in the app UI and are stored locally in your browser.
+- `port`: server port (default `2051`)
+- `defaultProvider`: default provider (default `ollama`)
+- `providers`: per-provider settings such as `host`, `baseUrl`, `apiKey`, `defaultModel`, and `requestTimeout`. Cloud API keys can also be entered in the app UI and are stored locally in your browser.
 
 ## fonts
 
@@ -169,4 +169,4 @@ Contributors may modify and work on the project only within the permissions gran
 
 Diskette Labs intends to release a future version of the project under an open-source license. **That future release will not automatically relicense previous versions.** Versions covered by this license will remain under their existing terms and copyright unless Diskette Labs explicitly states otherwise.
 
-See [`LICENSE`](./LICENSE) and [`CONTRIBUTORS.md`](./CONTRIBUTORS.md) for the complete terms and project governance.
+See [`LICENSE`](./LICENSE) and [`CONTRIBUTING.md`](./CONTRIBUTING.md) for the complete terms and project governance.
