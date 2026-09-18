@@ -37,6 +37,8 @@ function convFromJson(fp) {
     autoTitle: Boolean(raw.autoTitle),
     pinned: Boolean(raw.pinned),
     customPrompt: raw.customPrompt || '',
+    mode: raw.mode || 'chat',
+    workdir: raw.workdir || '',
     messages: raw.messages || [],
     branches: Array.isArray(raw.branches) ? raw.branches : [],
     activeBranchId: raw.activeBranchId || '',
@@ -58,6 +60,8 @@ function convToMarkdown(conv) {
   lines.push(`- **Updated:** ${conv.updatedAt}`);
   lines.push(`- **AutoTitle:** ${conv.autoTitle ? 'true' : 'false'}`);
   lines.push(`- **Pinned:** ${conv.pinned ? 'true' : 'false'}`);
+  lines.push(`- **Mode:** ${conv.mode === 'agent' ? 'agent' : 'chat'}`);
+  if (conv.workdir) lines.push(`- **Workdir:** ${conv.workdir}`);
   if (conv.deletedAt) lines.push(`- **Deleted:** ${conv.deletedAt}`);
   if (conv.retentionDays) lines.push(`- **RetentionDays:** ${conv.retentionDays}`);
   if (conv.customPrompt) lines.push(`- **Prompt:** ${JSON.stringify(conv.customPrompt)}`);
@@ -93,6 +97,8 @@ function parseConversationMarkdown(text) {
     autoTitle: false,
     pinned: false,
     customPrompt: '',
+    mode: 'chat',
+    workdir: '',
     messages: [],
     branches: [],
     activeBranchId: '',
@@ -141,6 +147,8 @@ function parseConversationMarkdown(text) {
         else if (key === 'RetentionDays') conv.retentionDays = Number(val) || 0;
         else if (key === 'AutoTitle') conv.autoTitle = val === 'true';
         else if (key === 'Pinned') conv.pinned = val === 'true';
+        else if (key === 'Mode') conv.mode = val === 'agent' ? 'agent' : 'chat';
+        else if (key === 'Workdir') conv.workdir = val;
         else if (key === 'Prompt') {
           try {
             conv.customPrompt = JSON.parse(val);
@@ -221,6 +229,8 @@ function importConversations(files) {
           autoTitle: Boolean(raw.autoTitle),
           pinned: Boolean(raw.pinned),
           customPrompt: raw.customPrompt || '',
+          mode: raw.mode === 'agent' ? 'agent' : 'chat',
+          workdir: raw.workdir || '',
           messages: raw.messages || [],
           branches: Array.isArray(raw.branches) ? raw.branches : [],
           activeBranchId: raw.activeBranchId || '',
@@ -242,6 +252,8 @@ function importConversations(files) {
     conv.autoTitle = Boolean(conv.autoTitle);
     conv.pinned = Boolean(conv.pinned);
     conv.customPrompt = conv.customPrompt || '';
+    conv.mode = conv.mode === 'agent' ? 'agent' : 'chat';
+    conv.workdir = conv.workdir || '';
     conv.messages = Array.isArray(conv.messages) ? conv.messages : [];
     conv.branches = Array.isArray(conv.branches) ? conv.branches : [];
     conv.activeBranchId = conv.activeBranchId || '';
@@ -262,7 +274,7 @@ function importConversations(files) {
   return created;
 }
 
-function list() {
+function list(mode = '') {
   const files = fs.readdirSync(DATA_DIR);
   const convs = [];
 
@@ -277,6 +289,7 @@ function list() {
       } else {
         continue;
       }
+      if (mode && (conv.mode || 'chat') !== mode) continue;
       convs.push({
         id: conv.id,
         title: conv.title,
@@ -284,6 +297,8 @@ function list() {
         provider: conv.provider,
         autoTitle: conv.autoTitle,
         pinned: Boolean(conv.pinned),
+        mode: conv.mode || 'chat',
+        workdir: conv.workdir || '',
         messageCount: conv.messages.length,
         createdAt: conv.createdAt,
         updatedAt: conv.updatedAt,
@@ -299,10 +314,20 @@ function list() {
   });
 }
 
-function create(title = 'New Conversation', model = 'llama2', provider, { autoTitle } = {}) {
+function create(title = 'New Conversation', model = 'llama2', provider, { autoTitle, mode, workdir } = {}) {
   const id = uuid();
   const now = new Date().toISOString();
-  const conv = { id, title, model, autoTitle: Boolean(autoTitle), messages: [], createdAt: now, updatedAt: now };
+  const conv = {
+    id,
+    title,
+    model,
+    autoTitle: Boolean(autoTitle),
+    mode: mode === 'agent' ? 'agent' : 'chat',
+    workdir: workdir || '',
+    messages: [],
+    createdAt: now,
+    updatedAt: now,
+  };
   if (provider) conv.provider = provider;
   fs.writeFileSync(filePath(id), convToMarkdown(conv));
   return conv;
@@ -405,7 +430,7 @@ function daysUntilExpiry(conv, fallbackDays) {
   };
 }
 
-function listDeleted(fallbackDays) {
+function listDeleted(mode, fallbackDays) {
   const convs = [];
   if (!fs.existsSync(DELETED_DIR)) return convs;
 
@@ -416,6 +441,7 @@ function listDeleted(fallbackDays) {
       if (isJsonFile(f)) conv = convFromJson(fp);
       else if (isMdFile(f)) conv = convFromMarkdown(fp);
       else continue;
+      if (mode && (conv.mode || 'chat') !== mode) continue;
 
       const expiry = daysUntilExpiry(conv, fallbackDays);
       convs.push({
@@ -672,7 +698,7 @@ function buildSnippet(text, matchStart, matchEnd) {
   return snippet;
 }
 
-function search(query) {
+function search(query, mode = '') {
   if (!query || !query.trim()) return [];
   const q = query.trim();
   const files = fs.readdirSync(DATA_DIR);
@@ -685,6 +711,7 @@ function search(query) {
       if (isJsonFile(f)) conv = convFromJson(fp);
       else if (isMdFile(f)) conv = convFromMarkdown(fp);
       else continue;
+      if (mode && (conv.mode || 'chat') !== mode) continue;
 
       const matches = [];
 

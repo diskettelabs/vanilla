@@ -49,6 +49,10 @@ const els = {
   customIconReset: document.querySelector("#customIconReset"),
   customIconPreview: document.querySelector("#customIconPreview"),
   soundEffectsToggle: document.querySelector("#soundEffectsToggle"),
+  typingToggle: document.querySelector("#typingToggle"),
+  typingStylePicker: document.querySelector("#typingStylePicker"),
+  soundVolumeSlider: document.querySelector("#soundVolumeSlider"),
+  soundVolumeValue: document.querySelector("#soundVolumeValue"),
   ambientToggle: document.querySelector("#ambientToggle"),
   musicTrackPicker: document.querySelector("#musicTrackPicker"),
   compareToggle: document.querySelector("#compareToggle"),
@@ -154,6 +158,17 @@ const els = {
   agentFilesRefresh: document.querySelector("#agentFilesRefresh"),
   agentDataSummary: document.querySelector("#agentDataSummary"),
   agentModeToggle: document.querySelector("#agentModeToggle"),
+  agentSessionList: document.querySelector("#agentSessionList"),
+  agentNewSession: document.querySelector("#agentNewSession"),
+  agentFolderModal: document.querySelector("#agentFolderModal"),
+  agentFolderPath: document.querySelector("#agentFolderPath"),
+  agentFolderGoButton: document.querySelector("#agentFolderGoButton"),
+  agentFolderUp: document.querySelector("#agentFolderUp"),
+  agentFolderNative: document.querySelector("#agentFolderNative"),
+  agentFolderRefresh: document.querySelector("#agentFolderRefresh"),
+  agentFolderHint: document.querySelector("#agentFolderHint"),
+  agentFolderList: document.querySelector("#agentFolderList"),
+  agentFolderSelect: document.querySelector("#agentFolderSelect"),
 };
 
 const dropdowns = {};
@@ -194,6 +209,12 @@ const state = {
     enterToSend: localStorage.getItem("vanilla-enter-to-send") !== "false",
     showStats: localStorage.getItem("vanilla-show-stats") !== "false",
     soundEffects: localStorage.getItem("vanilla-sound-effects") === "true",
+    typingSounds: localStorage.getItem("vanilla-typing-sounds") === "true",
+    typingStyle: localStorage.getItem("vanilla-typing-style") || "mechanical",
+    soundVolume: (() => {
+      const v = parseFloat(localStorage.getItem("vanilla-sound-volume"));
+      return Number.isNaN(v) ? 0.9 : Math.max(0, Math.min(1, v));
+    })(),
     ambientMusic: localStorage.getItem("vanilla-ambient-music") === "true",
     musicTrack: localStorage.getItem("vanilla-ambient-track") || "vanilla",
     showCompare: localStorage.getItem("vanilla-show-compare") === "true",
@@ -218,6 +239,7 @@ const state = {
   },
   mode: localStorage.getItem("vanilla-mode") === "agent" ? "agent" : "chat",
   agentFileStack: [],
+  agentPickDir: "",
 };
 
 let settingsHydrated = false;
@@ -404,8 +426,10 @@ function chooseGreeting() {
 
 function setMode(mode) {
   const allowed = state.settings.agentMode !== false;
+  const prev = state.mode;
   state.mode = mode === "agent" && allowed ? "agent" : "chat";
   const isAgent = state.mode === "agent";
+  if (prev && prev !== state.mode) Sounds.modeSwitch(state.mode);
   document.body.dataset.mode = state.mode;
   document.body.dataset.agentUi = String(allowed);
   document.querySelectorAll(".mode-tab").forEach((tab) => {
@@ -426,6 +450,11 @@ function setMode(mode) {
       ? "Agent tools are scoped to this folder."
       : "Set a folder to scope the agent's tools.";
   }
+  const mismatched = state.activeConversation && (state.activeConversation.mode || "chat") !== state.mode;
+  if (mismatched) {
+    state.activeConversation = null;
+    els.messages.innerHTML = "";
+  }
   if (isAgent) {
     state.agentFileStack = [];
     refreshAgentSidebar();
@@ -444,7 +473,9 @@ function setMode(mode) {
     els.emptyState.hidden = !empty;
     if (empty && !themeGreeting) chooseGreeting();
   }
+  els.emptyState.hidden = state.activeConversation && state.activeConversation.messages?.length;
   localStorage.setItem("vanilla-mode", state.mode);
+  refreshConversations();
   if (isAgent) setTimeout(() => els.promptInput.focus(), 0);
 }
 
@@ -835,7 +866,7 @@ async function deleteConversation(id) {
 
 async function refreshDeletedConversations() {
   try {
-    state.deletedConversations = await api("/api/conversations/deleted");
+    state.deletedConversations = await api(`/api/conversations/deleted?mode=${encodeURIComponent(state.mode || "chat")}`);
   } catch {
     state.deletedConversations = [];
   }
@@ -1458,8 +1489,10 @@ function stopDictation() {
 
 async function refreshConversations() {
   try {
-    state.conversations = await api("/api/conversations");
+    const mode = state.mode || "chat";
+    state.conversations = await api(`/api/conversations?mode=${encodeURIComponent(mode)}`);
     renderConversationList();
+    if (mode === "agent") renderAgentSessions(state.conversations);
   } catch (error) {
     // Silently handle - conversations will show empty, user can still create new
   }
@@ -1472,9 +1505,19 @@ async function loadConversation(id) {
     state.activeConversation = conv;
     state.currentProvider = conv.provider || state.currentProvider;
     state.currentModel = conv.model || state.currentModel;
+    if ((conv.mode || "chat") === "agent" && conv.workdir) {
+      if (state.settings.agentDir !== conv.workdir) {
+        state.settings.agentDir = conv.workdir;
+        applySettings();
+      }
+      setMode("agent");
+    } else if ((conv.mode || "chat") !== "agent" && state.mode !== "chat") {
+      setMode("chat");
+    }
     updateModelLabel();
     renderMessages(conv);
     renderConversationList();
+    if (state.mode === "agent") renderAgentSessions(state.conversations);
     updatePromptPill();
   } catch (error) {
     showNotification(error.action || error.message || "Failed to load conversation", "error");
@@ -1491,7 +1534,14 @@ async function ensureConversation(message) {
   const title = message.trim().split(/\s+/).slice(0, 7).join(" ") || "New Conversation";
   const conv = await api("/api/conversations", {
     method: "POST",
-    body: JSON.stringify({ title, model: state.currentModel, provider: state.currentProvider, autoTitle: state.settings.autoName }),
+    body: JSON.stringify({
+      title,
+      model: state.currentModel,
+      provider: state.currentProvider,
+      autoTitle: state.settings.autoName,
+      mode: state.mode === "agent" ? "agent" : "chat",
+      workdir: state.mode === "agent" ? getAgentRoot() : "",
+    }),
   });
   state.activeConversation = conv;
   await refreshConversations();
@@ -1507,6 +1557,7 @@ async function newChat() {
   els.emptyState.hidden = false;
   chooseGreeting();
   renderConversationList();
+  if (state.mode === "agent") renderAgentSessions(state.conversations);
   els.promptInput.value = "";
   resizePrompt();
   els.promptInput.focus();
@@ -2372,6 +2423,13 @@ function bindSettingsDropdowns() {
     state.settings.musicTrack = dropdowns.musicTrack.value;
     applySettings();
   });
+  dropdowns.typingStyle = createSettingsDropdown(els.typingStylePicker, () => {
+    Sounds.click();
+    state.settings.typingStyle = dropdowns.typingStyle.value;
+    applySettings();
+    Sounds.setKeyStyle(state.settings.typingStyle);
+    Sounds.previewTyping();
+  });
 
   dropdowns.density.setOptions([
     { value: "comfortable", label: "Comfortable" },
@@ -2405,6 +2463,13 @@ function bindSettingsDropdowns() {
     { value: "audio:paper-lantern-rain.mp3", label: "Paper Lantern Rain" },
     { value: "audio:dust-on-the-morning-keys.mp3", label: "Dust on the Morning Keys" },
   ]);
+  dropdowns.typingStyle.setOptions([
+    { value: "mechanical", label: "Mechanical" },
+    { value: "typewriter", label: "Typewriter" },
+    { value: "membrane", label: "Membrane" },
+    { value: "cherry", label: "Cherry" },
+  ]);
+  dropdowns.typingStyle.setValue(state.settings.typingStyle || "mechanical");
   dropdowns.searchBackend = createSettingsDropdown(els.searchBackendPicker, () => {
     state.settings.searchBackend = dropdowns.searchBackend.value;
     applySettings();
@@ -2602,6 +2667,23 @@ function applySettings() {
   if (els.desktopNotificationsToggle) els.desktopNotificationsToggle.checked = settings.desktopNotifications;
   if (els.soundEffectsToggle) els.soundEffectsToggle.checked = settings.soundEffects;
   Sounds.setEnabled(settings.soundEffects);
+  if (els.typingToggle) els.typingToggle.checked = settings.typingSounds;
+  Sounds.setKeyEnabled(settings.typingSounds);
+  Sounds.setKeyStyle(settings.typingStyle || "mechanical");
+  if (els.typingStylePicker) {
+    if (dropdowns.typingStyle) dropdowns.typingStyle.setValue(settings.typingStyle || "mechanical");
+    els.typingStylePicker.dataset.disabled = String(!settings.typingSounds);
+  }
+  if (els.soundVolumeSlider) {
+    els.soundVolumeSlider.value = Math.round((settings.soundVolume || 0.9) * 100);
+    els.soundVolumeSlider.disabled = !settings.soundEffects;
+  }
+  if (els.soundVolumeValue) els.soundVolumeValue.textContent = `${Math.round((settings.soundVolume || 0.9) * 100)}%`;
+  Sounds.setVolume(settings.soundVolume || 0.9);
+  if (els.soundVolumeSlider) {
+    const pct = Math.round((settings.soundVolume || 0.9) * 100);
+    els.soundVolumeSlider.style.setProperty("--fill", `${pct}%`);
+  }
   if (els.ambientToggle) els.ambientToggle.checked = settings.ambientMusic;
   if (dropdowns.musicTrack) dropdowns.musicTrack.setValue(settings.musicTrack);
   if (els.musicTrackPicker) els.musicTrackPicker.dataset.disabled = String(!settings.ambientMusic);
@@ -2662,6 +2744,9 @@ function applySettings() {
   localStorage.setItem("vanilla-enter-to-send", String(settings.enterToSend));
   localStorage.setItem("vanilla-show-stats", String(settings.showStats));
   localStorage.setItem("vanilla-sound-effects", String(settings.soundEffects));
+  localStorage.setItem("vanilla-typing-sounds", String(settings.typingSounds));
+  localStorage.setItem("vanilla-typing-style", settings.typingStyle || "mechanical");
+  localStorage.setItem("vanilla-sound-volume", String(settings.soundVolume || 0.9));
   localStorage.setItem("vanilla-ambient-music", String(settings.ambientMusic));
   localStorage.setItem("vanilla-ambient-track", settings.musicTrack);
   localStorage.setItem("vanilla-show-compare", String(settings.showCompare));
@@ -2791,7 +2876,7 @@ async function runSearch() {
     return;
   }
   try {
-    const results = await api(`/api/search?q=${encodeURIComponent(q)}`);
+    const results = await api(`/api/search?q=${encodeURIComponent(q)}&mode=${encodeURIComponent(state.mode || "chat")}`);
     els.searchResults.innerHTML = results.map((result) => {
       const snippet = result.matches?.find((match) => match.snippet)?.snippet || "Title match";
       const match = result.matches?.find((match) => match.snippet);
@@ -2882,50 +2967,99 @@ function setAgentDir(dir) {
 }
 
 async function pickAgentDir() {
-  let picked = null;
-  let triedNative = false;
   if (window.electronAPI?.pickFolder) {
-    triedNative = true;
+    let picked = null;
     try {
       picked = await window.electronAPI.pickFolder();
     } catch {
       picked = null;
     }
-  }
-  if (!picked && window.showDirectoryPicker) {
-    try {
-      const handle = await window.showDirectoryPicker({ id: "vanilla-agent", mode: "readwrite" });
-      if (handle?.name) {
-        showNotification(`Picked "${handle.name}" in the browser. Confirm its absolute server path to use it.`, "info", 5000);
-        if (els.agentDirInput) {
-          els.agentDirInput.value = state.settings.agentDir || "";
-          els.agentDirInput.focus();
-          els.agentDirInput.select();
-        }
-      }
-    } catch {
-      // User cancelled the browser picker.
+    if (picked && picked !== state.settings.agentDir) {
+      setAgentDir(picked);
+      showNotification("Agent working directory set", "success");
     }
     return;
   }
-  if (picked && picked !== state.settings.agentDir) {
-    state.settings.agentDir = picked;
-    applySettings();
-    setMode("agent");
-    showNotification("Agent working directory set", "success");
-  } else if (!picked && !triedNative) {
-    showNotification("Paste an absolute folder path, or pick a folder.", "info", 4000);
-    if (els.agentDirInput) {
-      els.agentDirInput.focus();
-      els.agentDirInput.select();
-    }
+  openAgentFolderPicker();
+}
+
+function dirParent(dir) {
+  const clean = String(dir || "").replace(/[\\/]+$/, "");
+  if (!clean) return null;
+  const sep = Math.max(clean.lastIndexOf("/"), clean.lastIndexOf("\\"));
+  if (sep <= 0) return "/";
+  return clean.slice(0, sep);
+}
+
+async function openAgentFolderPicker() {
+  state.agentPickDir = getAgentRoot();
+  if (els.agentFolderPath) els.agentFolderPath.value = state.agentPickDir;
+  if (els.agentFolderNative) els.agentFolderNative.hidden = !window.electronAPI?.pickFolder;
+  if (els.agentFolderHint) els.agentFolderHint.textContent = "";
+  els.agentFolderModal.hidden = false;
+  await listAgentFolders(state.agentPickDir);
+}
+
+async function listAgentFolders(dir) {
+  if (!els.agentFolderList) return;
+  els.agentFolderList.innerHTML = `<p class="muted-note">Loading folders…</p>`;
+  try {
+    const data = await api(`/api/agent/files?dir=${encodeURIComponent(dir || "")}`);
+    state.agentPickDir = data.dir || dir;
+    if (els.agentFolderPath) els.agentFolderPath.value = state.agentPickDir;
+    const parent = dirParent(state.agentPickDir);
+    els.agentFolderUp.hidden = !parent;
+    if (els.agentFolderHint) els.agentFolderHint.textContent = "";
+    renderAgentFolders(data.entries || []);
+  } catch (error) {
+    els.agentFolderList.innerHTML = `<p class="muted-note">${escapeHtml(error.message || "Couldn't read that folder.")}</p>`;
   }
 }
 
+function renderAgentFolders(entries) {
+  const dirs = Array.isArray(entries) ? entries.filter((e) => e.type === "dir") : [];
+  if (!dirs.length) {
+    els.agentFolderList.innerHTML = `<p class="muted-note">No subfolders here.</p>`;
+    return;
+  }
+  els.agentFolderList.innerHTML = dirs.map((entry) => `
+    <button class="agent-folder-row" type="button" data-folder-name="${escapeHtml(entry.name)}" title="${escapeHtml(entry.name)}">
+      ${icon("folder-closed", "", 15)}
+      <span class="agent-folder-row-name">${escapeHtml(entry.name)}</span>
+      ${icon("chevron-right", "", 13)}
+    </button>
+  `).join("");
+  els.agentFolderList.querySelectorAll("[data-folder-name]").forEach((row) => {
+    row.addEventListener("click", () => {
+      const name = row.dataset.folderName;
+      listAgentFolders(state.agentPickDir ? `${state.agentPickDir.replace(/\/+$/, "")}/${name}` : name);
+    });
+  });
+}
+
 async function refreshAgentSidebar() {
+  renderAgentSessions(state.conversations);
   loadProjects();
   updateAgentData();
   await loadAgentFiles(getAgentRoot());
+}
+
+function renderAgentSessions(sessions) {
+  if (!els.agentSessionList) return;
+  const list = Array.isArray(sessions) ? sessions : [];
+  if (!list.length) {
+    els.agentSessionList.innerHTML = `<p class="muted-note project-empty">No agent sessions yet. Start one below.</p>`;
+    return;
+  }
+  els.agentSessionList.innerHTML = list.map((conv) => `
+    <button class="agent-session-row ${state.activeConversation?.id === conv.id ? "is-active" : ""}" type="button" data-session-id="${conv.id}" title="${escapeHtml(conv.title || "Untitled")}">
+      <span class="agent-session-title">${escapeHtml(conv.title || "Untitled")}</span>
+      <span class="agent-session-dir">${escapeHtml(conv.workdir || "default workspace")}</span>
+    </button>
+  `).join("");
+  els.agentSessionList.querySelectorAll("[data-session-id]").forEach((row) => {
+    row.addEventListener("click", () => loadConversation(row.dataset.sessionId));
+  });
 }
 
 async function loadProjects() {
@@ -3934,6 +4068,7 @@ function bindEvents() {
   // Chat / Agent mode tabs
   document.querySelectorAll(".mode-tab").forEach((tab) => {
     tab.addEventListener("click", () => {
+      Sounds.tabSwitch();
       if (state.runningConversationId) stopStream();
       setMode(tab.dataset.mode);
     });
@@ -3947,6 +4082,37 @@ function bindEvents() {
       pickAgentDir();
     });
   });
+  if (els.agentFolderGoButton) {
+    els.agentFolderGoButton.addEventListener("click", () => listAgentFolders(els.agentFolderPath.value.trim()));
+  }
+  if (els.agentFolderPath) {
+    els.agentFolderPath.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        listAgentFolders(els.agentFolderPath.value.trim());
+      }
+    });
+  }
+  if (els.agentFolderUp) {
+    els.agentFolderUp.addEventListener("click", () => {
+      const parent = dirParent(state.agentPickDir);
+      if (parent) listAgentFolders(parent);
+    });
+  }
+  if (els.agentFolderNative) els.agentFolderNative.addEventListener("click", pickAgentDir);
+  if (els.agentFolderRefresh) {
+    els.agentFolderRefresh.addEventListener("click", () => listAgentFolders(state.agentPickDir));
+  }
+  if (els.agentFolderSelect) {
+    els.agentFolderSelect.addEventListener("click", () => {
+      const dir = (els.agentFolderPath.value || "").trim();
+      els.agentFolderModal.hidden = true;
+      if (dir && dir !== state.settings.agentDir) {
+        setAgentDir(dir);
+        showNotification("Agent working directory set", "success");
+      }
+    });
+  }
   if (els.agentDirInput) {
     els.agentDirInput.addEventListener("change", () => {
       state.settings.agentDir = els.agentDirInput.value.trim();
@@ -3954,6 +4120,7 @@ function bindEvents() {
     });
   }
   if (els.agentProjectAdd) els.agentProjectAdd.addEventListener("click", saveCurrentProject);
+  if (els.agentNewSession) els.agentNewSession.addEventListener("click", newChat);
   if (els.agentFilesUp) els.agentFilesUp.addEventListener("click", goUpAgentFiles);
   if (els.agentFilesRefresh) {
     els.agentFilesRefresh.addEventListener("click", () => loadAgentFiles(state.agentFileDir || getAgentRoot()));
@@ -4002,9 +4169,15 @@ function bindEvents() {
   els.promptInput.addEventListener("input", resizePrompt);
   els.promptInput.addEventListener("keydown", (event) => {
     if (event.key === "Enter" && !event.shiftKey && state.settings.enterToSend) {
+      Sounds.keyReturn();
       event.preventDefault();
       submitPrompt(event);
+      return;
     }
+    if (event.metaKey || event.ctrlKey || event.altKey) return;
+    if (event.key === "Backspace" || event.key === "Delete") Sounds.key();
+    else if (event.key === " ") Sounds.keySpace();
+    else if (event.key.length === 1) Sounds.key();
   });
   els.composer.addEventListener("submit", submitPrompt);
   els.searchInput.addEventListener("input", debounce(runSearch, 160));
@@ -4097,7 +4270,33 @@ function bindEvents() {
     els.soundEffectsToggle.addEventListener("change", () => {
       state.settings.soundEffects = els.soundEffectsToggle.checked;
       applySettings();
-      if (state.settings.soundEffects) Sounds.toggle();
+      Sounds.toggle();
+    });
+  }
+  if (els.typingToggle) {
+    els.typingToggle.addEventListener("change", () => {
+      state.settings.typingSounds = els.typingToggle.checked;
+      applySettings();
+      if (state.settings.typingSounds) {
+        Sounds.key(true);
+        setTimeout(() => Sounds.key(), 120);
+      }
+    });
+  }
+  if (els.soundVolumeSlider) {
+    els.soundVolumeSlider.addEventListener("input", () => {
+      state.settings.soundVolume = Number(els.soundVolumeSlider.value) / 100;
+      els.soundVolumeSlider.style.setProperty("--fill", `${Number(els.soundVolumeSlider.value)}%`);
+      applySettings();
+    });
+    els.soundVolumeSlider.addEventListener("change", () => Sounds.click());
+  }
+  if (els.settingsModal) {
+    els.settingsModal.addEventListener("change", (event) => {
+      const input = event.target.closest?.(".toggle-input");
+      if (!input) return;
+      if (input.id === "soundEffectsToggle" || input.id === "typingToggle") return;
+      Sounds.toggle();
     });
   }
   if (els.ambientToggle) {

@@ -309,13 +309,13 @@ function register(app) {
   });
 
   // Conversations
-  app.get('/api/conversations', (_req, res) => {
-    res.json(storage.list());
+  app.get('/api/conversations', (req, res) => {
+    res.json(storage.list(req.query.mode));
   });
 
   // Recently deleted (recoverable) conversations
-  app.get('/api/conversations/deleted', (_req, res) => {
-    res.json(storage.listDeleted(CONFIG.storage?.deletedRetentionDays || 30));
+  app.get('/api/conversations/deleted', (req, res) => {
+    res.json(storage.listDeleted(req.query.mode, CONFIG.storage?.deletedRetentionDays || 30));
   });
 
   app.get('/api/conversations/deleted/:id', (req, res) => {
@@ -366,8 +366,8 @@ function register(app) {
   });
 
   app.post('/api/conversations', (req, res) => {
-    const { title, model, provider, autoTitle } = req.body || {};
-    const conv = storage.create(title, model, provider, { autoTitle });
+    const { title, model, provider, autoTitle, mode, workdir } = req.body || {};
+    const conv = storage.create(title, model, provider, { autoTitle, mode, workdir });
     res.status(201).json(conv);
   });
 
@@ -642,7 +642,7 @@ function register(app) {
   app.get('/api/search', (req, res) => {
     const q = req.query.q;
     if (!q) return res.json([]);
-    res.json(storage.search(q));
+    res.json(storage.search(q, req.query.mode));
   });
 
   // Uninstall the app: clean up, remove data, and exit
