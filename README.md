@@ -165,7 +165,7 @@ This project is currently distributed under the **Diskette Labs Temporary Develo
 
 The source code is publicly available for transparency, learning, evaluation, testing, and authorized development. However, it may **not be modified, forked, redistributed, republished, sold, sublicensed, relicensed, or used to create derivative works** without express written permission from Diskette Labs.
 
-Contributors may modify and work on the project only within the permissions granted to them through the project's contributor structure and `CONTRIBUTORS.md`.
+Contributors may modify and work on the project only within the permissions granted to them through the project's contributor structure and `CONTRIBUTING.md`.
 
 Diskette Labs intends to release a future version of the project under an open-source license. **That future release will not automatically relicense previous versions.** Versions covered by this license will remain under their existing terms and copyright unless Diskette Labs explicitly states otherwise.
 
