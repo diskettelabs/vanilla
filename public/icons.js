@@ -37,14 +37,15 @@
     search: "search",
     "settings-2": "settings",
     "shield-check": "shield",
-    sparkles: "sparkles",
+    sparkles: "scoop",
     square: "stop",
     "square-pen": "new-chat",
     "trash-2": "trash",
     "triangle-alert": "alert-triangle",
     upload: "upload",
     "wand-sparkles": "wand",
-    wrench: "tools",
+    tools: "tools",
+    wrench: "wrench",
     x: "close",
   };
 

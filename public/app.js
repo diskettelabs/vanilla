@@ -439,11 +439,10 @@ function setMode(mode) {
       ? `Agent ready in ${state.settings.agentDir}. What should we build?`
       : "Agent ready. Point it at a folder and describe a task.";
   } else {
-    const empty = !state.activeConversation || !state.activeConversation.messages?.length;
-    if (empty) {
-      els.emptyState.hidden = false;
-      if (!themeGreeting) chooseGreeting();
-    }
+    renderMessages(state.activeConversation);
+    const empty = !state.activeConversation?.messages?.length;
+    els.emptyState.hidden = !empty;
+    if (empty && !themeGreeting) chooseGreeting();
   }
   localStorage.setItem("vanilla-mode", state.mode);
   if (isAgent) setTimeout(() => els.promptInput.focus(), 0);
@@ -3916,6 +3915,17 @@ function bindEvents() {
     state.settings.webSearch = !state.settings.webSearch;
     applySettings();
   });
+  document.querySelector('[data-tool="extensions"]')?.addEventListener("click", () => {
+    const toolsBar = document.querySelector(".omnibar-tools");
+    const toolsMenu = document.querySelector("#toolsMenu");
+    const expanded = toolsBar?.dataset.expanded !== "true";
+    if (toolsBar) toolsBar.dataset.expanded = String(expanded);
+    if (toolsMenu) {
+      toolsMenu.setAttribute("aria-hidden", String(!expanded));
+      toolsMenu.inert = !expanded;
+    }
+    document.querySelector('[data-tool="extensions"]')?.setAttribute("aria-expanded", String(expanded));
+  });
   document.querySelector('[data-tool="tools"]')?.addEventListener("click", () => {
     state.settings.workspaceTools = !state.settings.workspaceTools;
     applySettings();
@@ -4214,7 +4224,9 @@ function bindEvents() {
     }
   });
 
-  document.querySelector('[data-tool="attach"]').addEventListener("click", () => els.fileInput.click());
+  document.querySelectorAll('[data-tool="attach"], [data-action="attach"]').forEach((button) => {
+    button.addEventListener("click", () => els.fileInput.click());
+  });
   
   // Dictation button
   if (els.dictationButton) {

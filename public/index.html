@@ -20,18 +20,17 @@
           <button class="icon-button sidebar-toggle" type="button" aria-label="Collapse sidebar" title="Collapse sidebar">
             <i data-icon="panel-left-close" aria-hidden="true"></i>
           </button>
-        </div>
-
-        <div class="collapsed-actions">
-          <button class="icon-button collapsed-action" type="button" data-action="new-chat" aria-label="New chat" title="New chat">
-            <i data-icon="square-pen" aria-hidden="true"></i>
-          </button>
-          <button class="icon-button collapsed-action" type="button" data-action="search" aria-label="Search" title="Search">
-            <i data-icon="search" aria-hidden="true"></i>
-          </button>
-          <button class="icon-button collapsed-action" type="button" data-action="workspace" aria-label="Workspace" title="Workspace">
-            <i data-icon="folder-closed" aria-hidden="true"></i>
-          </button>
+          <div class="collapsed-actions">
+            <button class="icon-button collapsed-action" type="button" data-action="new-chat" aria-label="New chat" title="New chat">
+              <i data-icon="square-pen" aria-hidden="true"></i>
+            </button>
+            <button class="icon-button collapsed-action" type="button" data-action="search" aria-label="Search" title="Search">
+              <i data-icon="search" aria-hidden="true"></i>
+            </button>
+            <button class="icon-button collapsed-action" type="button" data-action="attach" aria-label="Attach files" title="Attach files">
+              <i data-icon="paperclip" aria-hidden="true"></i>
+            </button>
+          </div>
         </div>
 
         <div class="quick-actions">
@@ -77,15 +76,14 @@
           <button class="icon-button sidebar-toggle" type="button" aria-label="Collapse sidebar" title="Collapse sidebar">
             <i data-icon="panel-left-close" aria-hidden="true"></i>
           </button>
-        </div>
-
-        <div class="collapsed-actions agent-collapsed-actions">
-          <button class="icon-button collapsed-action" type="button" data-action="toggle-agent-sidebar" aria-label="Open projects" title="Projects">
-            <i data-icon="wrench" aria-hidden="true"></i>
-          </button>
-          <button class="icon-button collapsed-action" type="button" data-action="settings" aria-label="Settings" title="Settings">
-            <i data-icon="settings-2" aria-hidden="true"></i>
-          </button>
+          <div class="collapsed-actions agent-collapsed-actions">
+            <button class="icon-button collapsed-action" type="button" data-action="toggle-agent-sidebar" aria-label="Open projects" title="Projects">
+              <i data-icon="wrench" aria-hidden="true"></i>
+            </button>
+            <button class="icon-button collapsed-action" type="button" data-action="settings" aria-label="Settings" title="Settings">
+              <i data-icon="settings-2" aria-hidden="true"></i>
+            </button>
+          </div>
         </div>
 
         <div class="agent-sidebar-scroll">
@@ -230,7 +228,10 @@
                 <rect class="mascot-eye mascot-eye-r" x="23.64" y="12.25" width="4.18" height="11.36" rx="2.09" fill="currentColor"/>
               </g>
             </svg>
-            <p id="greeting">Ready when you are.</p>
+            <div class="empty-state-copy">
+              <strong>Vanilla</strong>
+              <p id="greeting">Ready when you are.</p>
+            </div>
           </div>
           <div id="messages" class="messages" aria-label="Messages"></div>
         </section>
@@ -244,29 +245,36 @@
             <div class="omnibar-tools">
               <button class="pill-tool" type="button" data-tool="attach">
                 <i data-icon="paperclip" aria-hidden="true"></i>
-                <span>attach file</span>
+                <span>attach files</span>
               </button>
-              <button class="pill-tool" type="button" data-tool="compare">
-                <i data-icon="columns-2" aria-hidden="true"></i>
-                <span>compare</span>
+              <button class="pill-tool" type="button" data-tool="extensions" aria-controls="toolsMenu" aria-expanded="false" title="Show extensions">
+                <i data-icon="tools" aria-hidden="true"></i>
+                <span>extensions</span>
+                <i class="tools-chevron" data-icon="chevron-right" aria-hidden="true"></i>
               </button>
-              <button class="pill-tool" type="button" data-tool="search" title="Let the AI search the web with a tool when it needs fresh info">
-                <i data-icon="search" aria-hidden="true"></i>
-                <span id="searchPillLabel">search</span>
-              </button>
-              <button class="pill-tool" type="button" data-tool="tools" title="Toggle workspace tools for the AI">
-                <i data-icon="wrench" aria-hidden="true"></i>
-                <span id="toolsPillLabel">tools</span>
-              </button>
-              <button class="pill-tool" type="button" data-tool="prompt" title="Set instructions for this chat">
-                <i data-icon="pencil-line" aria-hidden="true"></i>
-                <span id="promptPillLabel">prompt</span>
-              </button>
-              <button id="dictationButton" class="pill-tool" type="button" data-tool="dictation" aria-label="Toggle dictation" title="Voice input">
-                <i data-icon="mic" aria-hidden="true"></i>
-                <span id="dictationLabel">dictate</span>
-              </button>
+              <div id="toolsMenu" class="tools-menu" aria-hidden="true" inert>
+                <button class="pill-tool" type="button" data-tool="tools" aria-pressed="false" title="Toggle workspace tools for the AI">
+                  <i data-icon="wrench" aria-hidden="true"></i>
+                  <span id="toolsPillLabel">tools</span>
+                </button>
+                <button class="pill-tool" type="button" data-tool="compare">
+                  <i data-icon="columns-2" aria-hidden="true"></i>
+                  <span>compare</span>
+                </button>
+                <button class="pill-tool" type="button" data-tool="search" title="Let the AI search the web with a tool when it needs fresh info">
+                  <i data-icon="search" aria-hidden="true"></i>
+                  <span id="searchPillLabel">search</span>
+                </button>
+                <button class="pill-tool" type="button" data-tool="prompt" title="Set instructions for this chat">
+                  <i data-icon="pencil-line" aria-hidden="true"></i>
+                  <span id="promptPillLabel">prompt</span>
+                </button>
+              </div>
             </div>
+            <button id="dictationButton" class="icon-button dictation-button" type="button" data-tool="dictation" aria-label="Toggle dictation" title="Voice input">
+              <i data-icon="mic" aria-hidden="true"></i>
+              <span id="dictationLabel" class="sr-only">dictate</span>
+            </button>
             <button id="submitButton" class="submit-button" type="submit" aria-label="Submit message" title="Submit">
               <i id="submitIcon" data-icon="arrow-up" aria-hidden="true"></i>
             </button>
