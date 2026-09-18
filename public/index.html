@@ -90,6 +90,21 @@
 
         <div class="agent-sidebar-scroll">
           <section class="agent-section">
+            <div class="agent-section-head">
+              <h2 class="agent-section-title">
+                <i data-icon="message-circle-more" aria-hidden="true"></i>
+                Sessions
+              </h2>
+              <button id="agentNewSession" class="icon-button" type="button" title="New agent session" aria-label="New agent session">
+                <i data-icon="file-plus-2" aria-hidden="true"></i>
+              </button>
+            </div>
+            <div id="agentSessionList" class="agent-session-list">
+              <p class="muted-note project-empty">No agent sessions yet. Start one below.</p>
+            </div>
+          </section>
+
+          <section class="agent-section">
             <h2 class="agent-section-title">
               <i data-icon="folder-closed" aria-hidden="true"></i>
               Working directory
@@ -317,6 +332,46 @@
             </div>
           </div>
           <textarea id="workspaceFileContent" class="settings-textarea" rows="14" placeholder="File contents..." spellcheck="false"></textarea>
+        </div>
+      </section>
+    </div>
+
+    <div id="agentFolderModal" class="modal-backdrop" hidden>
+      <section class="modal agent-folder-modal" role="dialog" aria-modal="true" aria-labelledby="agentFolderTitle">
+        <div class="modal-head">
+          <h2 id="agentFolderTitle">Agent working directory</h2>
+          <button class="text-button" type="button" data-close-modal>Close</button>
+        </div>
+        <div class="agent-folder-path-row">
+          <input id="agentFolderPath" class="modal-input" type="text" placeholder="/path/to/your/project" autocomplete="off" spellcheck="false">
+          <button id="agentFolderGoButton" class="pill-tool" type="button" title="Jump to the path you typed">
+            <i data-icon="chevron-right" aria-hidden="true"></i>
+            <span>go</span>
+          </button>
+        </div>
+        <div class="agent-folder-actions">
+          <button id="agentFolderUp" class="pill-tool" type="button" title="Up one folder" hidden>
+            <i data-icon="arrow-left" aria-hidden="true"></i>
+            <span>up</span>
+          </button>
+          <button id="agentFolderNative" class="pill-tool" type="button" title="Use the system folder picker" hidden>
+            <i data-icon="folder-open" aria-hidden="true"></i>
+            <span>system picker</span>
+          </button>
+          <button id="agentFolderRefresh" class="pill-tool" type="button" title="Refresh folder list">
+            <i data-icon="refresh-cw" aria-hidden="true"></i>
+            <span>refresh</span>
+          </button>
+          <span id="agentFolderHint" class="agent-folder-hint" aria-live="polite"></span>
+        </div>
+        <div id="agentFolderList" class="workspace-file-list agent-folder-list">
+          <p class="muted-note">Loading folders…</p>
+        </div>
+        <div class="agent-folder-foot">
+          <button id="agentFolderSelect" class="pill-tool agent-folder-select" type="button">
+            <i data-icon="circle-check" aria-hidden="true"></i>
+            <span>select this folder</span>
+          </button>
         </div>
       </section>
     </div>
@@ -673,6 +728,30 @@
                     <input id="soundEffectsToggle" type="checkbox" class="toggle-input">
                     <span class="toggle-slider"></span>
                     <span class="toggle-label">Play UI sound effects</span>
+                  </label>
+                  <label class="check-row">
+                    <input id="typingToggle" type="checkbox" class="toggle-input">
+                    <span class="toggle-slider"></span>
+                    <span class="toggle-label">Play typing sounds</span>
+                  </label>
+                  <label class="settings-label" style="margin-top: 2px;">
+                    <span class="label-text">Typing sound</span>
+                    <div class="settings-picker" id="typingStylePicker" data-open="false">
+                      <button type="button" class="settings-picker-button" aria-haspopup="listbox" aria-expanded="false">
+                        <span class="settings-picker-label"></span>
+                        <i class="settings-picker-chevron" data-icon="chevron-down" aria-hidden="true"></i>
+                      </button>
+                      <div class="settings-picker-menu" role="listbox">
+                        <div class="settings-picker-options"></div>
+                      </div>
+                    </div>
+                  </label>
+                  <label class="settings-label slider-row">
+                    <span class="label-text">Sound volume</span>
+                    <span class="range-wrap">
+                      <input id="soundVolumeSlider" type="range" min="0" max="100" step="5" value="90" class="volume-range">
+                      <span id="soundVolumeValue" class="range-value">90%</span>
+                    </span>
                   </label>
                   <label class="check-row">
                     <input id="ambientToggle" type="checkbox" class="toggle-input">

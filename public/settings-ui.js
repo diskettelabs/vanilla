@@ -4,6 +4,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   tabs.forEach(tab => {
     tab.addEventListener('click', () => {
+      if (typeof Sounds !== 'undefined') Sounds.tabSwitch();
       // Remove active from all tabs and panes
       tabs.forEach(t => t.classList.remove('active'));
       panes.forEach(p => p.classList.remove('active'));

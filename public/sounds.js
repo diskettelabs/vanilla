@@ -3,6 +3,10 @@ const Sounds = (() => {
   let ctx = null;
   let master = null;
   let enabled = true;
+  let keyEnabled = false;
+  let keyStyle = "mechanical";
+  let volume = 0.9;
+  let lastKeyTime = 0;
 
   function ensureContext() {
     if (ctx) {
@@ -13,7 +17,7 @@ const Sounds = (() => {
     if (!AC) return null;
     ctx = new AC();
     master = ctx.createGain();
-    master.gain.value = 0.9;
+    master.gain.value = volume;
     master.connect(ctx.destination);
     return ctx;
   }
@@ -41,12 +45,219 @@ const Sounds = (() => {
     notes.forEach((n) => tone(n));
   }
 
+  // Short filtered-noise burst (used by the typewriter style)
+  function burst({ duration = 0.02, volume = 0.05, lowpass = 4800 }) {
+    const ac = ensureContext();
+    if (!ac) return;
+    const t0 = ac.currentTime;
+    const len = Math.max(1, Math.floor(ac.sampleRate * duration));
+    const buf = ac.createBuffer(1, len, ac.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) data[i] = Math.random() * 2 - 1;
+    const src = ac.createBufferSource();
+    src.buffer = buf;
+    const g = ac.createGain();
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(volume, t0 + 0.002);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + duration);
+    const f = ac.createBiquadFilter();
+    f.type = "lowpass";
+    f.frequency.value = lowpass;
+    src.connect(f);
+    f.connect(g);
+    g.connect(master);
+    src.start(t0);
+    src.stop(t0 + duration + 0.02);
+  }
+
+  const TYPING_STYLES = {
+    mechanical: {
+      key() {
+        tone({
+          freq: 520 + Math.round(Math.random() * 180),
+          duration: 0.03,
+          type: "triangle",
+          volume: 0.05,
+        });
+        tone({
+          freq: 1500 + Math.round(Math.random() * 400),
+          duration: 0.014,
+          type: "square",
+          volume: 0.013,
+        });
+      },
+      space() {
+        tone({ freq: 300, freqEnd: 250, duration: 0.035, type: "triangle", volume: 0.04 });
+        tone({
+          freq: 1300 + Math.round(Math.random() * 300),
+          duration: 0.011,
+          type: "square",
+          volume: 0.009,
+        });
+      },
+      enter() {
+        tone({ freq: 250, freqEnd: 190, duration: 0.07, type: "sine", volume: 0.055 });
+      },
+    },
+    membrane: {
+      key() {
+        tone({
+          freq: 430 + Math.round(Math.random() * 90),
+          freqEnd: 330,
+          duration: 0.045,
+          type: "sine",
+          volume: 0.045,
+        });
+      },
+      space() {
+        tone({ freq: 270, freqEnd: 225, duration: 0.05, type: "sine", volume: 0.035 });
+      },
+      enter() {
+        tone({ freq: 225, freqEnd: 175, duration: 0.09, type: "sine", volume: 0.05 });
+      },
+    },
+    typewriter: {
+      key() {
+        burst({ duration: 0.016, volume: 0.05, lowpass: 4800 });
+        tone({
+          freq: 700 + Math.round(Math.random() * 120),
+          freqEnd: 480,
+          duration: 0.02,
+          type: "triangle",
+          volume: 0.03,
+        });
+      },
+      space() {
+        burst({ duration: 0.02, volume: 0.035, lowpass: 3200 });
+        tone({ freq: 260, freqEnd: 210, duration: 0.035, type: "triangle", volume: 0.028 });
+      },
+      enter() {
+        burst({ duration: 0.06, volume: 0.045, lowpass: 2200 });
+        tone({ freq: 185, freqEnd: 140, duration: 0.1, type: "sine", volume: 0.06 });
+      },
+    },
+    cherry: {
+      key() {
+        tone({
+          freq: 880 + Math.round(Math.random() * 120),
+          duration: 0.02,
+          type: "triangle",
+          volume: 0.035,
+        });
+      },
+      space() {
+        tone({ freq: 620, duration: 0.022, type: "triangle", volume: 0.028 });
+      },
+      enter() {
+        tone({ freq: 440, freqEnd: 330, duration: 0.06, type: "triangle", volume: 0.04 });
+      },
+    },
+  };
+
+  function typingStyle() {
+    return TYPING_STYLES[keyStyle] || TYPING_STYLES.mechanical;
+  }
+
+  function playKey() {
+    if (!enabled || !keyEnabled) return;
+    const ac = ensureContext();
+    if (!ac) return;
+    if (ac.currentTime - lastKeyTime < 0.028) return;
+    lastKeyTime = ac.currentTime;
+    typingStyle().key();
+  }
+
+  function playSpace() {
+    if (!enabled || !keyEnabled) return;
+    const ac = ensureContext();
+    if (!ac) return;
+    if (ac.currentTime - lastKeyTime < 0.04) return;
+    lastKeyTime = ac.currentTime;
+    typingStyle().space();
+  }
+
+  function playEnter() {
+    if (!enabled || !keyEnabled) return;
+    const ac = ensureContext();
+    if (!ac) return;
+    if (ac.currentTime - lastKeyTime < 0.06) return;
+    lastKeyTime = ac.currentTime;
+    typingStyle().enter();
+  }
+
   return {
     setEnabled(value) {
       enabled = Boolean(value);
     },
     isEnabled() {
       return enabled;
+    },
+    setKeyEnabled(value) {
+      keyEnabled = Boolean(value);
+    },
+    isKeyEnabled() {
+      return keyEnabled;
+    },
+    setVolume(value) {
+      volume = Math.min(1, Math.max(0, Number(value) || 0));
+      if (ctx && master) master.gain.setTargetAtTime(volume, ctx.currentTime, 0.03);
+    },
+    getVolume() {
+      return volume;
+    },
+
+    // Mode switching (chat <-> agent)
+    modeSwitch(mode) {
+      if (mode === "agent") {
+        // Quiet boot-up arpeggio: G4 -> C5 -> E5 -> G5, terminal "slotting in" feel
+        chord([
+          { freq: 392, duration: 0.05, type: "sine", volume: 0.055 },
+          { freq: 523.25, time: 0.05, duration: 0.06, type: "sine", volume: 0.065 },
+          { freq: 659.25, time: 0.1, duration: 0.07, type: "sine", volume: 0.07 },
+          { freq: 783.99, time: 0.15, duration: 0.09, type: "sine", volume: 0.07 },
+        ]);
+        tone({ freq: 131, duration: 0.14, type: "sine", volume: 0.04 });
+      } else {
+        // Warm settle: E6 -> E5, back to home
+        chord([
+          { freq: 659.25, duration: 0.07, type: "sine", volume: 0.065 },
+          { freq: 523.25, time: 0.05, duration: 0.07, type: "sine", volume: 0.07 },
+          { freq: 392, time: 0.1, duration: 0.12, type: "sine", volume: 0.075 },
+        ]);
+      }
+    },
+    tabSwitch() {
+      chord([
+        { freq: 466, duration: 0.045, type: "triangle", volume: 0.05 },
+        { freq: 698, time: 0.035, duration: 0.06, type: "triangle", volume: 0.05 },
+      ]);
+    },
+
+    // Typing ticks (independent toggle; throttled, always fires per character)
+    key(preview = false) {
+      playKey();
+    },
+    keySpace() {
+      playSpace();
+    },
+    keyReturn() {
+      playEnter();
+    },
+    setKeyStyle(value) {
+      if (TYPING_STYLES[value]) keyStyle = value;
+    },
+    getKeyStyle() {
+      return keyStyle;
+    },
+    previewTyping() {
+      if (!enabled || !keyEnabled) return;
+      const ac = ensureContext();
+      if (!ac) return;
+      lastKeyTime = 0;
+      const seq = [playKey, playSpace, playKey, playEnter];
+      setTimeout(() => {
+        seq.forEach((fn, i) => setTimeout(fn, i * 95));
+      }, 0);
     },
 
     // Tiny interaction ticks
