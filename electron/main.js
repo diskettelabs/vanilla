@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Menu, shell, ipcMain, Notification, nativeImage } = require('electron');
+const { app, BrowserWindow, Menu, shell, dialog, ipcMain, Notification, nativeImage } = require('electron');
 const path = require('node:path');
 const fs = require('node:fs');
 const http = require('node:http');
@@ -63,6 +63,14 @@ ipcMain.on('set-app-icon', (_event, dataUrl) => {
   if (image.isEmpty()) return;
   mainWindow?.setIcon(image);
   if (process.platform === 'darwin' && app.dock) app.dock.setIcon(image);
+});
+
+ipcMain.handle('pick-folder', async () => {
+  const result = await dialog.showOpenDialog(mainWindow, {
+    title: 'Choose an agent working directory',
+    properties: ['openDirectory', 'createDirectory'],
+  });
+  return result.canceled || !result.filePaths[0] ? null : result.filePaths[0];
 });
 
 function updateSplash(percent, message) {

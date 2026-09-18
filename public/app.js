@@ -141,6 +141,19 @@ const els = {
   deletedRestoreButton: document.querySelector("#deletedRestoreButton"),
   deletedDeleteButton: document.querySelector("#deletedDeleteButton"),
   deletedRetentionPicker: document.querySelector("#deletedRetentionPicker"),
+  agentBar: document.querySelector("#agentBar"),
+  agentDirInput: document.querySelector("#agentDirInput"),
+  agentDirBrowse: document.querySelector("#agentDirBrowse"),
+  agentStatus: document.querySelector("#agentStatus"),
+  agentSidebar: document.querySelector(".agent-sidebar"),
+  agentSidebarDir: document.querySelector("#agentSidebarDir"),
+  agentProjectAdd: document.querySelector("#agentProjectAdd"),
+  projectList: document.querySelector("#projectList"),
+  agentFileList: document.querySelector("#agentFileList"),
+  agentFilesUp: document.querySelector("#agentFilesUp"),
+  agentFilesRefresh: document.querySelector("#agentFilesRefresh"),
+  agentDataSummary: document.querySelector("#agentDataSummary"),
+  agentModeToggle: document.querySelector("#agentModeToggle"),
 };
 
 const dropdowns = {};
@@ -200,7 +213,11 @@ const state = {
     deletedRetentionDays: Number(localStorage.getItem("vanilla-deleted-retention-days")) || 30,
     customIcon: localStorage.getItem("vanilla-custom-icon") || "",
     desktopNotifications: localStorage.getItem("vanilla-desktop-notifications") !== "false",
+    agentDir: localStorage.getItem("vanilla-agent-dir") || "",
+    agentMode: localStorage.getItem("vanilla-agent-mode") !== "false",
   },
+  mode: localStorage.getItem("vanilla-mode") === "agent" ? "agent" : "chat",
+  agentFileStack: [],
 };
 
 let settingsHydrated = false;
@@ -383,6 +400,45 @@ function chooseGreeting() {
   }
   const pool = timeSpecific.length ? timeSpecific : greetings;
   els.greeting.textContent = applyName(pool[Math.floor(Math.random() * pool.length)]);
+}
+
+function setMode(mode) {
+  const allowed = state.settings.agentMode !== false;
+  state.mode = mode === "agent" && allowed ? "agent" : "chat";
+  const isAgent = state.mode === "agent";
+  document.body.dataset.mode = state.mode;
+  document.body.dataset.agentUi = String(allowed);
+  document.querySelectorAll(".mode-tab").forEach((tab) => {
+    const active = tab.dataset.mode === state.mode;
+    tab.classList.toggle("is-active", active);
+    tab.setAttribute("aria-selected", String(active));
+  });
+  const modeTabs = document.getElementById("modeTabs");
+  if (modeTabs) modeTabs.style.display = allowed ? "" : "none";
+  if (els.agentBar) els.agentBar.hidden = !isAgent;
+  if (els.agentDirInput) els.agentDirInput.value = state.settings.agentDir || "";
+  if (els.agentSidebarDir) {
+    els.agentSidebarDir.textContent = state.settings.agentDir || "Default workspace";
+    els.agentSidebarDir.title = state.settings.agentDir || "";
+  }
+  if (els.agentStatus) {
+    els.agentStatus.textContent = state.settings.agentDir
+      ? `Working dir: ${state.settings.agentDir}`
+      : "No folder selected — agent tools will use the default workspace.";
+  }
+  if (isAgent) {
+    state.agentFileStack = [];
+    refreshAgentSidebar();
+  }
+  if (!allowed && els.agentSidebar) els.agentSidebar.style.display = "none";
+  els.promptInput.placeholder = isAgent
+    ? "Describe a coding task for the agent…"
+    : (themePlaceholder || PROMPT_PLACEHOLDERS[placeholderIndex] || "What are we working on?");
+  els.greeting.textContent = isAgent
+    ? (state.settings.agentDir ? `Agent ready in ${state.settings.agentDir}. What should we build?` : "Agent ready. Point it at a folder and describe a task.")
+    : (themeGreeting || applyName(greetings[0]));
+  localStorage.setItem("vanilla-mode", state.mode);
+  if (isAgent) setTimeout(() => els.promptInput.focus(), 0);
 }
 
 function escapeHtml(value) {
@@ -1138,7 +1194,7 @@ let placeholderIndex = 0;
 
 function startPlaceholderRotation() {
   setInterval(() => {
-    if (themePlaceholder) return;
+    if (themePlaceholder || state.mode === "agent") return;
     placeholderIndex = (placeholderIndex + 1) % PROMPT_PLACEHOLDERS.length;
     els.promptInput.placeholder = PROMPT_PLACEHOLDERS[placeholderIndex];
   }, 8000);
@@ -1601,7 +1657,7 @@ async function streamChat(conversationId, message, { messageAlreadySaved = false
   state.toolChips = [];
   state.responseNotified = false;
 
-  state.activeAssistant.textContent = state.settings.webSearch ? "Searching the web…" : "Loading model...";
+  state.activeAssistant.textContent = state.mode === "agent" ? "Agent attacking the task…" : "Loading model...";
   pumpTokens();
 
   const convPrompt = state.activeConversation?.customPrompt?.trim()
@@ -1623,10 +1679,12 @@ async function streamChat(conversationId, message, { messageAlreadySaved = false
         provider: state.currentProvider,
         apiKey: getApiKey(state.currentProvider) || undefined,
         customPrompt,
+        mode: state.mode,
         search: state.settings.webSearch,
         searchBackend: state.settings.searchBackend,
         searchApiKey: state.settings.searchBackend === "brave" ? (state.settings.braveApiKey || "") : undefined,
-        workspaceTools: state.settings.workspaceTools,
+        workspaceTools: state.mode === "agent" ? true : state.settings.workspaceTools,
+        agentDir: state.mode === "agent" ? (state.settings.agentDir || undefined) : undefined,
         messageAlreadySaved,
       }),
       signal: controller.signal,
@@ -1734,6 +1792,7 @@ function toolChipLabel(name, args) {
     read_file: ["reading", String(args?.path || "")],
     write_file: ["writing", String(args?.path || "")],
     delete_file: ["deleting", String(args?.path || "")],
+    run_command: ["running", String(args?.command || "")],
   };
   const [verb, target] = map[name] || [name.replace(/_/g, " "), ""];
   return { verb, target };
@@ -1743,8 +1802,9 @@ function toolChipHtml(entry) {
   const cls = entry.status === "running" ? "tool-chip-running" : entry.status === "ok" ? "tool-chip-ok" : "tool-chip-error";
   const statusText = entry.status === "running" ? "…" : entry.status === "ok" ? "done" : "failed";
   const { verb, target } = toolChipLabel(entry.name, entry.args);
+  const chipIcon = entry.name === "web_search" ? "search" : entry.name === "run_command" ? "wrench" : "folder-closed";
   return `<span class="tool-chip ${cls}" title="${entry.errorText ? escapeHtml(entry.errorText) : ""}">
-    ${icon(entry.name === "web_search" ? "search" : "folder-closed", "", 13)}
+    ${icon(chipIcon, "", 13)}
     <span class="tool-chip-verb">${escapeHtml(verb)}</span>
     ${target ? `<code class="tool-chip-target">${escapeHtml(target)}</code>` : ""}
     <span class="tool-chip-status">${statusText}</span>
@@ -2546,9 +2606,15 @@ function applySettings() {
   if (els.aiderToggle) els.aiderToggle.checked = settings.showAider;
   if (els.gooseToggle) els.gooseToggle.checked = settings.showGoose;
   if (els.openCodeToggle) els.openCodeToggle.checked = settings.showOpenCode;
+  if (els.agentDirInput && document.activeElement !== els.agentDirInput) {
+    els.agentDirInput.value = settings.agentDir || "";
+  }
   if (els.autoNameToggle) els.autoNameToggle.checked = settings.autoName;
   if (els.webSearchToggle) els.webSearchToggle.checked = settings.webSearch;
   if (els.workspaceToolsToggle) els.workspaceToolsToggle.checked = settings.workspaceTools;
+  if (els.agentModeToggle) els.agentModeToggle.checked = settings.agentMode !== false;
+  document.body.dataset.agentUi = String(settings.agentMode !== false);
+  if (settings.agentMode === false && state.mode === "agent") setMode("chat");
   const searchPill = document.querySelector('[data-tool="search"]');
   if (searchPill) {
     searchPill.dataset.active = String(settings.webSearch);
@@ -2608,6 +2674,8 @@ function applySettings() {
   localStorage.setItem("vanilla-deleted-retention-days", String(settings.deletedRetentionDays || 30));
   localStorage.setItem("vanilla-custom-icon", settings.customIcon || "");
   localStorage.setItem("vanilla-desktop-notifications", String(settings.desktopNotifications));
+  localStorage.setItem("vanilla-agent-dir", settings.agentDir || "");
+  localStorage.setItem("vanilla-agent-mode", String(settings.agentMode !== false));
   applyCompareVisibility();
   queueSettingsSave();
 }
@@ -2794,6 +2862,156 @@ function renderWorkspaceFiles(files) {
   els.workspaceFileList.querySelectorAll(".workspace-file-delete").forEach((button) => {
     button.addEventListener("click", () => deleteWorkspaceFile(button.dataset.deletePath));
   });
+}
+
+function getAgentRoot() {
+  return state.settings.agentDir || "";
+}
+
+function setAgentDir(dir) {
+  state.settings.agentDir = dir || "";
+  applySettings();
+  setMode("agent");
+}
+
+async function refreshAgentSidebar() {
+  loadProjects();
+  updateAgentData();
+  await loadAgentFiles(getAgentRoot());
+}
+
+async function loadProjects() {
+  if (!els.projectList) return;
+  try {
+    const data = await api("/api/agent/projects");
+    renderProjects(data.projects || []);
+  } catch (error) {
+    els.projectList.innerHTML = `<p class="muted-note project-empty">Couldn't load projects. ${escapeHtml(error.message || "")}</p>`;
+  }
+}
+
+function renderProjects(projects) {
+  if (!els.projectList) return;
+  const current = getAgentRoot();
+  if (!Array.isArray(projects) || !projects.length) {
+    els.projectList.innerHTML = `<p class="muted-note project-empty">No projects yet. Save your working directory to pin it here.</p>`;
+    return;
+  }
+  els.projectList.innerHTML = projects.map((project) => `
+    <button class="project-row ${project.dir === current ? "is-current" : ""}" type="button" data-project-index="${project.index}" title="${escapeHtml(project.dir)}">
+      ${icon(project.dir === current ? "folder-open" : "folder-closed", "", 15)}
+      <span class="project-name">${escapeHtml(project.name)}</span>
+      <span class="project-dir">${escapeHtml(project.dir)}</span>
+      <span class="project-remove" role="button" data-project-remove="${project.index}" title="Remove project" aria-label="Remove ${escapeHtml(project.name)}">${icon("x", "", 13)}</span>
+    </button>
+  `).join("");
+  els.projectList.querySelectorAll(".project-row").forEach((row) => {
+    row.addEventListener("click", (event) => {
+      if (event.target.closest("[data-project-remove]")) return;
+      const index = Number(row.dataset.projectIndex);
+      const project = projects.find((p) => p.index === index);
+      if (project) setAgentDir(project.dir);
+    });
+  });
+  els.projectList.querySelectorAll("[data-project-remove]").forEach((button) => {
+    button.addEventListener("click", async (event) => {
+      event.stopPropagation();
+      const index = Number(button.dataset.projectRemove);
+      try {
+        await api(`/api/agent/projects/${index}`, { method: "DELETE" });
+        loadProjects();
+      } catch (error) {
+        showNotification(error.message || "Couldn't remove project", "error");
+      }
+    });
+  });
+}
+
+async function saveCurrentProject() {
+  const dir = getAgentRoot();
+  if (!dir) {
+    showNotification("Set a working directory first (top-center bar).", "info", 4000);
+    return;
+  }
+  try {
+    await api("/api/agent/projects", {
+      method: "POST",
+      body: JSON.stringify({ dir }),
+    });
+    loadProjects();
+    updateAgentData();
+    showNotification("Project saved", "success");
+  } catch (error) {
+    showNotification(error.message || "Couldn't save the project", "error");
+  }
+}
+
+async function loadAgentFiles(dir) {
+  if (!els.agentFileList) return;
+  els.agentFileList.innerHTML = `<p class="muted-note project-empty">Loading files…</p>`;
+  state.agentFileDir = dir;
+  els.agentFilesUp.hidden = !state.agentFileStack.length;
+  try {
+    const data = await api(`/api/agent/files?dir=${encodeURIComponent(dir || "")}`);
+    renderAgentFiles(data.entries || []);
+  } catch (error) {
+    els.agentFileList.innerHTML = `<p class="muted-note project-empty">${escapeHtml(error.message || "Couldn't list files.")}</p>`;
+  }
+}
+
+function renderAgentFiles(entries) {
+  if (!els.agentFileList) return;
+  if (!Array.isArray(entries) || !entries.length) {
+    els.agentFileList.innerHTML = `<p class="muted-note project-empty">Empty folder.</p>`;
+    return;
+  }
+  const rows = entries.map((entry) => {
+    const isDir = entry.type === "dir";
+    const name = entry.name;
+    return `
+      <button class="agent-file-row ${isDir ? "is-dir" : ""}" type="button" data-file-name="${escapeHtml(name)}">
+        ${icon(isDir ? "folder-closed" : "file", "", 14)}
+        <span class="agent-file-name">${escapeHtml(name)}</span>
+        <span class="agent-file-meta">${isDir ? "" : formatFileSize(entry.size)}</span>
+      </button>`;
+  }).join("");
+  els.agentFileList.innerHTML = rows;
+
+  els.agentFileList.querySelectorAll(".agent-file-row.is-dir").forEach((row) => {
+    row.addEventListener("click", () => {
+      const name = row.dataset.fileName;
+      const next = state.agentFileDir ? `${state.agentFileDir.replace(/\/+$/, "")}/${name}` : name;
+      state.agentFileStack.push(state.agentFileDir || "");
+      loadAgentFiles(next);
+    });
+  });
+}
+
+function goUpAgentFiles() {
+  if (!state.agentFileStack.length) return;
+  const parent = state.agentFileStack.pop();
+  loadAgentFiles(parent);
+}
+
+async function updateAgentData() {
+  if (!els.agentDataSummary) return;
+  els.agentDataSummary.innerHTML = `<span>Loading…</span>`;
+  try {
+    const [projects, files] = await Promise.all([
+      api("/api/agent/projects"),
+      api(`/api/agent/files?dir=${encodeURIComponent(getAgentRoot())}&flat=1`),
+    ]);
+    const projectCount = (projects.projects || []).length;
+    const fileCount = (files.files || []).length;
+    const totalSize = files.totalSize || 0;
+    els.agentDataSummary.innerHTML = `
+      <span class="agent-data-row"><span>Projects</span><b>${projectCount}</b></span>
+      <span class="agent-data-row"><span>Files</span><b>${fileCount}</b></span>
+      <span class="agent-data-row"><span>Size</span><b>${formatFileSize(totalSize)}</b></span>
+    `;
+  } catch {
+    els.agentDataSummary.innerHTML = `<span>Agent data unavailable.</span>`;
+  }
 }
 
 function newWorkspaceFile() {
@@ -3609,10 +3827,14 @@ function bindEvents() {
     const next = els.shell.dataset.sidebar === "open" ? "closed" : "open";
     state.settings.sidebar = next;
     applySettings();
-    els.sidebarToggle.setAttribute("aria-label", next === "open" ? "Collapse sidebar" : "Expand sidebar");
+    const label = next === "open" ? "Collapse sidebar" : "Expand sidebar";
+    document.querySelectorAll(".sidebar-toggle, .main-sidebar-toggle").forEach((button) => button.setAttribute("aria-label", label));
   };
-  els.sidebarToggle.addEventListener("click", toggleSidebar);
-  els.mainSidebarToggle.addEventListener("click", toggleSidebar);
+  document.querySelectorAll(".sidebar-toggle, .main-sidebar-toggle").forEach((button) => button.addEventListener("click", toggleSidebar));
+  document.querySelectorAll('[data-action="toggle-agent-sidebar"]').forEach((button) => button.addEventListener("click", toggleSidebar));
+  document.querySelectorAll('[data-action="settings"]').forEach((button) => {
+    button.addEventListener("click", () => openModal(els.settingsModal));
+  });
   document.querySelectorAll('[data-action="new-chat"]').forEach((button) => {
     button.addEventListener("click", newChat);
   });
@@ -3649,6 +3871,52 @@ function bindEvents() {
     state.settings.workspaceTools = !state.settings.workspaceTools;
     applySettings();
   });
+
+  // Chat / Agent mode tabs
+  document.querySelectorAll(".mode-tab").forEach((tab) => {
+    tab.addEventListener("click", () => {
+      if (state.runningConversationId) stopStream();
+      setMode(tab.dataset.mode);
+    });
+  });
+  if (els.agentDirBrowse) {
+    els.agentDirBrowse.addEventListener("click", async () => {
+      const picked = window.electronAPI?.pickFolder ? await window.electronAPI.pickFolder() : null;
+      if (picked) {
+        state.settings.agentDir = picked;
+        applySettings();
+        setMode("agent");
+        showNotification("Agent working directory set", "success");
+      } else {
+        showNotification("Use Browse… in the desktop app, or paste an absolute folder path.", "info", 4000);
+      }
+    });
+  }
+  if (els.agentDirInput) {
+    els.agentDirInput.addEventListener("change", () => {
+      state.settings.agentDir = els.agentDirInput.value.trim();
+      applySettings();
+    });
+  }
+  if (els.agentProjectAdd) els.agentProjectAdd.addEventListener("click", saveCurrentProject);
+  if (els.agentFilesUp) els.agentFilesUp.addEventListener("click", goUpAgentFiles);
+  if (els.agentFilesRefresh) {
+    els.agentFilesRefresh.addEventListener("click", () => loadAgentFiles(state.agentFileDir || getAgentRoot()));
+  }
+  if (els.agentModeToggle) {
+    els.agentModeToggle.addEventListener("change", () => {
+      state.settings.agentMode = els.agentModeToggle.checked;
+      applySettings();
+      setMode(state.mode);
+      if (els.agentModeToggle.checked) {
+        refreshAgentSidebar();
+        showNotification("Agent mode enabled", "success");
+      } else {
+        state.agentFileStack = [];
+        showNotification("Agent mode disabled", "info");
+      }
+    });
+  }
   els.conversationPromptSave.addEventListener("click", saveConversationPrompt);
   els.conversationPromptClear.addEventListener("click", clearConversationPrompt);
   els.uninstallButton.addEventListener("click", uninstallApp);
@@ -4435,6 +4703,7 @@ async function boot() {
   chooseGreeting();
   await loadPersistentSettings();
   applySettings(); // Apply settings immediately to prevent sidebar animation on load
+  setMode(state.mode);
   if (window.matchMedia("(max-width: 840px)").matches) {
     els.shell.dataset.sidebar = "closed";
   }

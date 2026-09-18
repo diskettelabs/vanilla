@@ -1,3 +1,4 @@
+const { execFile } = require('node:child_process');
 const http = require('node:http');
 const https = require('node:https');
 const workspace = require('./workspace');
@@ -66,19 +67,44 @@ const TOOL_DEFINITIONS = [
       },
     },
   },
+  {
+    type: 'function',
+    function: {
+      name: 'run_command',
+      description: "Run a shell command in the working directory. Use for git operations, builds, tests, and package managers. Prefer one focused command at a time and avoid interactive prompts.",
+      parameters: {
+        type: 'object',
+        properties: { command: { type: 'string', description: 'The full shell command to run, e.g. "npm test" or "git status".' } },
+        required: ['command'],
+      },
+    },
+  },
 ];
 
 const TOOLS_BY_NAME = Object.fromEntries(TOOL_DEFINITIONS.map((t) => [t.function.name, t]));
 
-function anthropicTools() {
-  return TOOL_DEFINITIONS.map((t) => ({
+function anthropicTools(tools) {
+  return tools.map((t) => ({
     name: t.function.name,
     description: t.function.description,
     input_schema: t.function.parameters,
   }));
 }
 
-async function executeTool(name, argsRaw) {
+function runCommand(command, { cwd, timeout = 120000, maxBuffer = 10 * 1024 * 1024 } = {}) {
+  return new Promise((resolve) => {
+    const isWin = process.platform === 'win32';
+    const file = isWin ? 'cmd.exe' : '/bin/sh';
+    const args = isWin ? ['/d', '/s', '/c', command] : ['-c', command];
+    execFile(file, args, { cwd, timeout, maxBuffer, env: process.env }, (err, stdout, stderr) => {
+      const output = [stdout, stderr].filter(Boolean).join('\n').trim();
+      resolve({ exitCode: err ? (typeof err.code === 'number' ? err.code : 1) : 0, output: output || (err ? err.message : '') });
+    });
+  });
+}
+
+async function executeTool(name, argsRaw, options = {}) {
+  const root = options.root || workspace.WORKSPACE_DIR;
   let args = {};
   if (typeof argsRaw === 'string') {
     try { args = JSON.parse(argsRaw); } catch { args = {}; }
@@ -90,16 +116,19 @@ async function executeTool(name, argsRaw) {
     switch (name) {
       case 'web_search': {
         if (!args.query) return { ok: false, output: 'Missing required argument: query' };
-        const results = await searchWeb(String(args.query), { backend: 'duckduckgo' });
+        const results = await searchWeb(String(args.query), {
+          backend: options.searchBackend || 'duckduckgo',
+          apiKey: options.searchApiKey,
+        });
         return { ok: true, output: JSON.stringify(results.slice(0, 8), null, 2) };
       }
       case 'list_workspace_files': {
-        const files = workspace.listFiles();
+        const files = workspace.listFiles(root);
         return { ok: true, output: JSON.stringify(files, null, 2) };
       }
       case 'read_file': {
         if (!args.path) return { ok: false, output: 'Missing required argument: path' };
-        const result = workspace.readFile(args.path);
+        const result = workspace.readFile(args.path, 200000, root);
         return {
           ok: true,
           output: result.truncated
@@ -109,13 +138,21 @@ async function executeTool(name, argsRaw) {
       }
       case 'write_file': {
         if (!args.path) return { ok: false, output: 'Missing required argument: path' };
-        const result = workspace.writeFile(args.path, args.content);
-        return { ok: true, output: `Wrote ${result.path} (${result.size} bytes) to the workspace.` };
+        const result = workspace.writeFile(args.path, args.content, root);
+        return { ok: true, output: `Wrote ${result.path} (${result.size} bytes) to the working directory.` };
       }
       case 'delete_file': {
         if (!args.path) return { ok: false, output: 'Missing required argument: path' };
-        const result = workspace.deleteFile(args.path);
-        return { ok: true, output: `Deleted ${result.path} from the workspace.` };
+        const result = workspace.deleteFile(args.path, root);
+        return { ok: true, output: `Deleted ${result.path} from the working directory.` };
+      }
+      case 'run_command': {
+        const command = String(args.command || '').trim();
+        if (!command) return { ok: false, output: 'Missing required argument: command' };
+        const result = await runCommand(command, { cwd: root, timeout: options.commandTimeout });
+        return result.exitCode === 0
+          ? { ok: true, output: result.output || '(command completed with no output)' }
+          : { ok: false, output: `Command exited with code ${result.exitCode}:\n${result.output}` };
       }
       default:
         return { ok: false, output: `Unknown tool: ${name}` };
@@ -177,7 +214,7 @@ function _parseArgs(raw) {
 
 // Runs one non-streaming tool-calling round for the given provider family.
 // Returns { messages, toolCalls } where toolCalls = [{ name, args }].
-async function runToolRound(provider, providerName, model, messages, { signal } = {}) {
+async function runToolRound(provider, providerName, model, messages, { signal, tools = TOOL_DEFINITIONS, executeOptions } = {}) {
   let toolCalls = [];
   let results = [];
 
@@ -187,7 +224,7 @@ async function runToolRound(provider, providerName, model, messages, { signal } 
       body: {
         model,
         messages,
-        tools: TOOL_DEFINITIONS,
+        tools,
         stream: false,
         options: { temperature: 0.7, top_p: 0.9 },
       },
@@ -208,7 +245,7 @@ async function runToolRound(provider, providerName, model, messages, { signal } 
       const name = call.function?.name;
       const args = _parseArgs(call.function?.arguments);
       toolCalls.push({ name, args });
-      const result = await executeTool(name, args);
+      const result = await executeTool(name, args, executeOptions);
       results.push({ name, args, ok: result.ok, output: result.output });
       next.push({ role: 'tool', content: result.output });
     }
@@ -230,7 +267,7 @@ async function runToolRound(provider, providerName, model, messages, { signal } 
         max_tokens: 4096,
         messages: chatMessages.map((m) => ({ role: m.role, content: m.content })),
         ...(systemMessages.length ? { system: systemMessages.map((m) => m.content).join('\n') } : {}),
-        tools: anthropicTools(),
+        tools: anthropicTools(tools),
         stream: false,
       },
       signal,
@@ -243,7 +280,7 @@ async function runToolRound(provider, providerName, model, messages, { signal } 
     const next = [...messages, { role: 'assistant', content: blocks }];
     for (const use of toolUses) {
       toolCalls.push({ name: use.name, args: use.input || {} });
-      const result = await executeTool(use.name, use.input);
+      const result = await executeTool(use.name, use.input, executeOptions);
       results.push({ name: use.name, args: use.input || {}, ok: result.ok, output: result.output });
       next.push({
         role: 'user',
@@ -254,13 +291,13 @@ async function runToolRound(provider, providerName, model, messages, { signal } 
   }
 
   // OpenAI-compatible family: openai, gemini, huggingface, lmstudio
-  const url = new URL('chat/completions', provider.baseUrl);
+  const url = new URL('chat/completions', provider.baseUrl.replace(/\/+$/, '') + '/');
   const data = await _jsonRequest(url, {
     headers: provider.apiKey ? { Authorization: `Bearer ${provider.apiKey}` } : {},
     body: {
       model: model || provider.defaultModel,
       messages,
-      tools: TOOL_DEFINITIONS,
+      tools,
       tool_choice: 'auto',
       stream: false,
     },
@@ -276,18 +313,18 @@ async function runToolRound(provider, providerName, model, messages, { signal } 
     const name = call.function?.name;
     const args = _parseArgs(call.function?.arguments);
     toolCalls.push({ name, args });
-    const result = await executeTool(name, args);
+    const result = await executeTool(name, args, executeOptions);
     results.push({ name, args, ok: result.ok, output: result.output });
     next.push({ role: 'tool', tool_call_id: call.id, content: result.output });
   }
   return { messages: next, toolCalls, results };
 }
 
-async function runToolLoop(provider, providerName, model, messages, { signal } = {}) {
+async function runToolLoop(provider, providerName, model, messages, { signal, tools = TOOL_DEFINITIONS, executeOptions } = {}) {
   let current = messages;
   let allResults = [];
   for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
-    const result = await runToolRound(provider, providerName, model, current, { signal });
+    const result = await runToolRound(provider, providerName, model, current, { signal, tools, executeOptions });
     current = result.messages;
     allResults = allResults.concat(result.results || []);
     if (!result.toolCalls.length) break;
@@ -295,4 +332,4 @@ async function runToolLoop(provider, providerName, model, messages, { signal } =
   return { messages: current, results: allResults };
 }
 
-module.exports = { TOOL_DEFINITIONS, executeTool, runToolLoop };
+module.exports = { TOOL_DEFINITIONS, executeTool, runCommand, runToolLoop };

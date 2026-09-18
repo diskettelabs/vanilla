@@ -69,6 +69,83 @@
         </nav>
       </aside>
 
+      <aside class="agent-sidebar" aria-label="Agent project sidebar">
+        <div class="sidebar-top">
+          <a class="brand" href="/" aria-label="Vanilla home">
+            <img class="brand-logo" src="./assets/vanilla%20logomark.svg" alt="vanilla.">
+          </a>
+          <button class="icon-button sidebar-toggle" type="button" aria-label="Collapse sidebar" title="Collapse sidebar">
+            <i data-icon="panel-left-close" aria-hidden="true"></i>
+          </button>
+        </div>
+
+        <div class="collapsed-actions agent-collapsed-actions">
+          <button class="icon-button collapsed-action" type="button" data-action="toggle-agent-sidebar" aria-label="Open projects" title="Projects">
+            <i data-icon="wrench" aria-hidden="true"></i>
+          </button>
+          <button class="icon-button collapsed-action" type="button" data-action="settings" aria-label="Settings" title="Settings">
+            <i data-icon="settings-2" aria-hidden="true"></i>
+          </button>
+        </div>
+
+        <div class="agent-sidebar-scroll">
+          <section class="agent-section">
+            <h2 class="agent-section-title">
+              <i data-icon="wrench" aria-hidden="true"></i>
+              Agent
+            </h2>
+            <div class="agent-dir-card">
+              <span class="agent-dir-path" id="agentSidebarDir" title="">No folder selected</span>
+              <div class="agent-dir-actions">
+                <button id="agentProjectAdd" class="pill-tool" type="button" title="Save the current working directory as a project">
+                  <i data-icon="file-plus-2" aria-hidden="true"></i>
+                  <span>save as project</span>
+                </button>
+              </div>
+            </div>
+          </section>
+
+          <section class="agent-section">
+            <h2 class="agent-section-title">
+              <i data-icon="folder-closed" aria-hidden="true"></i>
+              Projects
+            </h2>
+            <div id="projectList" class="project-list">
+              <p class="muted-note project-empty">No projects yet. Save your working directory to pin it here.</p>
+            </div>
+          </section>
+
+          <section class="agent-section">
+            <h2 class="agent-section-title">
+              <i data-icon="hard-drive" aria-hidden="true"></i>
+              Files
+            </h2>
+            <div class="agent-files-head">
+              <button id="agentFilesUp" class="text-button" type="button" hidden>
+                <i data-icon="arrow-left" aria-hidden="true"></i>
+                up
+              </button>
+              <button id="agentFilesRefresh" class="icon-button" type="button" title="Refresh file list" aria-label="Refresh file list">
+                <i data-icon="refresh-cw" aria-hidden="true"></i>
+              </button>
+            </div>
+            <div id="agentFileList" class="agent-file-list">
+              <p class="muted-note project-empty">Choose a working directory to browse its files.</p>
+            </div>
+          </section>
+
+          <section class="agent-section">
+            <h2 class="agent-section-title">
+              <i data-icon="shield-check" aria-hidden="true"></i>
+              Agent data
+            </h2>
+            <div id="agentDataSummary" class="agent-data-card">
+              <span>Loading…</span>
+            </div>
+          </section>
+        </div>
+      </aside>
+
       <main class="main-panel">
         <header class="top-bar">
           <div class="top-left">
@@ -99,10 +176,39 @@
             </div>
           </div>
 
+          <div class="top-center" id="modeTabs" aria-label="App mode">
+            <div class="mode-tabs" role="tablist" aria-label="App mode">
+              <button class="mode-tab is-active" type="button" role="tab" aria-selected="true" data-mode="chat">
+                <i data-icon="message-circle" aria-hidden="true"></i>
+                Chat
+              </button>
+              <button class="mode-tab" type="button" role="tab" aria-selected="false" data-mode="agent">
+                <i data-icon="wrench" aria-hidden="true"></i>
+                Agent
+              </button>
+            </div>
+          </div>
+
           <button id="settingsButton" class="icon-button settings-button" type="button" aria-label="Open settings" title="Settings">
             <i data-icon="settings-2" aria-hidden="true"></i>
           </button>
         </header>
+
+        <div class="mode-zone">
+          <div id="agentBar" class="agent-bar" hidden>
+            <label class="agent-folder" for="agentDirInput">
+              <span class="agent-folder-label">Working directory</span>
+              <span class="agent-folder-row">
+                <input id="agentDirInput" type="text" placeholder="~/my-project (or Browse…)" autocomplete="off" spellcheck="false">
+                <button id="agentDirBrowse" class="pill-tool" type="button">
+                  <i data-icon="folder-open" aria-hidden="true"></i>
+                  <span>Browse…</span>
+                </button>
+              </span>
+            </label>
+            <span id="agentStatus" class="agent-status"></span>
+          </div>
+        </div>
 
         <div id="updateBanner" class="update-banner" hidden>
           <span id="updateBannerText" class="update-banner-text"></span>
@@ -140,7 +246,7 @@
                 <i data-icon="columns-2" aria-hidden="true"></i>
                 <span>compare</span>
               </button>
-              <button class="pill-tool" type="button" data-tool="search" title="Toggle web search for fresh answers">
+              <button class="pill-tool" type="button" data-tool="search" title="Let the AI search the web with a tool when it needs fresh info">
                 <i data-icon="search" aria-hidden="true"></i>
                 <span id="searchPillLabel">search</span>
               </button>
@@ -277,8 +383,13 @@
                     <span class="toggle-slider"></span>
                     <span class="toggle-label">Press Enter to send (Shift+Enter for new line)</span>
                   </label>
+                  <label class="check-row">
+                    <input id="agentModeToggle" type="checkbox" class="toggle-input">
+                    <span class="toggle-slider"></span>
+                    <span class="toggle-label">Agent mode (Chat/Agent switcher + agent workspace)</span>
+                  </label>
                 </div>
-                <p class="settings-note" style="margin-top: 12px; margin-bottom: 0;">When auto-naming is enabled, Vanilla generates smart titles right after your first exchange. It uses a small local model (~350&nbsp;MB) downloaded through Ollama. You can always rename any chat manually using the button in the sidebar.</p>
+                <p class="settings-note" style="margin-top: 12px; margin-bottom: 0;">When auto-naming is enabled, Vanilla generates smart titles right after your first exchange. It uses a small local model (~350&nbsp;MB) downloaded through Ollama. You can always rename any chat manually using the button in the sidebar. Turning off Agent mode hides the Chat/Agent switcher and forces the app into chat.</p>
               </div>
             </div>
 
@@ -408,7 +519,7 @@
                   <label class="check-row" style="margin-bottom: 16px;">
                     <input id="webSearchToggle" type="checkbox" class="toggle-input">
                     <span class="toggle-slider"></span>
-                    <span class="toggle-label">Search the web for fresh answers</span>
+                    <span class="toggle-label">Let the AI search the web</span>
                   </label>
                   <div class="settings-grid">
                     <label class="settings-label">
@@ -428,7 +539,7 @@
                       <input id="braveApiKeyInput" class="settings-input" type="password" placeholder="Paste your Brave API key" autocomplete="off" spellcheck="false">
                     </label>
                   </div>
-                  <span class="label-help" style="display:block;margin-top:12px">DuckDuckGo works without a key. Brave can be more precise, but it needs a free API key from <code>api.search.brave.com</code>. When enabled, your latest question is searched before answering.</span>
+                  <span class="label-help" style="display:block;margin-top:12px">DuckDuckGo works without a key. Brave can be more precise, but it needs a free API key from <code>api.search.brave.com</code>. When enabled, the AI calls a web search tool only when it decides fresh info or sources are needed — it never searches every message automatically.</span>
                 </div>
               </div>
 

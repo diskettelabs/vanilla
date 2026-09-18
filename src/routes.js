@@ -6,10 +6,11 @@ const hf = require('./huggingface');
 const titles = require('./titles');
 const ollama = require('./ollama-models');
 const uninstall = require('./uninstall');
-const { searchWeb } = require('./search');
 const workspace = require('./workspace');
+const projects = require('./projects');
 const settings = require('./settings');
 const { TOOL_DEFINITIONS, executeTool, runToolLoop } = require('./tools');
+const { AGENT_SYSTEM_PROMPT, buildTools } = require('./agent');
 const { updater } = require('./updater');
 const https = require('https');
 const fs = require('fs');
@@ -792,22 +793,6 @@ function register(app) {
     });
   });
 
-  // Web search (test endpoint; the stream route also searches inline)
-  app.get('/api/websearch', async (req, res) => {
-    const query = (req.query.q || '').trim();
-    if (!query) {
-      return res.status(400).json({ error: 'Missing query', action: 'Pass ?q=your search query' });
-    }
-    const backend = req.query.backend || 'duckduckgo';
-    const apiKey = req.query.key || '';
-    try {
-      const results = await searchWeb(query, { backend, apiKey });
-      res.json({ backend, results });
-    } catch (e) {
-      res.status(502).json({ error: e.message });
-    }
-  });
-
   // Streaming chat
   app.post('/api/chat/stream', async (req, res) => {
     const { conversationId, message, model, provider: providerName, customPrompt, apiKey } = req.body || {};
@@ -873,28 +858,8 @@ function register(app) {
       }
     }
 
-    // Web search: fetch results for the latest user message and inject as context
-    if (req.body?.search && chatMessages.length > 0) {
-      const last = chatMessages[chatMessages.length - 1];
-      if (last.role === 'user' && typeof last.content === 'string' && last.content.trim()) {
-        const backend = req.body.searchBackend || 'duckduckgo';
-        const searchKey = req.body.searchApiKey || '';
-        const query = last.content.trim();
-        let results = [];
-        try {
-          results = await searchWeb(query, { backend, apiKey: searchKey });
-        } catch (e) {
-          console.error('[Search Error]', e.message);
-        }
-        if (results.length > 0) {
-          console.error(`[Search] ${backend}: ${results.length} results injected for "${query.slice(0, 60)}"`);
-          const context = `Web search results for "${query.slice(0, 300)}":\n\n${results
-            .map((r, i) => `[${i + 1}] ${r.title}\n${r.url}\n${r.snippet}`)
-            .join('\n\n')}\n\nUse these results to answer the user's question when relevant, and cite sources by their numbers. If the results don't cover the question, say so rather than guessing.`;
-          chatMessages.splice(chatMessages.length - 1, 0, { role: 'system', content: context });
-        }
-      }
-    }
+    // Web search is now a model tool (web_search), so it only runs when the
+    // model decides it needs current information — never injected up front.
 
     // Turn uploaded image markers into each provider's native vision message format.
     chatMessages = prepareVisionMessages(chatMessages, effectiveProvider);
@@ -914,15 +879,32 @@ function register(app) {
       activeStreams.delete(conversationId);
     };
 
-    // Workspace tool calling: let the model create/read/delete files mid-chat
-    if (req.body?.workspaceTools || req.body?.tools) {
+    // Tool calling: chat sandbox (files + optional web_search, no shell) or the
+    // coding-agent loop (files + shell + optional web_search) on a project dir.
+    const mode = req.body.mode === 'agent' ? 'agent' : 'chat';
+    const toolsEnabled = mode === 'agent' || req.body?.workspaceTools || req.body?.tools;
+    if (toolsEnabled) {
       try {
+        let root = workspace.WORKSPACE_DIR;
+        if (mode === 'agent') {
+          root = workspace.resolveRoot(req.body.agentDir);
+        }
+        const tools = buildTools({ mode, search: Boolean(req.body.search) });
         const hint = {
           role: 'system',
-          content: 'Tools are enabled. You can search the current web and create, read, list, or delete files in the user\'s workspace directory. Call web_search for current or source-dependent questions. When the user asks to make, save, write, create, open, or delete a file, call the matching workspace tool instead of only describing the action. Images attached by the user are included in their message; inspect them with the provider\'s vision capability when available.',
+          content: mode === 'agent'
+            ? AGENT_SYSTEM_PROMPT.replace('{dir}', root)
+            : 'Tools are enabled. Search the web only when the answer likely changed or needs sources — call web_search yourself instead of assuming. When the user asks to create, save, write, open, or delete a file, call the matching workspace tool instead of only describing it. Images attached by the user are included in their message; inspect them with your vision capability when available.',
         };
         const result = await runToolLoop(provider, effectiveProvider, effectiveModel, [hint, ...chatMessages], {
           signal: abortController.signal,
+          tools,
+          executeOptions: {
+            root,
+            searchBackend: req.body.searchBackend || 'duckduckgo',
+            searchApiKey: req.body.searchApiKey || undefined,
+            commandTimeout: mode === 'agent' ? 180000 : 60000,
+          },
         });
         for (const call of result.results) {
           res.write(`data: ${JSON.stringify({ type: 'tool_call', name: call.name, args: call.args })}\n\n`);
@@ -934,6 +916,7 @@ function register(app) {
           endpoint: '/api/chat/stream',
           provider: effectiveProvider,
           model: effectiveModel,
+          mode,
         }));
         res.write(`data: ${JSON.stringify({ type: 'tool_error', error: e.message || String(e) })}\n\n`);
       }
@@ -1042,6 +1025,53 @@ function register(app) {
       res.json(workspace.deleteFile(req.query.path));
     } catch (e) {
       res.status(500).json({ error: e.message || 'Failed to delete file' });
+    }
+  });
+
+  // Agent mode: saved projects + project file browser
+  app.get('/api/agent/projects', (_req, res) => {
+    try {
+      res.json({ projects: projects.list() });
+    } catch (e) {
+      res.status(500).json({ error: e.message || 'Failed to load projects' });
+    }
+  });
+
+  app.post('/api/agent/projects', (req, res) => {
+    try {
+      const { dir } = req.body || {};
+      if (!dir || typeof dir !== 'string' || !dir.trim()) {
+        return res.status(400).json({ error: 'Missing project directory' });
+      }
+      res.json({ projects: projects.add(dir) });
+    } catch (e) {
+      res.status(400).json({ error: e.message || 'Not a valid project directory' });
+    }
+  });
+
+  app.delete('/api/agent/projects/:index', (req, res) => {
+    try {
+      res.json({ projects: projects.remove(Number(req.params.index)) });
+    } catch (e) {
+      res.status(400).json({ error: e.message || 'Failed to remove project' });
+    }
+  });
+
+  app.get('/api/agent/files', (req, res) => {
+    try {
+      const dir = workspace.resolveRoot(req.query.dir);
+      if (req.query.flat === '1') {
+        const files = workspace.listFilesFlat(dir);
+        return res.json({
+          dir,
+          flat: true,
+          files,
+          totalSize: files.reduce((sum, f) => sum + (f.size || 0), 0),
+        });
+      }
+      res.json({ dir, flat: false, entries: workspace.listDirEntries(dir) });
+    } catch (e) {
+      res.status(400).json({ error: e.message || 'Directory not found' });
     }
   });
 

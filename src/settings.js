@@ -10,7 +10,7 @@ const ALLOWED_KEYS = new Set([
   'showLmStudio', 'showAider', 'showGoose', 'showOpenCode', 'autoName',
   'assistantLogo', 'userName', 'customPrompt', 'webSearch', 'searchBackend',
   'workspaceTools', 'dictationEngine', 'customIcon', 'desktopNotifications',
-  'deletedRetentionDays',
+  'deletedRetentionDays', 'agentDir',
 ]);
 
 function sanitize(input) {
