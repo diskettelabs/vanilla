@@ -69,10 +69,13 @@ EOF
 echo
 echo "2/4 Installing runtime dependencies..."
 mkdir -p "$STAGING/node_modules"
-cp -R "$ROOT/node_modules/." "$STAGING/node_modules/"
+ditto --norsrc --noqtn "$ROOT/node_modules" "$STAGING/node_modules"
 rm -f "$STAGING/node_modules/gelectron-ollama"
 rm -rf "$STAGING/node_modules/.bin" "$STAGING/node_modules/.cache"
-cp -R "$OLLAMA_REPO" "$STAGING/node_modules/gelectron-ollama"
+mkdir -p "$STAGING/node_modules/gelectron-ollama"
+ditto --norsrc --noqtn "$OLLAMA_REPO/dist" "$STAGING/node_modules/gelectron-ollama/dist"
+cp "$OLLAMA_REPO/package.json" "$OLLAMA_REPO/package-lock.json" "$STAGING/node_modules/gelectron-ollama/"
+(cd "$STAGING/node_modules/gelectron-ollama" && npm install --omit=dev --no-audit --no-fund)
 rm -rf "$STAGING/node_modules/gelectron-ollama/.git"
 rm -rf "$STAGING/node_modules/gelectron-ollama/target"
 find "$STAGING/node_modules" -type d -name ".github" -exec rm -rf {} + 2>/dev/null || true
