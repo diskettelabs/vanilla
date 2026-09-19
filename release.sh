@@ -382,7 +382,8 @@ release_vanilla() {
   local signed_app
   local app_archive
   local dmg
-  local dmg_work
+  local dmg_stage
+  local dmg_config
 
   script_dir="$(cd "$(dirname "$0")" && pwd)"
   output="${VANILLA_OUTPUT:-$script_dir/dist/vanilla-release}"
@@ -392,6 +393,7 @@ release_vanilla() {
   require ditto
   require codesign
   require hdiutil
+  require appdmg
   require xcrun
   require python3
 
@@ -455,13 +457,34 @@ release_vanilla() {
   ditto -c -k --sequesterRsrc --keepParent "$signed_app" "$app_archive"
 
   dmg="$output/${app_name}-${version}-${build}.dmg"
-  dmg_work="$work/${app_name}.tmp.dmg"
-  rm -f "$dmg" "$dmg_work"
+  dmg_stage="$work/dmg-stage"
+  dmg_config="$dmg_stage/dmg.json"
+  rm -rf "$dmg_stage" "$dmg"
   step "Building Vanilla DMG"
-  hdiutil create -volname "$app_name" -srcfolder "$signed_app" \
-    -ov -format UDRW "$dmg_work" >/dev/null
-  hdiutil convert "$dmg_work" -format UDZO -imagekey zlib-level=9 -o "$dmg" >/dev/null
-  rm -f "$dmg_work"
+  mkdir -p "$dmg_stage"
+  ditto --norsrc --noqtn "$signed_app" "$dmg_stage/$(basename "$signed_app")"
+  ln -s /Applications "$dmg_stage/Applications"
+  ditto --norsrc --noqtn "$script_dir/dmg/background.png" "$dmg_stage/background.png"
+  ditto --norsrc --noqtn "$script_dir/dmg/background@2x.png" "$dmg_stage/background@2x.png"
+  cp "$script_dir/dmg/dmg.json" "$dmg_config"
+  python3 - "$dmg_config" "$app_name" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+path = Path(sys.argv[1])
+app_name = sys.argv[2]
+data = json.loads(path.read_text())
+data["title"] = app_name
+for item in data["contents"]:
+    if item.get("type") == "file":
+        item["path"] = f"{app_name}.app"
+path.write_text(json.dumps(data, indent=2) + "\n")
+PY
+  (
+    cd "$dmg_stage"
+    appdmg "$(basename "$dmg_config")" "$dmg"
+  )
 
   codesign --force --timestamp --sign "$VANILLA_IDENTITY" "$dmg"
   codesign --verify --verbose=2 "$dmg"

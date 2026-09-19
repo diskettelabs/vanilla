@@ -130,7 +130,8 @@ if [ "$(uname)" = "Darwin" ]; then
   TMP_DMG="$DIST/.$APP_NAME-$VERSION.tmp.dmg"
   DMG_STAGE="$DIST/.dmg-stage"
   VOLNAME="$APP_NAME"
-  BG_IMG="$ROOT/public/assets/dmg_back.png"
+  BG_IMG="$ROOT/dmg/background.png"
+  BG_RETINA="$ROOT/dmg/background@2x.png"
 
   BG_W=$(sips -g pixelWidth "$BG_IMG" 2>/dev/null | awk '/pixelWidth/{print $2}')
   BG_H=$(sips -g pixelHeight "$BG_IMG" 2>/dev/null | awk '/pixelHeight/{print $2}')
@@ -144,8 +145,11 @@ if [ "$(uname)" = "Darwin" ]; then
   ln -s /Applications "$DMG_STAGE/Applications"
   if [ -f "$BG_IMG" ]; then
     cp "$BG_IMG" "$DMG_STAGE/.background/background.png"
+    if [ -f "$BG_RETINA" ]; then
+      cp "$BG_RETINA" "$DMG_STAGE/.background/background@2x.png"
+    fi
   else
-    echo "  (no background at public/assets/dmg_back.png — using default)"
+    echo "  (no background at dmg/background.png — using default)"
   fi
 
   MOUNT="/Volumes/$VOLNAME"

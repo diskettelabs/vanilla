@@ -1,0 +1,25 @@
+{
+  "title": "Vanilla",
+  "background": "background.png",
+  "icon-size": 128,
+  "window": {
+    "size": {
+      "width": 524,
+      "height": 324
+    }
+  },
+  "contents": [
+    {
+      "x": 131,
+      "y": 162,
+      "type": "file",
+      "path": "Vanilla.app"
+    },
+    {
+      "x": 393,
+      "y": 162,
+      "type": "link",
+      "path": "/Applications"
+    }
+  ]
+}
