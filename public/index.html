@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="application-name" content="vanilla-chat">
-    <title>Vanilla</title>
+    <title>Vanilla (beta)</title>
     <link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=satoshi@300,400,500,600,700,800,900&display=swap">
     <link rel="stylesheet" href="./styles.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css">
@@ -16,6 +16,7 @@
         <div class="sidebar-top">
           <a class="brand" href="/" aria-label="Vanilla home">
             <img class="brand-logo" src="./assets/vanilla%20logomark.svg" alt="vanilla.">
+            <span class="beta-badge" aria-label="Beta">beta</span>
           </a>
           <button class="icon-button sidebar-toggle" type="button" aria-label="Collapse sidebar" title="Collapse sidebar">
             <i data-icon="panel-left-close" aria-hidden="true"></i>
@@ -72,6 +73,7 @@
         <div class="sidebar-top">
           <a class="brand" href="/" aria-label="Vanilla home">
             <img class="brand-logo" src="./assets/vanilla%20logomark.svg" alt="vanilla.">
+            <span class="beta-badge" aria-label="Beta">beta</span>
           </a>
           <button class="icon-button sidebar-toggle" type="button" aria-label="Collapse sidebar" title="Collapse sidebar">
             <i data-icon="panel-left-close" aria-hidden="true"></i>
@@ -387,7 +389,7 @@
     <div id="settingsModal" class="modal-backdrop" hidden>
       <section class="modal settings-modal" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
         <div class="modal-head">
-          <h2 id="settingsTitle">Settings</h2>
+          <h2 id="settingsTitle">Settings <span class="beta-badge" aria-label="Beta">beta</span></h2>
           <button class="text-button" type="button" data-close-modal>Close</button>
         </div>
         
@@ -614,6 +616,18 @@
                     <span class="toggle-label">Let the AI create and edit files</span>
                   </label>
                   <span class="label-help" style="display:block;margin-top:12px">When enabled, the assistant can create, read, and delete files in <code>data/workspace/</code> only. File actions appear as chips above each reply. This works best with providers that support tool calling.</span>
+                </div>
+              </div>
+
+              <div class="settings-section">
+                <h3>Response display</h3>
+                <div class="settings-card">
+                  <label class="check-row">
+                    <input id="streamLiveToggle" type="checkbox" class="toggle-input">
+                    <span class="toggle-slider"></span>
+                    <span class="toggle-label">Stream tokens as they arrive</span>
+                  </label>
+                  <span class="label-help" style="display:block;margin-top:12px">On, the reply appears word-by-word as the model writes it. Off, Vanilla keeps a "Thinking..." indicator while the model works and reveals the full reply when it is done — closer to ChatGPT.</span>
                 </div>
               </div>
             </div>
@@ -944,6 +958,7 @@
         <div class="setup-step" data-step="1">
           <div class="setup-hero">
             <img src="./assets/vanilla%20logomark.svg" alt="vanilla." class="setup-logo">
+            <span class="beta-badge setup-beta" aria-label="Beta">beta</span>
             <p class="setup-tagline">Your setup, your pace. Fast, private, and practical.</p>
           </div>
           <div class="setup-body">
@@ -1053,6 +1068,37 @@
           <div class="setup-actions setup-actions-split">
             <button class="setup-back" type="button" data-setup-back>Back</button>
             <button id="setupImportNext" class="setup-primary" type="button" disabled>
+              Continue
+              <i data-icon="arrow-right" aria-hidden="true"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Step 5: Response style -->
+        <div class="setup-step" data-step="5" hidden>
+          <div class="setup-body">
+            <h2 class="setup-title">How should replies appear?</h2>
+            <p class="setup-subtitle">Pick how Vanilla shows you responses while the model writes them. You can switch anytime in Settings → Chat.</p>
+            <div class="setup-choice-grid">
+              <button class="setup-choice" type="button" data-response="bubbles" aria-pressed="false">
+                <span class="setup-choice-icon">
+                  <i data-icon="message-circle" aria-hidden="true"></i>
+                </span>
+                <strong>Done in one go</strong>
+                <span>A "Thinking..." indicator while the model works, then the whole reply at once — chat-bubble style.</span>
+              </button>
+              <button class="setup-choice" type="button" data-response="stream" aria-pressed="false">
+                <span class="setup-choice-icon">
+                  <i data-icon="pencil" aria-hidden="true"></i>
+                </span>
+                <strong>Live stream</strong>
+                <span>Watch the reply appear word by word as it is written.</span>
+              </button>
+            </div>
+          </div>
+          <div class="setup-actions setup-actions-split">
+            <button class="setup-back" type="button" data-setup-back>Back</button>
+            <button id="setupResponseNext" class="setup-primary" type="button" disabled>
               Continue
               <i data-icon="arrow-right" aria-hidden="true"></i>
             </button>

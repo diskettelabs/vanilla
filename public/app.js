@@ -67,6 +67,7 @@ const els = {
   customPromptBadge: document.querySelector("#customPromptBadge"),
   webSearchToggle: document.querySelector("#webSearchToggle"),
   workspaceToolsToggle: document.querySelector("#workspaceToolsToggle"),
+  streamLiveToggle: document.querySelector("#streamLiveToggle"),
   workspaceModal: document.querySelector("#workspaceModal"),
   workspaceFileList: document.querySelector("#workspaceFileList"),
   workspaceNewButton: document.querySelector("#workspaceNewButton"),
@@ -239,6 +240,7 @@ const state = {
     desktopNotifications: localStorage.getItem("vanilla-desktop-notifications") !== "false",
     agentDir: localStorage.getItem("vanilla-agent-dir") || "",
     agentMode: localStorage.getItem("vanilla-agent-mode") === "true",
+    streamLive: localStorage.getItem("vanilla-stream-live") !== "false",
   },
   mode: localStorage.getItem("vanilla-mode") === "agent" ? "agent" : "chat",
   agentFileStack: [],
@@ -1730,6 +1732,25 @@ async function streamChat(conversationId, message, { messageAlreadySaved = false
   const controller = new AbortController();
   state.streamAbort = controller;
 
+  let gotFirstToken = false;
+  let hardTimeoutFired = false;
+  const touchAssistant = (text) => {
+    if (state.activeAssistant) state.activeAssistant.textContent = text;
+  };
+  const softWait = setTimeout(() => {
+    if (gotFirstToken) return;
+    touchAssistant(state.mode === "agent" ? "Agent is still warming up…" : "Still loading — the model is warming up…");
+  }, 8000);
+  const longerWait = setTimeout(() => {
+    if (gotFirstToken) return;
+    touchAssistant("Taking longer than usual — hang tight or Stop to cancel.");
+  }, 45000);
+  const hardWait = setTimeout(() => {
+    if (gotFirstToken || state.streamComplete) return;
+    hardTimeoutFired = true;
+    controller.abort();
+  }, 120000);
+
   try {
     const response = await fetch("/api/chat/stream", {
       method: "POST",
@@ -1773,10 +1794,12 @@ async function streamChat(conversationId, message, { messageAlreadySaved = false
       buffer = parts.pop() || "";
       for (const part of parts) {
         if (!hasReceivedTokens) {
-          const loader = state.activeAssistant.querySelector(".typing-loader");
-          if (loader) loader.remove();
-          state.tokenQueue = "";
-          state.tokenText = "";
+          if (state.settings.streamLive) {
+            const loader = state.activeAssistant.querySelector(".typing-loader");
+            if (loader) loader.remove();
+            state.tokenQueue = "";
+            state.tokenText = "";
+          }
           hasReceivedTokens = true;
         }
         handleSsePart(part);
@@ -1911,7 +1934,7 @@ function pumpTokens() {
         state.tokenText += state.tokenQueue.slice(0, take);
         state.tokenQueue = state.tokenQueue.slice(take);
       }
-      renderAssistantBody();
+      if (state.settings.streamLive) renderAssistantBody();
     }
     if (state.runningConversationId || state.tokenQueue) {
       state.tokenPump = requestAnimationFrame(draw);
@@ -1930,6 +1953,12 @@ function finishStream() {
   };
   
   flushTokens();
+  
+  if (!state.settings.streamLive && state.activeAssistant) {
+    const loader = state.activeAssistant.querySelector(".typing-loader");
+    if (loader) loader.remove();
+    renderAssistantBody();
+  }
   
   if (state.tokenPump) cancelAnimationFrame(state.tokenPump);
   state.activeAssistant = null;
@@ -2705,6 +2734,7 @@ function applySettings() {
   if (els.autoNameToggle) els.autoNameToggle.checked = settings.autoName;
   if (els.webSearchToggle) els.webSearchToggle.checked = settings.webSearch;
   if (els.workspaceToolsToggle) els.workspaceToolsToggle.checked = settings.workspaceTools;
+  if (els.streamLiveToggle) els.streamLiveToggle.checked = settings.streamLive;
   if (els.devAgentToggle) els.devAgentToggle.checked = settings.agentMode !== false;
   document.body.dataset.agentUi = String(settings.agentMode !== false);
   if (settings.agentMode === false && state.mode === "agent") setMode("chat");
@@ -2772,6 +2802,7 @@ function applySettings() {
   localStorage.setItem("vanilla-desktop-notifications", String(settings.desktopNotifications));
   localStorage.setItem("vanilla-agent-dir", settings.agentDir || "");
   localStorage.setItem("vanilla-agent-mode", String(settings.agentMode !== false));
+  localStorage.setItem("vanilla-stream-live", String(settings.streamLive));
   applyCompareVisibility();
   queueSettingsSave();
 }
@@ -4069,6 +4100,13 @@ function bindEvents() {
     state.settings.workspaceTools = !state.settings.workspaceTools;
     applySettings();
   });
+  if (els.streamLiveToggle) {
+    els.streamLiveToggle.addEventListener("change", () => {
+      state.settings.streamLive = els.streamLiveToggle.checked;
+      applySettings();
+      if (!els.streamLiveToggle.checked) showNotification("Replies appear when done — \"Thinking...\" while the model works", "info");
+    });
+  }
 
   // Chat / Agent mode tabs
   document.querySelectorAll(".mode-tab").forEach((tab) => {
@@ -5035,7 +5073,8 @@ function updateSetupDots(stepAttr) {
     stepAttr === "2" ? 2 :
     stepAttr === "3" ? 3 :
     stepAttr === "4" ? 4 :
-    stepAttr === "6" ? 5 :
+    stepAttr === "5" ? 5 :
+    stepAttr === "6" ? 6 :
     stepAttr === "7a" ? 6 :
     stepAttr === "7b" ? 6 : 1;
   els.setupModal.querySelectorAll(".setup-dot").forEach((dot) => {
@@ -5189,9 +5228,30 @@ function bindSetupFlow() {
 
   if (importNext) {
     importNext.addEventListener("click", () => {
-      showSetupStep("6");
+      showSetupStep("5");
     });
   }
+
+  // Step 5: response style (bubbles vs live stream)
+  const responseButtons = els.setupModal.querySelectorAll(".setup-choice[data-response]");
+  const responseNext = els.setupModal.querySelector("#setupResponseNext");
+
+  responseButtons.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      responseButtons.forEach((b) => b.setAttribute("aria-pressed", "false"));
+      btn.setAttribute("aria-pressed", "true");
+      responseNext.disabled = false;
+      responseNext.dataset.response = btn.dataset.response;
+    });
+  });
+
+  responseNext.addEventListener("click", () => {
+    const response = responseNext.dataset.response;
+    if (response !== "bubbles" && response !== "stream") return;
+    state.settings.streamLive = response === "stream";
+    applySettings();
+    showSetupStep("6");
+  });
 
   // Step 6: Dictation preference
   const dictationButtons = els.setupModal.querySelectorAll(".setup-choice[data-dictation]");
@@ -5292,7 +5352,8 @@ function bindSetupFlow() {
       if (currentStep === "2") showSetupStep("1");
       if (currentStep === "3") showSetupStep("2");
       if (currentStep === "4") showSetupStep("3");
-      if (currentStep === "6") showSetupStep("4");
+      if (currentStep === "5") showSetupStep("4");
+      if (currentStep === "6") showSetupStep("5");
       if (currentStep === "7a" || currentStep === "7b") showSetupStep("6");
     });
   });

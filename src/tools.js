@@ -44,7 +44,7 @@ const TOOL_DEFINITIONS = [
     type: 'function',
     function: {
       name: 'write_file',
-      description: 'Create a new file or overwrite an existing file in the workspace directory. Creates parent folders automatically.',
+      description: 'Save a document to the workspace directory — use this whenever the user asks to "save it", "save this", "save it to a file", or "save it to the workspace". Creates a new file or overwrites one, and creates parent folders automatically.',
       parameters: {
         type: 'object',
         properties: {

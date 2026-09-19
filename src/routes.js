@@ -894,7 +894,7 @@ function register(app) {
           role: 'system',
           content: mode === 'agent'
             ? AGENT_SYSTEM_PROMPT.replace('{dir}', root)
-            : 'Tools are enabled. Search the web only when the answer likely changed or needs sources — call web_search yourself instead of assuming. When the user asks to create, save, write, open, or delete a file, call the matching workspace tool instead of only describing it. Images attached by the user are included in their message; inspect them with your vision capability when available.',
+            : 'Tools are available but only use them when the request genuinely requires it — never as a habit and never for ordinary conversation.\n\nCall web_search only when you need current information or the user explicitly asks for sources or fresh data (news, prices, recent changes); otherwise answer from your own knowledge and do not search.\nCall a workspace tool (create, read, list, write, delete) only when the user explicitly asks to create, save, open, write, or delete a file; otherwise describe the code or answer directly.\nPhrases like "save it", "save it to a file", or "save it to the workspace" mean call write_file with a sensible filename — you can save files, so never tell the user you cannot.\nWhen no tool is needed, reply with a normal message and make no tool call.\nImages attached by the user are included in their message; inspect them with your vision capability when available.',
         };
         const result = await runToolLoop(provider, effectiveProvider, effectiveModel, [hint, ...chatMessages], {
           signal: abortController.signal,
