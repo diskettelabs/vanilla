@@ -10,7 +10,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/line-numbers/prism-line-numbers.min.css">
   </head>
-  <body>
+  <body data-mode="chat" data-agent-ui="false">
     <div class="app-shell" data-sidebar="open">
       <aside class="sidebar" aria-label="Conversation sidebar">
         <div class="sidebar-top">
@@ -450,13 +450,8 @@
                     <span class="toggle-slider"></span>
                     <span class="toggle-label">Press Enter to send (Shift+Enter for new line)</span>
                   </label>
-                  <label class="check-row">
-                    <input id="agentModeToggle" type="checkbox" class="toggle-input">
-                    <span class="toggle-slider"></span>
-                    <span class="toggle-label">Agent mode (Chat/Agent switcher + agent workspace)</span>
-                  </label>
                 </div>
-                <p class="settings-note" style="margin-top: 12px; margin-bottom: 0;">When auto-naming is enabled, Vanilla generates smart titles right after your first exchange. It uses a small local model (~350&nbsp;MB) downloaded through Ollama. You can always rename any chat manually using the button in the sidebar. Turning off Agent mode hides the Chat/Agent switcher and forces the app into chat.</p>
+                <p class="settings-note" style="margin-top: 12px; margin-bottom: 0;">When auto-naming is enabled, Vanilla generates smart titles right after your first exchange. It uses a small local model (~350&nbsp;MB) downloaded through Ollama. You can always rename any chat manually using the button in the sidebar.</p>
               </div>
             </div>
 
@@ -801,6 +796,10 @@
                       <kbd class="shortcut-key" data-shortcut="open-settings">⌘+,</kbd>
                     </div>
                     <div class="shortcut-row">
+                      <span class="shortcut-label">Open developer panel</span>
+                      <kbd class="shortcut-key" data-shortcut="dev-panel">⌘+8</kbd>
+                    </div>
+                    <div class="shortcut-row">
                       <span class="shortcut-label">Toggle sidebar</span>
                       <kbd class="shortcut-key" data-shortcut="toggle-sidebar">⌘+B</kbd>
                     </div>
@@ -878,6 +877,30 @@
               </div>
             </div>
           </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- Developer panel -->
+    <div id="devModal" class="modal-backdrop" hidden>
+      <section class="modal" role="dialog" aria-modal="true" aria-labelledby="devTitle">
+        <div class="modal-head">
+          <h2 id="devTitle">Developer panel</h2>
+          <button class="text-button" type="button" data-close-modal>Close</button>
+        </div>
+        <div class="settings-section">
+          <div class="settings-card settings-options">
+            <label class="check-row">
+              <input id="devAgentToggle" type="checkbox" class="toggle-input">
+              <span class="toggle-slider"></span>
+              <span class="toggle-label">Agent mode (Chat/Agent switcher + agent workspace)</span>
+            </label>
+          </div>
+          <div class="settings-card">
+            <button id="devReloadThemes" class="compare-run compare-run-secondary" type="button">Reload theme list</button>
+            <button id="devResetSettings" class="uninstall-button" type="button" style="margin-top: 12px;">Reset all settings</button>
+          </div>
+          <p class="settings-note" style="margin-top: 12px; margin-bottom: 0;">Opened with Cmd+8 (Ctrl+8 on Windows/Linux). These options are experimental and for testing before release.</p>
         </div>
       </section>
     </div>

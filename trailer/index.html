@@ -1,0 +1,890 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>vanilla. — a trailer</title>
+<link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=satoshi@300,400,500,600,700,800,900&display=swap">
+<link rel="stylesheet" href="../public/styles.css">
+<style>
+  /* ---- trailer chrome ---------------------------------------------------- */
+  body {
+    background:
+      radial-gradient(1000px 680px at 80% -8%, color-mix(in srgb, var(--bubble) 55%, transparent), transparent 62%),
+      radial-gradient(820px 560px at -8% 112%, rgba(240, 214, 196, 0.5), transparent 58%),
+      #f6f5f2 !important;
+    color: var(--text);
+    overflow: hidden;
+  }
+
+  .tv-stage { position: fixed; inset: 0; }
+
+  .tv-scene {
+    position: absolute; inset: 0;
+    display: grid;
+    place-items: center;
+    padding: 0;
+    opacity: 0;
+    transform: translateY(16px) scale(0.995);
+    filter: blur(5px);
+    pointer-events: none;
+    transition: opacity 700ms cubic-bezier(.2,.7,.2,1), transform 700ms cubic-bezier(.2,.7,.2,1), filter 700ms ease;
+    z-index: 1;
+  }
+  .tv-scene.on { opacity: 1; transform: none; filter: none; pointer-events: auto; z-index: 2; }
+
+  .tv-kicker {
+    font-family: var(--font);
+    font-size: 12px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--accent);
+    display: flex; align-items: center; gap: 10px;
+  }
+  .tv-kicker::before { content: ""; width: 22px; height: 1px; background: currentColor; opacity: .5; }
+  .tv-big {
+    font-family: var(--font);
+    font-weight: 800;
+    font-size: clamp(30px, 4.6vw, 58px);
+    line-height: 1.04;
+    letter-spacing: -0.03em;
+    margin-top: 16px;
+  }
+  .tv-sub {
+    margin-top: 14px;
+    font-size: clamp(15px, 1.5vw, 18px);
+    line-height: 1.55;
+    color: var(--muted);
+    max-width: 600px;
+  }
+  .tv-reveal { opacity: 0; transform: translateY(14px); transition: opacity 600ms ease, transform 600ms ease; }
+  .tv-scene.on .tv-reveal { opacity: 1; transform: none; }
+  .tv-scene.on .tv-reveal.d1 { transition-delay: 140ms; }
+  .tv-scene.on .tv-reveal.d2 { transition-delay: 300ms; }
+  .tv-scene.on .tv-reveal.d3 { transition-delay: 460ms; }
+  .tv-scene.on .tv-reveal.d4 { transition-delay: 620ms; }
+
+  /* ---- scene: brand ------------------------------------------------------ */
+  .tv-scene[data-scene="brand"] { text-align: center; }
+  .tv-brand { width: min(340px, 60vw); filter: drop-shadow(0 16px 36px rgba(20,20,18,.16)); }
+  .tv-brand-tag {
+    margin-top: 32px;
+    font-size: 13px;
+    letter-spacing: 0.26em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .tv-halo { position: absolute; width: min(720px, 92vw); bottom: 12vh; opacity: .6; animation: tv-floaty 7s ease-in-out infinite; }
+  @keyframes tv-floaty { 0%,100% { transform: translateY(0) } 50% { transform: translateY(-10px) } }
+  .tv-date { position: absolute; top: 5vh; right: 5vw; font-size: 11px; color: var(--muted); letter-spacing: .14em; }
+
+  /* ---- the app window ---------------------------------------------------- */
+  .tv-device {
+    position: relative;
+    width: min(1360px, 90vw);
+    height: min(840px, 82vh);
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    overflow: hidden;
+    background: var(--bg);
+    box-shadow: 0 60px 130px rgba(20,20,18,.30), 0 10px 30px rgba(20,20,18,.12);
+  }
+  .tv-device .app-shell { width: 100%; height: 100%; }
+  .tv-device .sidebar,
+  .tv-device .agent-sidebar { height: 100%; }
+  .tv-device .main-panel { height: 100%; }
+  .tv-device .chat-nav { height: calc(100% - 170px); }
+
+  .tv-device[data-mode="agent"] .sidebar { display: none; }
+  .tv-device[data-mode="agent"] .agent-sidebar { display: flex; }
+  .tv-device[data-mode="agent"] .pill-tool[data-tool="attach"],
+  .tv-device[data-mode="agent"] .pill-tool[data-tool="compare"] { display: none; }
+  .tv-device[data-mode="chat"] .agent-bar { display: none !important; }
+
+  .tv-device .agent-sidebar { animation: tv-side-in 260ms cubic-bezier(.2,.8,.2,1) both; }
+  .tv-device .agent-bar { animation: tv-bar-in 320ms cubic-bezier(.2,.8,.2,1) both; }
+  .tv-device .agent-bar[hidden] { display: none !important; }
+  @keyframes tv-side-in { from { opacity: 0; transform: translateX(-6px); } to { opacity: 1; transform: none; } }
+  @keyframes tv-bar-in { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+
+  .tv-device .submit-button.tv-pressed { transform: scale(.86); }
+
+  /* streamed assistant support rows */
+  .tv-status {
+    display: inline-flex; align-items: center; gap: 7px;
+    margin-top: 12px;
+    font-size: 12.5px; color: var(--muted);
+  }
+  .tv-status .app-icon { width: 14px; height: 14px; color: var(--success); }
+  .tv-tools { display: grid; gap: 6px; margin: 12px 0 4px; }
+  .tv-tool {
+    display: flex; align-items: center; gap: 9px;
+    padding: 8px 11px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: var(--soft);
+    font-size: 13px;
+    opacity: 0; transform: translateY(4px);
+    animation: tv-tool-in 260ms ease forwards;
+  }
+  @keyframes tv-tool-in { to { opacity: 1; transform: none; } }
+  .tv-tool .app-icon { width: 15px; height: 15px; color: var(--muted); }
+  .tv-tool .tv-tool-kind { color: var(--muted); font-weight: 650; }
+  .tv-tool code { font-family: "Iosevka Extended", ui-monospace, Menlo, monospace; font-size: 12px; background: transparent; padding: 0; }
+  .tv-tool b { margin-left: auto; color: var(--success); font-weight: 800; }
+
+  /* ---- scene: themes ----------------------------------------------------- */
+  .tv-themes-head { text-align: center; }
+  .tv-themes {
+    display: flex; flex-wrap: wrap; gap: 12px;
+    justify-content: center;
+    max-width: 1080px;
+    margin-top: 30px;
+  }
+  .tv-mini {
+    width: 152px;
+    border: 1px solid var(--line);
+    border-radius: 13px;
+    overflow: hidden;
+    background: var(--bg);
+    box-shadow: 0 16px 34px rgba(20,20,18,.13);
+    opacity: 0; transform: translateY(14px) scale(.97);
+    transition: opacity 520ms ease, transform 520ms cubic-bezier(.2,.8,.2,1), box-shadow 300ms ease;
+  }
+  .tv-scene.on .tv-mini { opacity: 1; transform: none; }
+  .tv-mini:hover, .tv-mini.is-hot { box-shadow: 0 22px 46px rgba(20,20,18,.2); }
+  .tv-mini .m-bar { display: flex; align-items: center; gap: 4px; padding: 7px 9px; border-bottom: 1px solid var(--line); background: var(--panel); }
+  .tv-mini .m-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); opacity: .75; }
+  .tv-mini .m-name { margin-left: auto; font-size: 10px; font-weight: 650; color: var(--muted); letter-spacing: .01em; }
+  .tv-mini .m-body { display: grid; gap: 6px; padding: 9px; }
+  .tv-mini .m-u { height: 22px; border-radius: 8px; background: var(--bubble); width: 76%; margin-left: auto; }
+  .tv-mini .m-a { height: 34px; border-radius: 8px; background: var(--panel); }
+  .tv-mini .m-a2 { height: 18px; border-radius: 8px; background: var(--panel-strong); width: 62%; }
+
+  /* ---- scene: features --------------------------------------------------- */
+  .tv-features-head { text-align: center; }
+  .tv-features {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+    width: 100%;
+    max-width: 1120px;
+    margin-top: 32px;
+  }
+  .tv-feat {
+    padding: 18px;
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    background: color-mix(in srgb, var(--surface) 96%, transparent);
+    box-shadow: 0 1px 2px rgba(20,20,18,.03);
+  }
+  .tv-feat .ic {
+    display: grid; place-items: center;
+    width: 38px; height: 38px;
+    border-radius: 11px;
+    background: color-mix(in srgb, var(--accent) 13%, transparent);
+    color: var(--accent);
+  }
+  .tv-feat .ic .app-icon { width: 19px; height: 19px; }
+  .tv-feat .t { margin-top: 13px; font-weight: 700; font-size: 14.5px; letter-spacing: -0.01em; }
+  .tv-feat .d { margin-top: 5px; font-size: 12.5px; line-height: 1.5; color: var(--muted); }
+
+  /* ---- scene: sound ------------------------------------------------------ */
+  .tv-sound-head { text-align: center; }
+  .tv-keyboard { display: flex; gap: 8px; margin-top: 34px; flex-wrap: wrap; justify-content: center; }
+  .tv-key {
+    width: 54px; height: 54px;
+    display: grid; place-items: center;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: var(--surface);
+    box-shadow: 0 4px 0 rgba(20,20,18,.1), 0 12px 24px rgba(20,20,18,.09);
+    font-family: "Iosevka Extended", ui-monospace, Menlo, monospace;
+    font-size: 17px;
+    color: var(--text);
+    transition: transform 90ms ease, box-shadow 90ms ease, background 90ms ease;
+  }
+  .tv-key.wide { width: 96px; }
+  .tv-key.press { transform: translateY(5px); box-shadow: 0 0 0 rgba(20,20,18,.07), 0 3px 7px rgba(20,20,18,.09); background: color-mix(in srgb, var(--accent) 16%, var(--surface)); }
+  .tv-styles { display: flex; gap: 8px; justify-content: center; margin-top: 22px; flex-wrap: wrap; }
+  .tv-chip {
+    padding: 7px 14px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: var(--surface);
+    color: var(--muted);
+    font-size: 12.5px; font-weight: 600;
+    cursor: pointer;
+    transition: all 150ms ease;
+  }
+  .tv-chip:hover { color: var(--text); border-color: color-mix(in srgb, var(--text) 16%, transparent); }
+  .tv-chip.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .tv-note { margin-top: 18px; text-align: center; font-size: 12.5px; color: var(--muted); }
+
+  /* ---- scene: end -------------------------------------------------------- */
+  .tv-scene[data-scene="end"] { text-align: center; }
+  .tv-end-brand { width: min(360px, 62vw); }
+  .tv-cta { display: flex; gap: 14px; justify-content: center; margin-top: 36px; flex-wrap: wrap; }
+  .tv-btn {
+    padding: 14px 26px;
+    border: 0;
+    border-radius: 999px;
+    font-family: var(--font);
+    font-weight: 700; font-size: 14px; letter-spacing: .01em;
+    cursor: pointer;
+    color: #fff;
+    background: var(--text);
+    box-shadow: 0 16px 34px rgba(20,20,18,.22);
+    text-decoration: none;
+    transition: transform .14s ease, background .14s ease;
+  }
+  .tv-btn:hover { transform: translateY(-3px); background: var(--accent); }
+  .tv-btn.ghost { background: transparent; color: var(--text); box-shadow: inset 0 0 0 1px var(--line); }
+  .tv-btn.ghost:hover { background: var(--surface); }
+  .tv-end-foot { margin-top: 28px; font-size: 11.5px; letter-spacing: .14em; color: var(--muted); }
+
+  /* ---- controls ---------------------------------------------------------- */
+  .tv-controls {
+    position: fixed; left: 0; right: 0; bottom: 0;
+    display: flex; align-items: center; gap: 18px;
+    padding: 14px 22px 18px;
+    z-index: 50;
+  }
+  .tv-progress { position: absolute; top: 0; left: 0; height: 3px; width: 0%; background: var(--accent); }
+  .tv-ctl {
+    font-family: var(--font);
+    font-size: 11.5px; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--muted); cursor: pointer; border: none; background: none;
+  }
+  .tv-ctl:hover { color: var(--text); }
+  .tv-count { margin-right: auto; }
+  .tv-spacer { flex: 1; }
+  .tv-ctl.on { color: var(--accent); }
+
+  @media (max-width: 1100px) {
+    .tv-features { grid-template-columns: repeat(2, 1fr); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition-duration: 0.01ms !important; }
+  }
+</style>
+</head>
+<body>
+
+  <div class="tv-stage" id="stage">
+
+    <!-- 1 · brand -->
+    <section class="tv-scene" data-scene="brand">
+      <svg class="tv-halo" viewBox="0 0 700 90" fill="none"><circle cx="350" cy="45" r="38" stroke="rgba(20,20,18,0.06)" stroke-width="2"/><circle cx="350" cy="45" r="80" stroke="rgba(20,20,18,0.045)" stroke-width="2"/><circle cx="350" cy="45" r="128" stroke="rgba(20,20,18,0.03)" stroke-width="2"/></svg>
+      <div>
+        <img class="tv-brand" src="../public/assets/vanilla%20logomark.svg" alt="vanilla.">
+        <div class="tv-brand-tag tv-reveal d2">a quiet chat interface&nbsp;&nbsp;·&nbsp;&nbsp;for your own models</div>
+      </div>
+      <div class="tv-date">drop 01 — 09.18.26</div>
+    </section>
+
+    <!-- 2 · chat (real app UI) -->
+    <section class="tv-scene" data-scene="chat">
+      <div class="tv-device" data-app="chat" data-mode="chat"></div>
+    </section>
+
+    <!-- 3 · agent (real app UI, mode switch) -->
+    <section class="tv-scene" data-scene="agent">
+      <div class="tv-device" data-app="agent" data-mode="chat"></div>
+    </section>
+
+    <!-- 4 · themes -->
+    <section class="tv-scene" data-scene="themes">
+      <div class="tv-themes-head">
+        <div class="tv-kicker tv-reveal" style="justify-content:center">after party</div>
+        <div class="tv-big tv-reveal d1">A whole parlor of color schemes.</div>
+        <div class="tv-sub tv-reveal d2" style="margin-inline:auto">Every surface, bubble, and accent is themeable — pick a flavor or bring your own JSON, logo, and mascot.</div>
+      </div>
+      <div class="tv-themes" id="tvThemes"></div>
+    </section>
+
+    <!-- 5 · features -->
+    <section class="tv-scene" data-scene="features">
+      <div class="tv-features-head">
+        <div class="tv-kicker tv-reveal" style="justify-content:center">the fine print</div>
+        <div class="tv-big tv-reveal d1">Everything, in one window.</div>
+      </div>
+      <div class="tv-features">
+        <div class="tv-feat tv-reveal d1"><div class="ic"><i data-icon="refresh-cw" data-icon-size="19"></i></div><div class="t">Streaming</div><div class="d">Responses arrive token by token over SSE.</div></div>
+        <div class="tv-feat tv-reveal d1"><div class="ic"><i data-icon="search" data-icon-size="19"></i></div><div class="t">Web search</div><div class="d">Citations woven straight into the answer.</div></div>
+        <div class="tv-feat tv-reveal d2"><div class="ic"><i data-icon="columns-2" data-icon-size="19"></i></div><div class="t">Compare</div><div class="d">One prompt, several models, side by side.</div></div>
+        <div class="tv-feat tv-reveal d2"><div class="ic"><i data-icon="wrench" data-icon-size="19"></i></div><div class="t">Agent workspace</div><div class="d">Read, edit, run, and commit inside a folder.</div></div>
+        <div class="tv-feat tv-reveal d2"><div class="ic"><i data-icon="mic" data-icon-size="19"></i></div><div class="t">Voice input</div><div class="d">On-device dictation, transcribed locally.</div></div>
+        <div class="tv-feat tv-reveal d3"><div class="ic"><i data-icon="palette" data-icon-size="19"></i></div><div class="t">Themes</div><div class="d">Ice-cream flavors, or full custom JSON.</div></div>
+        <div class="tv-feat tv-reveal d3"><div class="ic"><i data-icon="hard-drive" data-icon-size="19"></i></div><div class="t">Local chats</div><div class="d">Conversations kept on disk as markdown.</div></div>
+        <div class="tv-feat tv-reveal d4"><div class="ic"><i data-icon="shield-check" data-icon-size="19"></i></div><div class="t">Private</div><div class="d">Nothing leaves home unless you call the cloud.</div></div>
+      </div>
+    </section>
+
+    <!-- 6 · sounds -->
+    <section class="tv-scene" data-scene="sound">
+      <div class="tv-sound-head">
+        <div class="tv-kicker tv-reveal" style="justify-content:center">sound design</div>
+        <div class="tv-big tv-reveal d1">Quiet, satisfying keys.</div>
+        <div class="tv-sub tv-reveal d2" style="margin-inline:auto">Delicate click sounds for every character — four keyboard voices, designed to feel great and never shout.</div>
+      </div>
+      <div class="tv-keyboard" id="tvKeyboard"></div>
+      <div class="tv-styles" id="tvStyles"></div>
+      <div class="tv-note tv-reveal d3" id="tvSoundNote">typing: “vanilla.”</div>
+    </section>
+
+    <!-- 7 · end -->
+    <section class="tv-scene" data-scene="end">
+      <img class="tv-end-brand tv-reveal" src="../public/assets/vanilla%20logomark.svg" alt="vanilla.">
+      <div class="tv-big tv-reveal d1" style="text-align:center">your models. your machine.</div>
+      <div class="tv-sub tv-reveal d2" style="margin-inline:auto">Open-forward, local-first, and pleasantly vanilla.</div>
+      <div class="tv-cta tv-reveal d3">
+        <a class="tv-btn" href="../public/index.html">open vanilla</a>
+        <button class="tv-btn ghost" id="tvReplayEnd" type="button">watch again</button>
+      </div>
+      <div class="tv-end-foot tv-reveal d3">vanilla chat · runs at localhost:2051</div>
+    </section>
+
+  </div>
+
+  <div class="tv-controls">
+    <span class="tv-progress" id="tvProgress"></span>
+    <span class="tv-ctl tv-count" id="tvCount">01 / 07</span>
+    <span class="tv-spacer"></span>
+    <button class="tv-ctl on" id="tvSoundToggle" type="button">sound on</button>
+    <button class="tv-ctl" id="tvSkip" type="button">skip →</button>
+    <button class="tv-ctl" id="tvReplay" type="button">↺ replay</button>
+  </div>
+
+  <script src="../public/sounds.js"></script>
+  <script>
+  (() => {
+    const S = window.Sounds;
+
+    /* ---------- icon hydration (same icons as the app) -------------------- */
+    const ICON_FILES = {
+      "arrow-left": "arrow-up", "arrow-right": "arrow-up", "arrow-up": "arrow-up",
+      "brain-circuit": "brain", "chevron-down": "chevron-right", "chevron-left": "chevron-right",
+      "chevron-right": "chevron-right", "circle-alert": "alert-circle", "circle-check": "check-circle",
+      "clock-3": "clock", cloud: "cloud", "columns-2": "columns", copy: "copy", download: "download",
+      eye: "eye", "eye-off": "eye-off", file: "file", "file-plus-2": "file-plus", "folder-closed": "folder",
+      "folder-open": "folder-open", "hard-drive": "hard-drive", info: "info", keyboard: "keyboard",
+      "message-circle": "message", "message-circle-more": "message-more", mic: "mic", palette: "palette",
+      "panel-left-close": "sidebar", "panel-left-open": "sidebar", paperclip: "paperclip", pencil: "pencil",
+      "pencil-line": "pencil-line", pin: "pin", "refresh-cw": "refresh", search: "search", "settings-2": "settings",
+      "shield-check": "shield", sparkles: "sparkles", square: "stop", "square-pen": "new-chat",
+      "trash-2": "trash", "triangle-alert": "alert-triangle", upload: "upload", "wand-sparkles": "wand", wrench: "tools", x: "close",
+    };
+    function renderIcons(root = document) {
+      root.querySelectorAll("i[data-icon]").forEach((node) => {
+        const file = ICON_FILES[node.dataset.icon];
+        if (!file) return;
+        node.classList.add("app-icon");
+        node.style.setProperty("--icon-url", `url("../public/assets/icons/${file}.svg")`);
+        const size = node.dataset.iconSize;
+        if (size) { node.style.width = `${size}px`; node.style.height = `${size}px`; }
+      });
+    }
+
+    const MASCOT = `<svg class="empty-mascot mascot-svg" viewBox="-5 -5 58 54" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <path d="M42.361,18.136 C42.361,20.338 41.992,22.493 41.274,24.536 C43.102,26.216 44.187,28.561 44.187,31.091 C44.187,36.143 39.911,40.187 34.696,40.187 C32.046,40.187 29.594,39.136 27.848,37.384 C26.101,39.136 23.649,40.187 21,40.187 C18.351,40.187 15.899,39.136 14.152,37.384 C12.406,39.136 9.954,40.187 7.304,40.187 C2.089,40.187 -2.187,36.143 -2.187,31.091 C-2.187,28.561 -1.102,26.216 0.726,24.536 C0.008,22.493 -0.361,20.338 -0.361,18.136 C-0.361,6.884 9.229,-2.187 21,-2.187 C32.771,-2.187 42.361,6.884 42.361,18.136 Z M4.013,18.136 C4.013,20.308 4.474,22.415 5.359,24.369 C5.815,25.377 5.447,26.567 4.501,27.141 C3.059,28.015 2.187,29.491 2.187,31.091 C2.187,33.671 4.452,35.813 7.304,35.813 C9.49,35.813 11.393,34.539 12.116,32.7 C12.843,30.85 15.46,30.85 16.187,32.699 C16.911,34.539 18.814,35.813 21,35.813 C23.186,35.813 25.089,34.539 25.812,32.7 C26.538,30.85 29.156,30.85 29.883,32.699 C30.606,34.539 32.51,35.813 34.696,35.813 C37.548,35.813 39.813,33.671 39.813,31.091 C39.813,29.491 38.941,28.015 37.499,27.141 C36.553,26.567 36.185,25.377 36.641,24.369 C37.526,22.415 37.987,20.308 37.987,18.136 C37.987,9.356 30.408,2.187 21,2.187 C11.592,2.187 4.013,9.356 4.013,18.136 Z" fill="currentColor" fill-rule="nonzero"/>
+      <g class="mascot-gaze"><rect class="mascot-eye" x="14.89" y="12.25" width="4.18" height="11.36" rx="2.09" fill="currentColor"/><rect class="mascot-eye mascot-eye-r" x="23.64" y="12.25" width="4.18" height="11.36" rx="2.09" fill="currentColor"/></g>
+    </svg>`;
+
+    /* ---------- the faithful app shell ------------------------------------ */
+    function appShell() {
+      return `
+      <div class="app-shell" data-sidebar="open">
+        <aside class="sidebar" aria-label="Conversation sidebar">
+          <div class="sidebar-top">
+            <a class="brand" href="../public/index.html" aria-label="Vanilla home"><img class="brand-logo" src="../public/assets/vanilla%20logomark.svg" alt="vanilla."></a>
+            <button class="icon-button sidebar-toggle" type="button" aria-label="Collapse sidebar"><i data-icon="panel-left-close" data-icon-size="20"></i></button>
+          </div>
+          <div class="quick-actions">
+            <button class="side-command" type="button"><span class="command-main"><i data-icon="square-pen" data-icon-size="20"></i><span>New Chat</span></span><kbd>⌘+⇧+O</kbd></button>
+            <button class="side-command" type="button"><span class="command-main"><i data-icon="search" data-icon-size="20"></i><span>Search</span></span><kbd>⌘+K</kbd></button>
+            <button class="side-command" type="button"><span class="command-main"><i data-icon="folder-closed" data-icon-size="20"></i><span>Workspace</span></span><kbd>⌘+⇧+F</kbd></button>
+          </div>
+          <nav class="chat-nav" aria-label="Recent chats">
+            <h2>Recent Chats</h2>
+            <div class="conversation-list">
+              <div class="conversation-row" aria-current="true"><button class="conversation-open" type="button">Refresh token without logout</button></div>
+              <div class="conversation-row"><button class="conversation-open" type="button">Trim the Docker image</button></div>
+              <div class="conversation-row"><button class="conversation-open" type="button">Explain the SSE reconnect bug</button></div>
+              <div class="date-heading">yesterday</div>
+              <div class="conversation-row"><button class="conversation-open" type="button">Draft release notes for 0.2</button></div>
+              <div class="conversation-row"><button class="conversation-open" type="button">Fuzzy search for the model picker</button></div>
+              <div class="conversation-row"><button class="conversation-open" type="button">Compare qwen2.5 vs llama3.1</button></div>
+            </div>
+          </nav>
+        </aside>
+
+        <aside class="agent-sidebar" aria-label="Agent project sidebar">
+          <div class="sidebar-top">
+            <a class="brand" href="../public/index.html" aria-label="Vanilla home"><img class="brand-logo" src="../public/assets/vanilla%20logomark.svg" alt="vanilla."></a>
+            <button class="icon-button sidebar-toggle" type="button" aria-label="Collapse sidebar"><i data-icon="panel-left-close" data-icon-size="20"></i></button>
+          </div>
+          <div class="agent-sidebar-scroll">
+            <section class="agent-section">
+              <div class="agent-section-head">
+                <h2 class="agent-section-title"><i data-icon="message-circle-more" data-icon-size="15"></i> Sessions</h2>
+                <button class="icon-button" type="button" title="New agent session"><i data-icon="file-plus-2" data-icon-size="15"></i></button>
+              </div>
+              <div class="agent-session-list">
+                <button class="agent-session-row is-active" type="button"><span class="agent-session-title">Swap the cache layer</span><span class="agent-session-dir">~/Documents/GitHub/vanilla-sh</span></button>
+                <button class="agent-session-row" type="button"><span class="agent-session-title">Fix the flaky upload test</span><span class="agent-session-dir">~/Documents/GitHub/vanilla-sh</span></button>
+              </div>
+            </section>
+            <section class="agent-section">
+              <h2 class="agent-section-title"><i data-icon="folder-closed" data-icon-size="15"></i> Working directory</h2>
+              <div class="agent-dir-card">
+                <span class="agent-dir-path">~/Documents/GitHub/vanilla-sh</span>
+                <div class="agent-dir-actions">
+                  <button class="pill-tool" type="button"><i data-icon="folder-open" data-icon-size="14"></i><span>Browse…</span></button>
+                  <button class="pill-tool" type="button"><i data-icon="file-plus-2" data-icon-size="14"></i><span>save as project</span></button>
+                </div>
+              </div>
+            </section>
+            <section class="agent-section">
+              <h2 class="agent-section-title"><i data-icon="folder-closed" data-icon-size="15"></i> Projects</h2>
+              <div class="project-list">
+                <button class="project-row is-current" type="button"><i data-icon="folder-closed" data-icon-size="15"></i><span class="project-name">vanilla-sh</span><span class="project-dir">~/Documents/GitHub/vanilla-sh</span></button>
+                <button class="project-row" type="button"><i data-icon="folder-closed" data-icon-size="15"></i><span class="project-name">marketing-site</span><span class="project-dir">~/work/marketing-site</span></button>
+              </div>
+            </section>
+            <section class="agent-section">
+              <h2 class="agent-section-title"><i data-icon="hard-drive" data-icon-size="15"></i> Files</h2>
+              <div class="agent-files-head"><button class="icon-button" type="button" title="Refresh file list"><i data-icon="refresh-cw" data-icon-size="14"></i></button></div>
+              <div class="agent-file-list">
+                <button class="agent-file-row is-dir" type="button"><i data-icon="folder-closed" data-icon-size="14"></i><span class="agent-file-name">src</span><span class="agent-file-meta">18</span></button>
+                <button class="agent-file-row is-dir" type="button"><i data-icon="folder-closed" data-icon-size="14"></i><span class="agent-file-name">public</span><span class="agent-file-meta">42</span></button>
+                <button class="agent-file-row" type="button"><i data-icon="file" data-icon-size="14"></i><span class="agent-file-name">server.js</span><span class="agent-file-meta">18.4k</span></button>
+                <button class="agent-file-row" type="button"><i data-icon="file" data-icon-size="14"></i><span class="agent-file-name">package.json</span><span class="agent-file-meta">1.1k</span></button>
+                <button class="agent-file-row" type="button"><i data-icon="file" data-icon-size="14"></i><span class="agent-file-name">README.md</span><span class="agent-file-meta">9.2k</span></button>
+              </div>
+            </section>
+            <section class="agent-section">
+              <h2 class="agent-section-title"><i data-icon="shield-check" data-icon-size="15"></i> Agent data</h2>
+              <div class="agent-data-card">
+                <div class="agent-data-row"><span>Sessions</span><b>2</b></div>
+                <div class="agent-data-row"><span>Messages</span><b>24</b></div>
+                <div class="agent-data-row"><span>Files indexed</span><b>138</b></div>
+              </div>
+            </section>
+          </div>
+        </aside>
+
+        <main class="main-panel">
+          <header class="top-bar">
+            <div class="top-left">
+              <button class="icon-button main-sidebar-toggle" type="button" aria-label="Expand sidebar"><i data-icon="panel-left-open" data-icon-size="20"></i></button>
+              <div class="model-picker" data-open="false">
+                <button class="model-button" type="button">
+                  <span>qwen2.5-coder:7b</span>
+                  <i class="chevron" data-icon="chevron-down" data-icon-size="16"></i>
+                </button>
+              </div>
+              <div class="system-stats"><span>CPU: 17%</span><span>GPU: 42%</span><span>RAM: 5.8 GB</span></div>
+            </div>
+            <div class="top-center">
+              <div class="mode-tabs" role="tablist" aria-label="App mode">
+                <button class="mode-tab is-active" type="button" role="tab" aria-selected="true" data-mode="chat"><i data-icon="message-circle" data-icon-size="15"></i> Chat</button>
+                <button class="mode-tab" type="button" role="tab" aria-selected="false" data-mode="agent"><i data-icon="wrench" data-icon-size="15"></i> Agent</button>
+              </div>
+            </div>
+            <button class="icon-button settings-button" type="button" aria-label="Open settings"><i data-icon="settings-2" data-icon-size="20"></i></button>
+          </header>
+
+          <div class="mode-zone">
+            <div class="agent-bar" hidden>
+              <label class="agent-folder">
+                <span class="agent-folder-label">Working directory</span>
+                <span class="agent-folder-row">
+                  <input class="agent-dir-input" id="agentDirInput" type="text" value="~/Documents/GitHub/vanilla-sh" readonly>
+                  <button class="pill-tool" type="button"><i data-icon="folder-open" data-icon-size="14"></i><span>Browse…</span></button>
+                </span>
+              </label>
+              <span class="agent-status">ready</span>
+            </div>
+          </div>
+
+          <section class="chat-stage">
+            <div class="empty-state">${MASCOT}<p>Ready when you are.</p></div>
+            <div class="messages"></div>
+          </section>
+
+          <form class="composer" autocomplete="off">
+            <div class="omnibar">
+              <div class="input-wrapper">
+                <textarea id="promptInput" rows="1" placeholder="What are we working on?"></textarea>
+              </div>
+              <div class="omnibar-tools">
+                <button class="pill-tool" type="button" data-tool="attach"><i data-icon="paperclip" data-icon-size="14"></i><span>attach file</span></button>
+                <button class="pill-tool" type="button" data-tool="compare"><i data-icon="columns-2" data-icon-size="14"></i><span>compare</span></button>
+                <button class="pill-tool" type="button" data-tool="search"><i data-icon="search" data-icon-size="14"></i><span>search</span></button>
+                <button class="pill-tool" type="button" data-tool="tools"><i data-icon="wrench" data-icon-size="14"></i><span>tools</span></button>
+                <button class="pill-tool" type="button" data-tool="prompt"><i data-icon="pencil-line" data-icon-size="14"></i><span>prompt</span></button>
+                <button class="pill-tool" type="button" data-tool="dictation"><i data-icon="mic" data-icon-size="14"></i><span>dictate</span></button>
+              </div>
+              <button class="submit-button" type="submit" aria-label="Submit"><i data-icon="arrow-up" data-icon-size="17"></i></button>
+            </div>
+          </form>
+        </main>
+      </div>`;
+    }
+
+    function loaderHtml() {
+      return '<div class="typing-loader" aria-label="Waiting for response"><span></span><span></span><span></span><span class="loader-msg">Thinking…</span></div>';
+    }
+
+    const devices = {
+      chat: document.querySelector('[data-app="chat"]'),
+      agent: document.querySelector('[data-app="agent"]'),
+    };
+
+    function resetDevice(dev, mode = "chat") {
+      dev.dataset.mode = mode;
+      dev.innerHTML = appShell();
+      if (mode === "agent") {
+        const bar = dev.querySelector(".agent-bar");
+        if (bar) bar.hidden = false;
+        dev.querySelectorAll(".mode-tab").forEach((t) => {
+          const active = t.dataset.mode === "agent";
+          t.classList.toggle("is-active", active);
+          t.setAttribute("aria-selected", String(active));
+        });
+      }
+      renderIcons(dev);
+      return dev;
+    }
+
+    function growTextarea(el) {
+      el.style.height = "auto";
+      el.style.height = Math.min(164, el.scrollHeight) + "px";
+    }
+    function scrollMsgs(dev) {
+      const m = dev.querySelector(".messages");
+      if (m) m.scrollTop = m.scrollHeight;
+    }
+    function addUser(dev, text) {
+      const wrap = document.createElement("article");
+      wrap.className = "message user-message";
+      wrap.innerHTML = '<div class="user-bubble"><div class="message-content"></div></div>';
+      wrap.querySelector(".message-content").textContent = text;
+      dev.querySelector(".messages").append(wrap);
+      const empty = dev.querySelector(".empty-state");
+      if (empty) empty.hidden = true;
+      scrollMsgs(dev);
+      return wrap;
+    }
+    function addAssistant(dev, { loader = true } = {}) {
+      const wrap = document.createElement("article");
+      wrap.className = "message assistant-message";
+      wrap.innerHTML = `<span class="assistant-mark"><i data-icon="sparkles" data-icon-size="17"></i></span><div class="assistant-body">${loader ? loaderHtml() : ""}</div>`;
+      dev.querySelector(".messages").append(wrap);
+      renderIcons(wrap);
+      const empty = dev.querySelector(".empty-state");
+      if (empty) empty.hidden = true;
+      scrollMsgs(dev);
+      return wrap;
+    }
+
+    /* ---------- timing helpers -------------------------------------------- */
+    let timers = [];
+    let intervals = [];
+    function sleep(ms) {
+      return new Promise((resolve) => {
+        const t = setTimeout(() => { timers = timers.filter((x) => x !== t); resolve(); }, ms);
+        timers.push(t);
+      });
+    }
+    function clearTimers() { timers.forEach(clearTimeout); timers = []; intervals.forEach(clearInterval); intervals = []; }
+
+    async function typeInto(el, text, { ms = 42, jitter = 24 } = {}) {
+      el.value = "";
+      growTextarea(el);
+      for (let i = 0; i < text.length; i++) {
+        el.value += text[i];
+        growTextarea(el);
+        if (S && S.isEnabled() && S.isKeyEnabled && S.isKeyEnabled()) {
+          if (text[i] === " ") S.keySpace(); else S.key();
+        }
+        await sleep(ms + Math.random() * jitter);
+      }
+    }
+    async function streamWords(bodyEl, text, { ms = 30, jitter = 18, onTick } = {}) {
+      const p = document.createElement("p");
+      bodyEl.appendChild(p);
+      const words = text.split(" ");
+      for (let i = 0; i < words.length; i++) {
+        p.textContent += (i ? " " : "") + words[i];
+        if (onTick && i % 3 === 0) onTick();
+        await sleep(ms + Math.random() * jitter);
+      }
+      if (onTick) onTick();
+      return p;
+    }
+
+    /* ---------- scene: chat ------------------------------------------------ */
+    const CHAT_PROMPT = "Rewrite the auth flow so tokens refresh without logging me out.";
+    const CHAT_ANSWER =
+      "Happy to. Right now a single access token is stored, so the moment it expires the user gets bounced to the login screen. " +
+      "The fix is a rotating access token with a sliding refresh window — renew it silently in the background and only log out if the refresh token itself is rejected.";
+    async function runChat() {
+      const dev = resetDevice(devices.chat, "chat");
+      const input = dev.querySelector("#promptInput");
+      await sleep(500);
+      await typeInto(input, CHAT_PROMPT);
+      await sleep(360);
+      const submit = dev.querySelector(".submit-button");
+      submit.classList.add("tv-pressed");
+      if (S) S.send();
+      await sleep(140);
+      submit.classList.remove("tv-pressed");
+      addUser(dev, CHAT_PROMPT);
+      input.value = "";
+      growTextarea(input);
+      await sleep(260);
+      const msg = addAssistant(dev, { loader: true });
+      if (S) S.receive();
+      await sleep(900);
+      const body = msg.querySelector(".assistant-body");
+      body.innerHTML = "";
+      await streamWords(body, CHAT_ANSWER, { onTick: () => scrollMsgs(dev) });
+      await sleep(240);
+      body.insertAdjacentHTML("beforeend",
+        '<div class="code-box"><pre class="language-js"><code>' +
+        '<span class="token comment">// keep the session alive without a hard logout</span>\n' +
+        '<span class="token keyword">if</span> (access.<span class="token property">expired</span>) {\n' +
+        '  access = <span class="token keyword">await</span> <span class="token function">refresh</span>(refreshToken); <span class="token comment">// silent rotation</span>\n' +
+        '}\n' +
+        '</code></pre></div>' +
+        '<div class="tv-status"><i data-icon="circle-check" data-icon-size="14"></i> streamed locally · saved to markdown</div>');
+      renderIcons(body);
+      scrollMsgs(dev);
+    }
+
+    /* ---------- scene: agent ---------------------------------------------- */
+    const AGENT_PROMPT = "Drop the stale caching layer and wire in the new one.";
+    const AGENT_ANSWER =
+      "On it. I\u2019ll swap the module in place and keep the existing interface, so nothing else in the tree has to change.";
+    const TOOLS = [
+      ["search", "read", "src/cache.js"],
+      ["pencil", "edit", "src/cache.js"],
+      ["refresh-cw", "run", "npm test"],
+      ["circle-check", "commit", "— swap cache layer"],
+    ];
+    async function runAgent() {
+      const dev = resetDevice(devices.agent, "chat");
+      await sleep(450);
+      const agentTab = dev.querySelector('.mode-tab[data-mode="agent"]');
+      agentTab.classList.add("is-active");
+      agentTab.setAttribute("aria-selected", "true");
+      dev.querySelector('.mode-tab[data-mode="chat"]').classList.remove("is-active");
+      dev.dataset.mode = "agent";
+      const bar = dev.querySelector(".agent-bar");
+      bar.hidden = false;
+      if (S) S.modeSwitch("agent");
+      await sleep(750);
+      const input = dev.querySelector("#promptInput");
+      await typeInto(input, AGENT_PROMPT);
+      await sleep(340);
+      if (S) S.send();
+      addUser(dev, AGENT_PROMPT);
+      input.value = "";
+      growTextarea(input);
+      await sleep(300);
+      const msg = addAssistant(dev, { loader: true });
+      if (S) S.receive();
+      await sleep(800);
+      const body = msg.querySelector(".assistant-body");
+      body.innerHTML = "";
+      await streamWords(body, AGENT_ANSWER, { onTick: () => scrollMsgs(dev) });
+      const list = document.createElement("div");
+      list.className = "tv-tools";
+      body.appendChild(list);
+      for (const [iconName, kind, target] of TOOLS) {
+        const row = document.createElement("div");
+        row.className = "tv-tool";
+        row.innerHTML = `<i data-icon="${iconName}" data-icon-size="15"></i><span class="tv-tool-kind">${kind}</span><code>${target}</code><b>✓</b>`;
+        list.appendChild(row);
+        renderIcons(row);
+        if (S) S.click();
+        scrollMsgs(dev);
+        await sleep(420);
+      }
+      await sleep(260);
+      body.insertAdjacentHTML("beforeend",
+        '<div class="code-box"><pre class="language-js"><code>' +
+        '<span class="token comment">// src/cache.js — the new layer, same shape</span>\n' +
+        '<span class="token keyword">export</span> <span class="token keyword">const</span> cache = <span class="token function">createCache</span>({ store: <span class="token string">"lru"</span>, max: <span class="token number">512</span> });\n' +
+        '</code></pre></div>' +
+        '<div class="tv-status"><i data-icon="circle-check" data-icon-size="14"></i> done — 5 files, +412 / −109 · 23 tests passed</div>');
+      renderIcons(body);
+      scrollMsgs(dev);
+      if (S) S.success();
+    }
+
+    /* ---------- scene: themes --------------------------------------------- */
+    const THEMES = [
+      { name: "Vanilla", bg: "#F7F5EF", panel: "#F0EDE6", strong: "#EBE7DE", line: "#DCD7CD", text: "#28251F", muted: "#8a857b", bubble: "#E9DFCF", accent: "#8A6845" },
+      { name: "Strawberry", bg: "#FAF5F6", panel: "#F4E8EA", strong: "#F1E2E5", line: "#E3D2D6", text: "#302426", muted: "#8d7f83", bubble: "#EFD2D9", accent: "#C84E68" },
+      { name: "Mint", bg: "#F2F7F5", panel: "#E6EFEB", strong: "#DFECE6", line: "#D2DFD9", text: "#222B27", muted: "#7c8a84", bubble: "#CFE5DB", accent: "#3D876D" },
+      { name: "Lemon", bg: "#FAF8F0", panel: "#F3EFE0", strong: "#F1EBD7", line: "#E2DCCB", text: "#2E2A20", muted: "#8b8676", bubble: "#EFE3B9", accent: "#A98218" },
+      { name: "Lime", bg: "#F5F8F3", panel: "#EAF1E6", strong: "#E4EEDF", line: "#D5E0D0", text: "#252C22", muted: "#7f887a", bubble: "#D8E9CF", accent: "#5F934D" },
+      { name: "Peach", bg: "#FBF5F2", panel: "#F5EAE5", strong: "#F2E4DE", line: "#E5D5CE", text: "#302622", muted: "#8d827c", bubble: "#EFD8CF", accent: "#C66C59" },
+      { name: "Raspberry", bg: "#FAF5F7", panel: "#F2E7EB", strong: "#EEE1E6", line: "#E1D1D8", text: "#30242A", muted: "#8c7e84", bubble: "#EBCFDA", accent: "#A63F63" },
+      { name: "Lavender", bg: "#F7F6FA", panel: "#EEEBF5", strong: "#E9E6F2", line: "#DDD9E7", text: "#292732", muted: "#827f8c", bubble: "#E2DCF1", accent: "#7568B2" },
+      { name: "Dragonfruit", bg: "#FAF6F8", panel: "#F5EAF0", strong: "#F2E5EC", line: "#E6D4DD", text: "#30242A", muted: "#8c7f85", bubble: "#F0D5E2", accent: "#B93F78" },
+      { name: "Dreamsicle", bg: "#FBF6F1", panel: "#F6ECE3", strong: "#F3E6DA", line: "#E7D7CB", text: "#312720", muted: "#8d837b", bubble: "#F2D8C5", accent: "#D56D38" },
+      { name: "Blue Moon", bg: "#F3F7FA", panel: "#EAF1F6", strong: "#E5EDF5", line: "#D2DCE5", text: "#202830", muted: "#7a828a", bubble: "#D8E7F3", accent: "#4F7EAE" },
+      { name: "Plum", bg: "#F8F4F7", panel: "#F0E8EE", strong: "#EBE3E9", line: "#DDD2DA", text: "#2D272C", muted: "#857f84", bubble: "#E4D6E1", accent: "#85607E" },
+      { name: "Chocolate", bg: "#1C1816", panel: "#24201D", strong: "#312A26", line: "#3E342E", text: "#F4ECE6", muted: "#a89c93", bubble: "#49372D", accent: "#D69A6D" },
+      { name: "Monochrome", bg: "#121214", panel: "#1A1A1C", strong: "#2A2A2D", line: "#363639", text: "#F4F4F5", muted: "#9a9aa0", bubble: "#303033", accent: "#A1A1A6" },
+      { name: "Aurora", bg: "#10151B", panel: "#171D24", strong: "#222933", line: "#2B3540", text: "#EDF3F5", muted: "#9fb0bc", bubble: "#263844", accent: "#5CC8D7" },
+    ];
+    const themesWrap = document.getElementById("tvThemes");
+    themesWrap.innerHTML = THEMES.map((t, i) => `
+      <div class="tv-mini" style="--bg:${t.bg};--panel:${t.panel};--panel-strong:${t.strong};--line:${t.line};--text:${t.text};--muted:${t.muted};--bubble:${t.bubble};--accent:${t.accent};transition-delay:${i * 40}ms">
+        <div class="m-bar"><span class="m-dot"></span><span class="m-name">${t.name}</span></div>
+        <div class="m-body"><div class="m-u"></div><div class="m-a"></div><div class="m-a2"></div></div>
+      </div>`).join("");
+
+    let themeHot = 0;
+    async function runThemes() {
+      if (S) S.sparkle();
+      const minis = Array.from(themesWrap.children);
+      themeHot = 0;
+      const tick = setInterval(() => {
+        minis.forEach((m) => m.classList.remove("is-hot"));
+        minis[themeHot % minis.length]?.classList.add("is-hot");
+        themeHot++;
+      }, 900);
+      intervals.push(tick);
+    }
+
+    /* ---------- scene: sounds --------------------------------------------- */
+    const KEYS = [["v", 1], ["a", 1], ["n", 1], ["i", 1], ["l", 1], ["l", 1], ["a", 1], [".", 2]];
+    const keyboard = document.getElementById("tvKeyboard");
+    keyboard.innerHTML = KEYS.map(([k, w]) => `<div class="tv-key${w === 2 ? " wide" : ""}">${k}</div>`).join("");
+    const keyEls = Array.from(keyboard.children);
+    keyEls.forEach((el, i) => {
+      el.addEventListener("click", () => {
+        el.classList.add("press");
+        if (KEYS[i][0] === " ") { S && S.keySpace(); } else { S && S.key(); }
+        setTimeout(() => el.classList.remove("press"), 140);
+      });
+    });
+
+    const STYLES = [["mechanical", "mechanical"], ["membrane", "membrane"], ["typewriter", "typewriter"], ["cherry", "cherry"]];
+    const stylesWrap = document.getElementById("tvStyles");
+    stylesWrap.innerHTML = STYLES.map(([v, label], i) => `<button class="tv-chip${i === 0 ? " on" : ""}" data-style="${v}" type="button">${label}</button>`).join("");
+    stylesWrap.querySelectorAll(".tv-chip").forEach((chip) => {
+      chip.addEventListener("click", () => {
+        stylesWrap.querySelectorAll(".tv-chip").forEach((c) => c.classList.remove("on"));
+        chip.classList.add("on");
+        if (S) { S.setKeyStyle(chip.dataset.style); S.previewTyping(); }
+      });
+    });
+
+    async function runSounds() {
+      const word = ["v", "a", "n", "i", "l", "l", "a", "."];
+      for (let i = 0; i < keyEls.length; i++) {
+        const el = keyEls[i];
+        el.classList.add("press");
+        if (word[i] === " ") { S && S.keySpace(); } else { S && S.key(); }
+        await sleep(150);
+        el.classList.remove("press");
+        await sleep(120);
+      }
+      if (S) { S.keyReturn(); }
+    }
+
+    /* ---------- timeline --------------------------------------------------- */
+    const scenes = Array.from(document.querySelectorAll(".tv-scene"));
+    const progressEl = document.getElementById("tvProgress");
+    const countEl = document.getElementById("tvCount");
+    let idx = -1;
+
+    const plan = [
+      { scene: "brand", dur: 5000 },
+      { scene: "chat", run: runChat, dur: 9500 },
+      { scene: "agent", run: runAgent, dur: 11000 },
+      { scene: "themes", run: runThemes, dur: 8000 },
+      { scene: "features", dur: 7500 },
+      { scene: "sound", run: runSounds, dur: 8000 },
+      { scene: "end", dur: 0 },
+    ];
+    const totalMS = plan.reduce((a, p) => a + (p.dur || 0), 0);
+
+    async function playItem(i) {
+      clearTimers();
+      scenes.forEach((s) => s.classList.remove("on"));
+      idx = Math.max(0, Math.min(i, plan.length - 1));
+      const item = plan[idx];
+      const current = scenes.find((s) => s.dataset.scene === item.scene) || scenes[idx];
+      current.classList.add("on");
+      countEl.textContent = `${String(idx + 1).padStart(2, "0")} / ${String(plan.length).padStart(2, "0")}`;
+      if (item.run) item.run();
+      if (item.dur > 0) timers.push(setTimeout(() => playItem(idx + 1), item.dur));
+      else progressEl.style.width = "100%";
+    }
+
+    function startProgress() {
+      progressEl.style.transition = "none";
+      progressEl.style.width = "0%";
+      requestAnimationFrame(() => {
+        progressEl.style.transition = `width ${totalMS}ms linear`;
+        progressEl.style.width = "100%";
+      });
+    }
+
+    function replay() {
+      clearTimers();
+      progressEl.style.transition = "none";
+      progressEl.style.width = "0%";
+      startProgress();
+      playItem(0);
+    }
+
+    /* ---------- sound + controls ------------------------------------------ */
+    const soundToggle = document.getElementById("tvSoundToggle");
+    let soundOn = true;
+    function ensureAudio() {
+      if (!S) return;
+      S.setEnabled(true);
+      S.setKeyEnabled(true);
+      S.setKeyStyle("mechanical");
+    }
+    function paintSound() {
+      soundToggle.classList.toggle("on", soundOn);
+      soundToggle.textContent = soundOn ? "sound on" : "sound off";
+      if (S) S.setEnabled(soundOn);
+      if (S) S.setKeyEnabled(soundOn);
+    }
+    soundToggle.addEventListener("click", () => {
+      soundOn = !soundOn;
+      ensureAudio();
+      paintSound();
+      if (soundOn && S) S.toggle();
+    });
+    document.addEventListener("pointerdown", ensureAudio, { once: true });
+
+    document.getElementById("tvReplay").addEventListener("click", () => { if (S) S.export(); replay(); });
+    document.getElementById("tvReplayEnd").addEventListener("click", () => { if (S) S.success(); replay(); });
+    document.getElementById("tvSkip").addEventListener("click", () => {
+      if (idx >= plan.length - 1) { replay(); return; }
+      playItem(idx + 1);
+    });
+    document.addEventListener("keydown", (e) => {
+      if (e.key === " " || e.key === "ArrowRight" || e.key === "ArrowDown") { e.preventDefault(); document.getElementById("tvSkip").click(); }
+      if (e.key === "ArrowLeft" || e.key === "ArrowUp") { e.preventDefault(); playItem(idx - 1); }
+    });
+
+    renderIcons(document);
+    startProgress();
+    playItem(0);
+  })();
+  </script>
+</body>
+</html>

@@ -895,6 +895,7 @@ button img,
 }
 
 .settings-button {
+  grid-column: 3;
   justify-self: end;
 }
 
@@ -5851,6 +5852,7 @@ body[data-mode="agent"] .pill-tool[data-tool="compare"] { display: none; }
 
 body[data-agent-ui="true"][data-mode="agent"] .sidebar { display: none; }
 body[data-agent-ui="true"][data-mode="agent"] .agent-sidebar { display: flex; }
+body[data-agent-ui="false"] .top-center { display: none; }
 
 .app-shell[data-sidebar="closed"] .agent-sidebar .brand,
 .app-shell[data-sidebar="closed"] .agent-sidebar .agent-sidebar-scroll {

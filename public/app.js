@@ -157,7 +157,10 @@ const els = {
   agentFilesUp: document.querySelector("#agentFilesUp"),
   agentFilesRefresh: document.querySelector("#agentFilesRefresh"),
   agentDataSummary: document.querySelector("#agentDataSummary"),
-  agentModeToggle: document.querySelector("#agentModeToggle"),
+  devAgentToggle: document.querySelector("#devAgentToggle"),
+  devModal: document.querySelector("#devModal"),
+  devReloadThemes: document.querySelector("#devReloadThemes"),
+  devResetSettings: document.querySelector("#devResetSettings"),
   agentSessionList: document.querySelector("#agentSessionList"),
   agentNewSession: document.querySelector("#agentNewSession"),
   agentFolderModal: document.querySelector("#agentFolderModal"),
@@ -235,7 +238,7 @@ const state = {
     customIcon: localStorage.getItem("vanilla-custom-icon") || "",
     desktopNotifications: localStorage.getItem("vanilla-desktop-notifications") !== "false",
     agentDir: localStorage.getItem("vanilla-agent-dir") || "",
-    agentMode: localStorage.getItem("vanilla-agent-mode") !== "false",
+    agentMode: localStorage.getItem("vanilla-agent-mode") === "true",
   },
   mode: localStorage.getItem("vanilla-mode") === "agent" ? "agent" : "chat",
   agentFileStack: [],
@@ -388,6 +391,7 @@ function setShortcuts() {
     search: isMac ? "⌘+K" : "Ctrl+K",
     workspace: isMac ? "⌘+⇧+F" : "Ctrl+Shift+F",
     "open-settings": isMac ? "⌘+," : "Ctrl+,",
+    "dev-panel": isMac ? "⌘+8" : "Ctrl+8",
     "toggle-sidebar": isMac ? "⌘+B" : "Ctrl+B",
   };
 
@@ -2701,7 +2705,7 @@ function applySettings() {
   if (els.autoNameToggle) els.autoNameToggle.checked = settings.autoName;
   if (els.webSearchToggle) els.webSearchToggle.checked = settings.webSearch;
   if (els.workspaceToolsToggle) els.workspaceToolsToggle.checked = settings.workspaceTools;
-  if (els.agentModeToggle) els.agentModeToggle.checked = settings.agentMode !== false;
+  if (els.devAgentToggle) els.devAgentToggle.checked = settings.agentMode !== false;
   document.body.dataset.agentUi = String(settings.agentMode !== false);
   if (settings.agentMode === false && state.mode === "agent") setMode("chat");
   const searchPill = document.querySelector('[data-tool="search"]');
@@ -2821,6 +2825,7 @@ function closeModals() {
   els.installModal.hidden = true;
   els.ollamaModal.hidden = true;
   els.uninstallModal.hidden = true;
+  if (els.devModal) els.devModal.hidden = true;
   if (els.exportModal) els.exportModal.hidden = true;
   if (els.compareModal) els.compareModal.hidden = true;
   if (els.promptModal) els.promptModal.hidden = true;
@@ -4125,18 +4130,31 @@ function bindEvents() {
   if (els.agentFilesRefresh) {
     els.agentFilesRefresh.addEventListener("click", () => loadAgentFiles(state.agentFileDir || getAgentRoot()));
   }
-  if (els.agentModeToggle) {
-    els.agentModeToggle.addEventListener("change", () => {
-      state.settings.agentMode = els.agentModeToggle.checked;
+  if (els.devAgentToggle) {
+    els.devAgentToggle.addEventListener("change", () => {
+      state.settings.agentMode = els.devAgentToggle.checked;
       applySettings();
       setMode(state.mode);
-      if (els.agentModeToggle.checked) {
+      if (els.devAgentToggle.checked) {
         refreshAgentSidebar();
         showNotification("Agent mode enabled", "success");
       } else {
         state.agentFileStack = [];
         showNotification("Agent mode disabled", "info");
       }
+    });
+  }
+  if (els.devReloadThemes) {
+    els.devReloadThemes.addEventListener("click", () => {
+      loadThemes().then(() => showNotification("Theme list reloaded", "success")).catch(() => showNotification("Could not reload themes", "error"));
+    });
+  }
+  if (els.devResetSettings) {
+    els.devResetSettings.addEventListener("click", () => {
+      Object.keys(localStorage).filter((key) => key.startsWith("vanilla-")).forEach((key) => localStorage.removeItem(key));
+      api("/api/settings", { method: "PUT", body: JSON.stringify({ settings: {} }) })
+        .catch(() => {})
+        .finally(() => location.reload());
     });
   }
   els.conversationPromptSave.addEventListener("click", saveConversationPrompt);
@@ -4408,6 +4426,11 @@ function bindEvents() {
       event.preventDefault();
       openModal(els.settingsModal);
     }
+    if (command && event.key === "8") {
+      event.preventDefault();
+      if (els.devModal?.hidden) openModal(els.devModal);
+      else els.devModal.hidden = true;
+    }
     if (command && !event.shiftKey && event.key.toLowerCase() === "b") {
       event.preventDefault();
       els.sidebarToggle.click();
@@ -4440,6 +4463,7 @@ function runAppCommand(command) {
     "new-chat": () => newChat(),
     search: () => openModal(els.searchModal),
     settings: () => { openModal(els.settingsModal); loadUpdateStatus(); },
+    "dev-panel": () => openModal(els.devModal),
     "toggle-sidebar": () => els.sidebarToggle.click(),
     "focus-message": () => els.promptInput.focus(),
     stop: () => state.runningConversationId ? stopStream() : closeModals(),
