@@ -38,6 +38,11 @@ WORK_ROOT="$HOME/Library/Application Support/OceloRelease"
 
 RESUME=0
 STATUS_ONLY=0
+VANILLA_MODE=0
+VANILLA_INPUT=""
+VANILLA_OUTPUT=""
+VANILLA_IDENTITY="${VANILLA_IDENTITY:-$IDENTITY}"
+VANILLA_NOTARY_PROFILE="${VANILLA_NOTARY_PROFILE:-$NOTARY_PROFILE}"
 CURRENT_STAGE="none"
 VERSION=""
 BUILD=""
@@ -49,10 +54,15 @@ Usage:
   $0
   $0 --resume
   $0 --status
+  $0 --vanilla <app|zip|dmg> [options]
 
 Options:
   --resume      Continue from the last completed checkpoint.
   --status      Show the saved release checkpoint and exit.
+  --vanilla     Sign and notarize a friend-supplied Vanilla app artifact.
+  --identity    Developer ID identity for --vanilla.
+  --notary-profile Keychain profile for --vanilla.
+  --output      Output directory for --vanilla (default: vanilla-sh/dist/vanilla-release).
 USAGE
 }
 
@@ -63,6 +73,27 @@ while [[ $# -gt 0 ]]; do
       ;;
     --status)
       STATUS_ONLY=1
+      ;;
+    --vanilla)
+      VANILLA_MODE=1
+      shift
+      [[ $# -gt 0 ]] || { usage >&2; exit 2; }
+      VANILLA_INPUT="$1"
+      ;;
+    --identity)
+      shift
+      [[ $# -gt 0 ]] || { usage >&2; exit 2; }
+      VANILLA_IDENTITY="$1"
+      ;;
+    --notary-profile)
+      shift
+      [[ $# -gt 0 ]] || { usage >&2; exit 2; }
+      VANILLA_NOTARY_PROFILE="$1"
+      ;;
+    --output)
+      shift
+      [[ $# -gt 0 ]] || { usage >&2; exit 2; }
+      VANILLA_OUTPUT="$1"
       ;;
     -h|--help)
       usage
@@ -337,9 +368,122 @@ verify_source_entitlements() {
   fi
 }
 
+release_vanilla() {
+  local input="$VANILLA_INPUT"
+  local script_dir
+  local output
+  local work
+  local source_app=""
+  local mounted=0
+  local mountpoint=""
+  local app_name
+  local version
+  local build
+  local signed_app
+  local app_archive
+  local dmg
+  local dmg_work
+
+  script_dir="$(cd "$(dirname "$0")" && pwd)"
+  output="${VANILLA_OUTPUT:-$script_dir/dist/vanilla-release}"
+  NOTARY_PROFILE="$VANILLA_NOTARY_PROFILE"
+
+  [[ -e "$input" ]] || fail "Vanilla input does not exist: $input"
+  require ditto
+  require codesign
+  require hdiutil
+  require xcrun
+  require python3
+
+  mkdir -p "$output"
+  work="$(mktemp -d "${TMPDIR:-/tmp}/vanilla-release.XXXXXX")"
+
+  cleanup_vanilla() {
+    if [[ "$mounted" -eq 1 ]]; then
+      hdiutil detach "$mountpoint" >/dev/null 2>&1 || true
+    fi
+    rm -rf "$work"
+  }
+  trap cleanup_vanilla EXIT
+
+  case "$input" in
+    *.app)
+      source_app="$input"
+      ;;
+    *.zip)
+      ditto -x -k "$input" "$work/unpacked"
+      source_app="$(find "$work/unpacked" -maxdepth 3 -type d -name '*.app' -print -quit)"
+      ;;
+    *.dmg)
+      mountpoint="$(mktemp -d "${TMPDIR:-/tmp}/vanilla-mount.XXXXXX")"
+      hdiutil attach "$input" -nobrowse -readonly -mountpoint "$mountpoint" >/dev/null
+      mounted=1
+      source_app="$(find "$mountpoint" -maxdepth 3 -type d -name '*.app' -print -quit)"
+      ;;
+    *)
+      fail "Vanilla input must be an .app, .zip, or .dmg: $input"
+      ;;
+  esac
+
+  [[ -n "$source_app" && -d "$source_app" ]] || fail "Could not find a .app in $input"
+
+  signed_app="$output/$(basename "$source_app")"
+  rm -rf "$signed_app"
+  ditto --norsrc --noqtn "$source_app" "$signed_app"
+
+  app_name="$(plist_value "$signed_app/Contents/Info.plist" CFBundleName)"
+  version="$(plist_value "$signed_app/Contents/Info.plist" CFBundleShortVersionString)"
+  build="$(plist_value "$signed_app/Contents/Info.plist" CFBundleVersion)"
+  app_name="${app_name:-Vanilla}"
+
+  step "Signing Vanilla $version ($build)"
+  codesign --remove-signature --deep "$signed_app" >/dev/null 2>&1 || true
+  codesign --force --deep --timestamp --options runtime \
+    --sign "$VANILLA_IDENTITY" "$signed_app"
+  codesign --verify --deep --strict --verbose=2 "$signed_app"
+
+  app_archive="$output/${app_name}-${version}-${build}.zip"
+  rm -f "$app_archive"
+  ditto -c -k --sequesterRsrc --keepParent "$signed_app" "$app_archive"
+  notarize "$app_archive" "$app_name.app" \
+    "$output/app-notary.json" "$output/app-notary-log.json"
+
+  step "Stapling Vanilla app"
+  xcrun stapler staple "$signed_app"
+  xcrun stapler validate "$signed_app"
+  rm -f "$app_archive"
+  ditto -c -k --sequesterRsrc --keepParent "$signed_app" "$app_archive"
+
+  dmg="$output/${app_name}-${version}-${build}.dmg"
+  dmg_work="$work/${app_name}.tmp.dmg"
+  rm -f "$dmg" "$dmg_work"
+  step "Building Vanilla DMG"
+  hdiutil create -volname "$app_name" -srcfolder "$signed_app" \
+    -ov -format UDRW "$dmg_work" >/dev/null
+  hdiutil convert "$dmg_work" -format UDZO -imagekey zlib-level=9 -o "$dmg" >/dev/null
+  rm -f "$dmg_work"
+
+  codesign --force --timestamp --sign "$VANILLA_IDENTITY" "$dmg"
+  codesign --verify --verbose=2 "$dmg"
+  notarize "$dmg" "$app_name.dmg" \
+    "$output/dmg-notary.json" "$output/dmg-notary-log.json"
+  xcrun stapler staple "$dmg"
+  xcrun stapler validate "$dmg"
+
+  step "Vanilla release complete"
+  echo "Signed app: $signed_app"
+  echo "Signed archive: $app_archive"
+  echo "Notarized DMG: $dmg"
+}
+
 ###############################################################################
 # Status mode can exit before expensive preflight work.
 ###############################################################################
+
+if [[ "$VANILLA_MODE" -eq 1 ]]; then
+  release_vanilla
+  exit 0
+fi
 
 if [[ "$STATUS_ONLY" -eq 1 ]]; then
   show_status
