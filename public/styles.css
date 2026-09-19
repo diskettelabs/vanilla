@@ -61,6 +61,12 @@
   box-sizing: border-box;
 }
 
+@property --conversation-fade-width {
+  syntax: "<length>";
+  inherits: false;
+  initial-value: 32px;
+}
+
 [hidden] {
   display: none !important;
 }
@@ -520,7 +526,27 @@ button img,
   text-align: left;
   text-overflow: ellipsis;
   white-space: nowrap;
-  padding: 10px 14px;
+  padding: 10px 110px 10px 14px;
+}
+
+.conversation-open-text {
+  --conversation-fade-width: 0px;
+  display: block;
+  width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  -webkit-mask-image: linear-gradient(to right, #000 0%, #000 calc(100% - var(--conversation-fade-width)), transparent 100%);
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-size: 100% 100%;
+  mask-image: linear-gradient(to right, #000 0%, #000 calc(100% - var(--conversation-fade-width)), transparent 100%);
+  mask-repeat: no-repeat;
+  mask-size: 100% 100%;
+  transition: --conversation-fade-width 220ms ease;
+}
+
+.conversation-row:hover .conversation-open-text {
+  --conversation-fade-width: 112px;
 }
 
 .conversation-delete {
@@ -566,7 +592,7 @@ button img,
   cursor: pointer;
   opacity: 0;
   pointer-events: none;
-  transition: opacity 150ms ease, background 150ms ease;
+  transition: right 150ms ease, opacity 150ms ease, background 150ms ease;
   z-index: 3;
 }
 
@@ -638,7 +664,7 @@ button img,
   cursor: pointer;
   opacity: 0;
   pointer-events: none;
-  transition: opacity 150ms ease, background 150ms ease, color 150ms ease;
+  transition: right 150ms ease, opacity 150ms ease, background 150ms ease, color 150ms ease;
   z-index: 3;
 }
 
@@ -670,47 +696,6 @@ button img,
 
 .conversation-row.is-pinned .conversation-open {
   font-weight: 600;
-}
-
-/* Gradient overlay for action buttons */
-.conversation-row::after {
-  content: '';
-  position: absolute;
-  right: 102px;
-  top: 0;
-  bottom: 0;
-  width: 40px;
-  background: linear-gradient(to right, transparent 0%, var(--panel) 100%);
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity 150ms ease;
-  z-index: 2;
-}
-
-.conversation-row:hover::after,
-.conversation-row[aria-current="true"]::after {
-  opacity: 1;
-}
-
-/* Solid background behind buttons */
-.conversation-row::before {
-  content: '';
-  position: absolute;
-  right: 0;
-  top: 0;
-  bottom: 0;
-  width: 110px;
-  background: var(--panel);
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity 150ms ease;
-  border-radius: 0 8px 8px 0;
-  z-index: 2;
-}
-
-.conversation-row:hover::before,
-.conversation-row[aria-current="true"]::before {
-  opacity: 1;
 }
 
 .conversation-rename-input {
@@ -801,10 +786,17 @@ button img,
 
 .conversation-delete.is-armed {
   opacity: 1;
-  width: auto;
-  padding: 0 8px;
+  width: 60px;
   color: #fff;
   background: #b0332c;
+}
+
+.conversation-row.is-delete-armed .conversation-rename {
+  right: 76px;
+}
+
+.conversation-row.is-delete-armed .conversation-pin {
+  right: 106px;
 }
 
 .app-shell[data-sidebar="closed"] .sidebar-top {
@@ -901,6 +893,7 @@ button img,
   display: grid;
   min-width: 0;
   height: 100vh;
+  overflow: visible;
   grid-template-rows: auto auto 1fr auto;
   background: var(--bg);
 }
@@ -913,12 +906,14 @@ button img,
   align-items: center;
   gap: 12px;
   padding: 14px 12px 0;
+  overflow: visible;
 }
 
 .top-left {
   display: grid;
   gap: 2px;
   justify-self: start;
+  overflow: visible;
 }
 
 .top-center {
@@ -954,6 +949,7 @@ button img,
   cursor: pointer;
   font-size: 19px;
   line-height: 1.05;
+  overflow: visible;
   transition: color 150ms ease;
 }
 
@@ -963,11 +959,10 @@ button img,
 
 .model-button span:first-child {
   min-width: 0;
-  overflow-x: hidden;
-  text-overflow: ellipsis;
+  overflow: visible;
+  text-overflow: clip;
   white-space: nowrap;
-  flex-shrink: 1;
-  overflow-y: visible;
+  flex-shrink: 0;
 }
 
 .chevron {
@@ -1272,6 +1267,7 @@ button img,
   overflow: auto;
   padding: 100px clamp(28px, 6vw, 88px) 176px;
   scroll-behavior: smooth;
+  overflow-x: visible;
 }
 
 .messages:empty {
@@ -1287,13 +1283,16 @@ button img,
 }
 
 .user-message {
+  width: min(100%, 860px);
+  margin-inline: auto;
   display: grid;
   justify-items: end;
 }
 
 .user-bubble {
-  max-width: min(60%, 685px);
-  min-width: min(40%, 420px);
+  width: fit-content;
+  max-width: 860px;
+  min-width: 0;
   border-radius: 20px;
   background: var(--bubble);
   padding: 12px 16px;
@@ -1315,11 +1314,29 @@ button img,
 
 .message-actions {
   display: flex;
+  align-items: center;
   justify-content: flex-end;
-  gap: 14px;
+  gap: 4px;
   min-height: 34px;
   margin-top: 8px;
   padding-right: 14px;
+}
+
+.edit-branch-indicator {
+  display: inline-flex;
+  width: auto;
+  margin: 0 4px 0 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.3;
+  text-align: right;
+}
+
+.edit-branch-indicator:not([hidden]) {
+  display: inline-flex;
 }
 
 .message-action {
@@ -1363,8 +1380,9 @@ button img,
   grid-template-columns: 34px minmax(0, 1fr);
   gap: 12px;
   align-items: start;
-  width: 100%;
+  width: min(100%, 1060px);
   max-width: 1060px;
+  margin-inline: auto;
 }
 
 .assistant-mark {
@@ -1459,7 +1477,8 @@ body[data-assistant-logo="top"] .assistant-mark {
 }
 
 .assistant-body {
-  max-width: 100%;
+  width: 100%;
+  max-width: 860px;
   font-size: clamp(17px, 1.45vw, 22px);
   line-height: 1.22;
 }
@@ -3917,7 +3936,8 @@ body[data-reduce-motion="true"] *::after {
   }
 
   .user-bubble {
-    max-width: min(88vw, 685px);
+    width: min(88vw, 860px);
+    max-width: 860px;
     min-width: 0;
   }
 
@@ -3952,6 +3972,11 @@ body[data-reduce-motion="true"] *::after {
 /* ─── First-run setup flow ───────────────────────────────────────────────── */
 
 .setup-backdrop {
+  position: fixed;
+  inset: 0;
+  width: auto;
+  height: 100vh;
+  min-height: 0;
   padding: 0;
   background: var(--bg);
   backdrop-filter: none;
@@ -4254,6 +4279,12 @@ body[data-reduce-motion="true"] *::after {
   display: flex;
   justify-content: center;
   margin-top: 8px;
+}
+
+.setup-step[data-step="1"] .setup-actions {
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
 }
 
 .setup-actions-split {
@@ -5059,25 +5090,24 @@ body[data-reduce-motion="true"] *::after {
 
 /* Branching, icon customization, and interaction polish */
 .branch-switcher {
-  position: sticky;
-  top: 10px;
-  z-index: 4;
+  position: static;
+  z-index: auto;
   align-self: center;
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  margin: 4px auto 18px;
-  padding: 5px;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--panel-strong) 90%, transparent);
-  box-shadow: 0 8px 28px rgba(20, 20, 20, 0.08);
-  backdrop-filter: blur(14px);
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
 }
 
 .branch-switcher span {
   display: grid;
-  min-width: 88px;
+  min-width: 54px;
   text-align: center;
   line-height: 1.15;
 }
@@ -5144,19 +5174,6 @@ body[data-reduce-motion="true"] *::after {
 
 .composer[data-mode="editing"] {
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 38%, transparent), 0 14px 36px rgba(20, 20, 20, 0.1);
-}
-
-.composer[data-mode="editing"]::before {
-  content: "Editing prompt · creates a branch";
-  position: absolute;
-  left: 18px;
-  bottom: calc(100% + 7px);
-  padding: 4px 8px;
-  border-radius: 7px;
-  background: var(--text);
-  color: var(--bg);
-  font-size: 11px;
-  font-weight: 600;
 }
 
 button, .button, .conversation-item, .tool-pill {
@@ -5269,7 +5286,7 @@ body {
 .date-heading { color: color-mix(in srgb, var(--muted) 80%, transparent); font-size: 11px; letter-spacing: 0.04em; }
 .conversation-row,
 .conversation-open { min-height: 38px; border-radius: 10px; }
-.conversation-open { padding: 9px 12px; color: color-mix(in srgb, var(--text) 82%, transparent); font-size: 14px; }
+.conversation-open { padding: 9px 110px 9px 12px; color: color-mix(in srgb, var(--text) 82%, transparent); font-size: 14px; }
 .conversation-row:hover,
 .conversation-row[aria-current="true"] { background: color-mix(in srgb, var(--text) 5%, transparent); }
 .conversation-empty-icon,
@@ -5304,15 +5321,24 @@ body {
 
 .messages { padding: 88px clamp(28px, 6vw, 88px) 176px; }
 .message + .message { margin-top: 26px; }
+.message.user-message,
+.message.assistant-message {
+  width: min(100%, 1060px);
+  max-width: 1060px;
+  margin-inline: auto;
+}
 .user-bubble {
+  width: fit-content;
+  max-width: 860px;
   border: 1px solid color-mix(in srgb, var(--bubble) 72%, var(--text) 10%);
   border-radius: 20px 20px 6px 20px;
-  padding: 12px 16px;
+  padding: 8px 12px;
   box-shadow: 0 6px 18px color-mix(in srgb, var(--bubble) 34%, transparent);
-  font-size: clamp(16px, 1.2vw, 19px);
+  font-size: 14px;
   line-height: 1.38;
 }
 .assistant-message { grid-template-columns: 30px minmax(0, 1fr); gap: 12px; }
+.assistant-body { width: 100%; max-width: 860px; }
 .assistant-mark {
   display: grid;
   place-items: center;

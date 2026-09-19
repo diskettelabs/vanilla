@@ -300,6 +300,26 @@ const greetings = [
   "What can I help you finish?"
 ];
 
+const genericGreetings = [
+  "Ready when you are.",
+  "What are we working on?",
+  "Drop in the problem and we will sort it out.",
+  "What needs a second set of eyes?",
+  "Where should we start?",
+  "Show me the rough draft.",
+  "What should we make better?",
+  "What are we shipping today?",
+  "What is the blocker?",
+  "What needs a clean pass?",
+  "Send context and we will map it out.",
+  "What is the goal for this one?",
+  "Give me the short version first.",
+  "What deserves attention today?",
+  "Let us make this easier.",
+  "What should be clearer?",
+  "What can I help you finish?"
+];
+
 function api(path, options = {}) {
   const { timeoutMs, ...fetchOptions } = options;
   const timeoutController = timeoutMs ? new AbortController() : null;
@@ -420,13 +440,13 @@ function chooseGreeting() {
   const name = getUserName();
   const timeSpecific = [];
   if (hour >= 0 && hour < 4) {
-    timeSpecific.push("I'm here for the 2AM grind.", `Light mode at 2AM is crazy${name ? `, ${name}` : ""}.`, "Quiet hours, loud ideas.");
+    timeSpecific.push("I'm here for the 2AM grind.", "Quiet hours, loud ideas.");
   } else if (hour >= 5 && hour < 10) {
-    timeSpecific.push(`Morning${name ? `, ${name}` : ""}. What's first?`, "Fresh day, fresh thread.");
+    timeSpecific.push(name ? `Morning, ${name}. What's first?` : "Morning. What's first?", "Fresh day, fresh thread.");
   } else if (hour >= 17 && hour < 22) {
-    timeSpecific.push(`Evening mode${name ? `, ${name}` : ""}. What are we making?`, "Let's close the loop on something.");
+    timeSpecific.push(name ? `Evening mode, ${name}. What are we making?` : "Evening mode. What are we making?", "Let's close the loop on something.");
   }
-  const pool = timeSpecific.length ? timeSpecific : greetings;
+  const pool = timeSpecific.length ? timeSpecific : (name ? greetings : genericGreetings);
   els.greeting.textContent = applyName(pool[Math.floor(Math.random() * pool.length)]);
 }
 
@@ -764,7 +784,10 @@ function renderConversationList() {
     const openButton = document.createElement("button");
     openButton.type = "button";
     openButton.className = "conversation-open";
-    openButton.textContent = conv.title || "Untitled";
+    const titleText = document.createElement("span");
+    titleText.className = "conversation-open-text";
+    titleText.textContent = conv.title || "Untitled";
+    openButton.append(titleText);
     openButton.title = conv.title || "Untitled";
     openButton.addEventListener("click", () => loadConversation(conv.id));
 
@@ -807,11 +830,13 @@ function renderConversationList() {
       }
       deleteButton.dataset.armed = "true";
       deleteButton.classList.add("is-armed");
+      row.classList.add("is-delete-armed");
       deleteButton.textContent = "Delete?";
       clearTimeout(deleteButton._timer);
       deleteButton._timer = setTimeout(() => {
         deleteButton.dataset.armed = "false";
         deleteButton.classList.remove("is-armed");
+        row.classList.remove("is-delete-armed");
         deleteButton.innerHTML = TRASH_ICON;
       }, 2500);
     });
@@ -1112,7 +1137,6 @@ function renderMessages(conv) {
   els.messages.innerHTML = "";
   const messages = conv?.messages || [];
   els.emptyState.hidden = messages.length > 0;
-  renderBranchSwitcher(conv);
   const staggerStart = Math.max(0, messages.length - 6);
   for (let i = 0; i < messages.length; i++) {
     const msg = messages[i];
@@ -1124,6 +1148,7 @@ function renderMessages(conv) {
     }
     if (i >= staggerStart) wrap.style.animationDelay = `${(i - staggerStart) * 60}ms`;
   }
+  renderBranchSwitcher(conv);
   requestAnimationFrame(() => {
     scrollToBottom();
     // Apply syntax highlighting to all loaded messages
@@ -1157,7 +1182,14 @@ function renderBranchSwitcher(conv) {
   };
   nav.querySelector("button:first-child").addEventListener("click", () => activate(activeIndex - 1));
   nav.querySelector("button:last-child").addEventListener("click", () => activate(activeIndex + 1));
-  els.messages.append(nav);
+  const activeBranch = branches[activeIndex];
+  const parentBranch = branches.find((branch) => branch.id === activeBranch?.parentId) || branches[0];
+  const sourceIndex = parentBranch?.messages?.findIndex((message) => message.id === activeBranch?.forkedFromMessageId) ?? -1;
+  const targetId = sourceIndex >= 0 ? activeBranch?.messages?.[sourceIndex]?.id : "";
+  const targetMessage = targetId ? els.messages.querySelector(`[data-message-id="${CSS.escape(targetId)}"]`) : null;
+  const fallbackMessage = [...els.messages.querySelectorAll(".user-message")].at(-1);
+  const actionRow = (targetMessage || fallbackMessage)?.querySelector(".message-actions");
+  actionRow?.append(nav);
 }
 
 function addUserMessage(content, { id = crypto.randomUUID(), animate = true } = {}) {
@@ -1172,6 +1204,7 @@ function addUserMessage(content, { id = crypto.randomUUID(), animate = true } = 
       ${isLong ? '<button class="see-more" type="button">see more</button>' : ""}
     </div>
     <div class="message-actions">
+      <span class="edit-branch-indicator" hidden>Editing this prompt creates a new branch.</span>
       <button class="message-action" type="button" data-edit-message aria-label="Edit prompt" title="Edit prompt">${icon("pencil", "", 15)}</button>
       <button class="message-action" type="button" data-copy-message aria-label="Copy prompt" title="Copy prompt">${icon("copy", "", 15)}</button>
     </div>`;
@@ -1287,6 +1320,12 @@ async function copyText(text) {
 }
 
 async function editPrompt(content, id) {
+  document.querySelectorAll(".edit-branch-indicator").forEach((indicator) => {
+    indicator.hidden = true;
+  });
+  const message = document.querySelector(`.user-message[data-message-id="${CSS.escape(id)}"]`);
+  const indicator = message?.querySelector(".edit-branch-indicator");
+  if (indicator) indicator.hidden = false;
   els.promptInput.value = content;
   resizePrompt();
   els.promptInput.focus();
@@ -5100,6 +5139,7 @@ function bindSetupFlow() {
 
   const nameInput = els.setupModal.querySelector("#setupNameInput");
   const nameNext = els.setupModal.querySelector("#setupNameNext");
+  const nameSkip = els.setupModal.querySelector("#setupNameSkip");
   const choiceButtons = els.setupModal.querySelectorAll(".setup-choice[data-choice]");
   const aiNext = els.setupModal.querySelector("#setupAiNext");
   const namingButtons = els.setupModal.querySelectorAll(".setup-choice[data-naming]");
@@ -5142,6 +5182,12 @@ function bindSetupFlow() {
       return;
     }
     state.settings.userName = name;
+    applySettings();
+    showSetupStep("2");
+  });
+
+  nameSkip.addEventListener("click", () => {
+    state.settings.userName = "";
     applySettings();
     showSetupStep("2");
   });
