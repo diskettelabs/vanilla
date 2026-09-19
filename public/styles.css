@@ -920,7 +920,7 @@ button img,
   position: relative;
   z-index: 4;
   display: grid;
-  grid-template-columns: 1fr auto 1fr;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
   gap: 12px;
   padding: 14px 12px 0;
@@ -931,7 +931,8 @@ button img,
   display: grid;
   gap: 2px;
   justify-self: start;
-  overflow: visible;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .top-center {
@@ -958,6 +959,7 @@ button img,
 .model-button {
   display: inline-flex;
   max-width: min(420px, 54vw);
+  min-width: 0;
   align-items: center;
   gap: 8px;
   padding: 0;
@@ -967,7 +969,7 @@ button img,
   cursor: pointer;
   font-size: 19px;
   line-height: 1.05;
-  overflow: visible;
+  overflow: hidden;
   transition: color 150ms ease;
 }
 
@@ -977,10 +979,10 @@ button img,
 
 .model-button span:first-child {
   min-width: 0;
-  overflow: visible;
-  text-overflow: clip;
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
-  flex-shrink: 0;
+  flex-shrink: 1;
 }
 
 .chevron {
@@ -1004,9 +1006,14 @@ button img,
   display: flex;
   flex-wrap: wrap;
   gap: 4px;
+  min-width: 0;
   color: #aaa;
   font-size: 13px;
   font-weight: 700;
+}
+
+.system-stats span {
+  white-space: nowrap;
 }
 
 .system-stats span:not(:last-child)::after {
@@ -5479,6 +5486,14 @@ button:disabled { cursor: not-allowed; }
 }
 .system-stats { color: var(--muted); font-size: 11px; font-weight: 550; font-variant-numeric: tabular-nums; }
 .system-stats span:not(:last-child)::after { color: color-mix(in srgb, var(--muted) 45%, transparent); }
+
+@media (max-width: 1180px) {
+  .top-bar { gap: 8px; }
+  .model-button { max-width: min(300px, 40vw); }
+}
+@media (max-width: 960px) {
+  .system-stats { display: none; }
+}
 
 .conversation-row::before { background: var(--panel); }
 .conversation-row::after { background: linear-gradient(to right, transparent, var(--panel)); }

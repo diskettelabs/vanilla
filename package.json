@@ -9,6 +9,8 @@
     "dev": "node --watch server.js",
     "build": "bash scripts/build-desktop.sh",
     "build:install": "bash scripts/build-desktop.sh --copy",
+    "build:electron": "bash scripts/build-electron.sh",
+    "build:electron:install": "bash scripts/build-electron.sh --copy",
     "electron": "npm --prefix electron start",
     "electron:install": "npm --prefix electron install",
     "gelectron": "npm --prefix gelectron start",

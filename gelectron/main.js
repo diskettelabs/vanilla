@@ -151,11 +151,13 @@ function buildMenu() {
     ...(isMac ? [{
       label: app.name,
       submenu: [
-        { role: 'hide' },
-        { role: 'hideOthers' },
-        { role: 'unhide' },
+        { label: `About ${app.name}`, role: 'about' },
         { type: 'separator' },
-        { role: 'quit' },
+        { label: `Hide ${app.name}`, role: 'hide', accelerator: 'Cmd+H' },
+        { label: 'Hide Others', role: 'hideOthers', accelerator: 'Alt+Cmd+H' },
+        { label: 'Show All', role: 'unhide' },
+        { type: 'separator' },
+        { label: `Quit ${app.name}`, role: 'quit', accelerator: 'Cmd+Q' },
       ],
     }] : []),
     {
@@ -167,7 +169,9 @@ function buildMenu() {
           click: () => sendCommand('new-chat'),
         },
         { type: 'separator' },
-        isMac ? { role: 'close' } : { role: 'quit' },
+        isMac
+          ? { label: 'Close Window', role: 'close', accelerator: 'Cmd+W' }
+          : { label: 'Quit', role: 'quit', accelerator: 'Ctrl+Q' },
       ],
     },
     {
@@ -184,39 +188,41 @@ function buildMenu() {
     {
       label: 'Edit',
       submenu: [
-        { role: 'undo' },
-        { role: 'redo' },
+        { label: 'Undo', role: 'undo', accelerator: isMac ? 'Cmd+Z' : 'Ctrl+Z' },
+        { label: 'Redo', role: 'redo', accelerator: isMac ? 'Shift+Cmd+Z' : 'Ctrl+Y' },
         { type: 'separator' },
-        { role: 'cut' },
-        { role: 'copy' },
-        { role: 'paste' },
-        { role: 'selectAll' },
+        { label: 'Cut', role: 'cut', accelerator: isMac ? 'Cmd+X' : 'Ctrl+X' },
+        { label: 'Copy', role: 'copy', accelerator: isMac ? 'Cmd+C' : 'Ctrl+C' },
+        { label: 'Paste', role: 'paste', accelerator: isMac ? 'Cmd+V' : 'Ctrl+V' },
+        { label: 'Select All', role: 'selectAll', accelerator: isMac ? 'Cmd+A' : 'Ctrl+A' },
       ],
     },
     {
       label: 'View',
       submenu: [
-        { role: 'reload' },
+        { label: 'Reload', role: 'reload', accelerator: isMac ? 'Cmd+R' : 'Ctrl+R' },
         { type: 'separator' },
-        { role: 'resetZoom' },
-        { role: 'zoomIn' },
-        { role: 'zoomOut' },
+        { label: 'Actual Size', role: 'resetZoom', accelerator: isMac ? 'Cmd+0' : 'Ctrl+0' },
+        { label: 'Zoom In', role: 'zoomIn', accelerator: isMac ? 'Cmd+Plus' : 'Ctrl+Plus' },
+        { label: 'Zoom Out', role: 'zoomOut', accelerator: isMac ? 'Cmd+-' : 'Ctrl+-' },
         { type: 'separator' },
-        { role: 'togglefullscreen' },
+        { label: 'Toggle Full Screen', role: 'togglefullscreen', accelerator: isMac ? 'Ctrl+Cmd+F' : 'F11' },
       ],
     },
     {
       label: 'Window',
-      submenu: [
-        { role: 'minimize' },
-        { role: 'zoom' },
-        ...(isMac ? [
-          { type: 'separator' },
-          { role: 'front' },
-          { type: 'separator' },
-          { role: 'window' },
-        ] : [{ role: 'close' }]),
-      ],
+      submenu: isMac
+        ? [
+            { label: 'Minimize', role: 'minimize', accelerator: 'Cmd+M' },
+            { label: 'Zoom', role: 'zoom' },
+            { type: 'separator' },
+            { label: 'Bring All to Front', role: 'front' },
+          ]
+        : [
+            { label: 'Minimize', role: 'minimize', accelerator: 'Ctrl+M' },
+            { type: 'separator' },
+            { label: 'Close', role: 'close', accelerator: 'Ctrl+W' },
+          ],
     },
     {
       label: 'Help',

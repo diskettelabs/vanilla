@@ -2,7 +2,7 @@ const { app, BrowserWindow, Menu, shell, dialog, ipcMain, Notification, nativeIm
 const path = require('node:path');
 const fs = require('node:fs');
 const http = require('node:http');
-const { ElectronOllama } = require('electron-ollama');
+const { GelectronOllama } = require('gelectron-ollama');
 
 function appRoot() {
   const parent = path.join(__dirname, '..');
@@ -17,7 +17,8 @@ process.chdir(IS_PACKAGED ? app.getPath('userData') : APP_ROOT);
 
 process.env.VANILLA_PACKAGED = IS_PACKAGED ? '1' : '0';
 process.env.VANILLA_USER_DATA = app.getPath('userData');
-process.env.VANILLA_OLLAMA_DIR = path.join(app.getPath('userData'), 'ollama');
+process.env.VANILLA_OLLAMA_DIR = path.join(app.getPath('userData'), 'vanilla-chat', 'ollama');
+process.env.VANILLA_WHISPER_DIR = path.join(app.getPath('userData'), 'vanilla-chat', 'whisper');
 if (IS_PACKAGED) {
   process.env.VANILLA_APP_PATH = path.resolve(APP_ROOT, '..', '..', '..');
 }
@@ -59,7 +60,9 @@ ipcMain.on('show-notification', (_event, { title, body } = {}) => {
 });
 
 ipcMain.on('set-app-icon', (_event, dataUrl) => {
-  const image = dataUrl ? nativeImage.createFromDataURL(dataUrl) : nativeImage.createFromPath(path.join(__dirname, 'icon.png'));
+  const packagedIcon = path.join(__dirname, 'icon.png');
+  const defaultIcon = fs.existsSync(packagedIcon) ? packagedIcon : path.join(APP_ROOT, 'logo.png');
+  const image = dataUrl ? nativeImage.createFromDataURL(dataUrl) : nativeImage.createFromPath(defaultIcon);
   if (image.isEmpty()) return;
   mainWindow?.setIcon(image);
   if (process.platform === 'darwin' && app.dock) app.dock.setIcon(image);
@@ -123,8 +126,8 @@ async function startServer() {
 }
 
 async function ensureOllama() {
-  const ollama = new ElectronOllama({
-    basePath: path.join(app.getPath('userData'), 'ollama'),
+  const ollama = new GelectronOllama({
+    basePath: path.join(app.getPath('userData'), 'vanilla-chat', 'ollama'),
   });
   if (await ollama.isRunning()) {
     console.log('Ollama is already running on port 11434');
@@ -148,13 +151,13 @@ function buildMenu() {
     ...(isMac ? [{
       label: app.name,
       submenu: [
-        { role: 'about' },
+        { label: `About ${app.name}`, role: 'about' },
         { type: 'separator' },
-        { role: 'hide' },
-        { role: 'hideOthers' },
-        { role: 'unhide' },
+        { label: `Hide ${app.name}`, role: 'hide', accelerator: 'Cmd+H' },
+        { label: 'Hide Others', role: 'hideOthers', accelerator: 'Alt+Cmd+H' },
+        { label: 'Show All', role: 'unhide' },
         { type: 'separator' },
-        { role: 'quit' },
+        { label: `Quit ${app.name}`, role: 'quit', accelerator: 'Cmd+Q' },
       ],
     }] : []),
     {
@@ -166,7 +169,9 @@ function buildMenu() {
           click: () => sendCommand('new-chat'),
         },
         { type: 'separator' },
-        isMac ? { role: 'close' } : { role: 'quit' },
+        isMac
+          ? { label: 'Close Window', role: 'close', accelerator: 'Cmd+W' }
+          : { label: 'Quit', role: 'quit', accelerator: 'Ctrl+Q' },
       ],
     },
     {
@@ -183,48 +188,48 @@ function buildMenu() {
     {
       label: 'Edit',
       submenu: [
-        { role: 'undo' },
-        { role: 'redo' },
+        { label: 'Undo', role: 'undo', accelerator: isMac ? 'Cmd+Z' : 'Ctrl+Z' },
+        { label: 'Redo', role: 'redo', accelerator: isMac ? 'Shift+Cmd+Z' : 'Ctrl+Y' },
         { type: 'separator' },
-        { role: 'cut' },
-        { role: 'copy' },
-        { role: 'paste' },
-        { role: 'selectAll' },
+        { label: 'Cut', role: 'cut', accelerator: isMac ? 'Cmd+X' : 'Ctrl+X' },
+        { label: 'Copy', role: 'copy', accelerator: isMac ? 'Cmd+C' : 'Ctrl+C' },
+        { label: 'Paste', role: 'paste', accelerator: isMac ? 'Cmd+V' : 'Ctrl+V' },
+        { label: 'Select All', role: 'selectAll', accelerator: isMac ? 'Cmd+A' : 'Ctrl+A' },
       ],
     },
     {
       label: 'View',
       submenu: [
-        { role: 'reload' },
-        { role: 'forceReload' },
-        { role: 'toggleDevTools' },
+        { label: 'Reload', role: 'reload', accelerator: isMac ? 'Cmd+R' : 'Ctrl+R' },
         { type: 'separator' },
-        { role: 'resetZoom' },
-        { role: 'zoomIn' },
-        { role: 'zoomOut' },
+        { label: 'Actual Size', role: 'resetZoom', accelerator: isMac ? 'Cmd+0' : 'Ctrl+0' },
+        { label: 'Zoom In', role: 'zoomIn', accelerator: isMac ? 'Cmd+Plus' : 'Ctrl+Plus' },
+        { label: 'Zoom Out', role: 'zoomOut', accelerator: isMac ? 'Cmd+-' : 'Ctrl+-' },
         { type: 'separator' },
-        { role: 'togglefullscreen' },
+        { label: 'Toggle Full Screen', role: 'togglefullscreen', accelerator: isMac ? 'Ctrl+Cmd+F' : 'F11' },
       ],
     },
     {
       label: 'Window',
-      submenu: [
-        { role: 'minimize' },
-        { role: 'zoom' },
-        ...(isMac ? [
-          { type: 'separator' },
-          { role: 'front' },
-          { type: 'separator' },
-          { role: 'window' },
-        ] : [{ role: 'close' }]),
-      ],
+      submenu: isMac
+        ? [
+            { label: 'Minimize', role: 'minimize', accelerator: 'Cmd+M' },
+            { label: 'Zoom', role: 'zoom' },
+            { type: 'separator' },
+            { label: 'Bring All to Front', role: 'front' },
+          ]
+        : [
+            { label: 'Minimize', role: 'minimize', accelerator: 'Ctrl+M' },
+            { type: 'separator' },
+            { label: 'Close', role: 'close', accelerator: 'Ctrl+W' },
+          ],
     },
     {
       label: 'Help',
       submenu: [
         {
-          label: 'Vanilla Docs',
-          click: () => shell.openExternal('https://github.com/antarasi/electron-ollama'),
+          label: 'Gelectron',
+          click: () => shell.openExternal('https://gelectron.milesallen.site/'),
         },
       ],
     },
@@ -325,6 +330,15 @@ app.whenReady().then(async () => {
 
   mainWindow.loadURL(`http://localhost:${CONFIG.port}`);
 
+  const updateConfig = CONFIG.update || {};
+  if (updateConfig.autoCheckOnLaunch !== false) {
+    const { updater } = require(path.join(APP_ROOT, 'src', 'updater'));
+    if (updater.supported) {
+      updater.check().catch(() => {});
+      console.log(`[Updates] Checking for updates against ${updater.getStatus().feedURL}`);
+    }
+  }
+
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
       createWindow(`http://localhost:${CONFIG.port}`);
@@ -346,6 +360,11 @@ function startRetryLoop() {
       retryTimer = null;
       console.log('Startup succeeded after retry.');
       mainWindow.loadURL(`http://localhost:${CONFIG.port}`);
+      const updateConfig = CONFIG.update || {};
+      if (updateConfig.autoCheckOnLaunch !== false) {
+        const { updater } = require(path.join(APP_ROOT, 'src', 'updater'));
+        if (updater.supported) updater.check().catch(() => {});
+      }
     } catch (error) {
       console.warn('Startup retry pending:', error && error.message);
     } finally {
