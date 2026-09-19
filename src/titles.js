@@ -123,4 +123,4 @@ async function generateTitle(conv, { host } = {}) {
   }
 }
 
-module.exports = { generateTitle, ensureModel };
+module.exports = { generateTitle, ensureModel, listModels };

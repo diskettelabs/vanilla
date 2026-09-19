@@ -2,6 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="utf-8">
+    <link rel="icon" href="./assets/vanilla%20logomark.svg" type="image/svg+xml">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="application-name" content="vanilla-chat">
     <title>Vanilla (beta)</title>
@@ -1029,6 +1030,7 @@
                 <span>Skip the download and rename chats manually.</span>
               </button>
             </div>
+            <p id="setupNamingStatus" class="setup-subtitle" hidden role="status"></p>
           </div>
           <div class="setup-actions setup-actions-split">
             <button class="setup-back" type="button" data-setup-back>Back</button>
@@ -1112,12 +1114,12 @@
             <h2 class="setup-title">Choose your dictation engine</h2>
             <p class="setup-subtitle">Vanilla supports voice dictation for hands-free chatting. Pick the engine that fits your needs.</p>
             <div class="setup-choice-grid">
-              <button class="setup-choice" type="button" data-dictation="vosk" aria-pressed="false">
+              <button class="setup-choice" type="button" data-dictation="whisper" aria-pressed="false">
                 <span class="setup-choice-icon">
-                  <i data-icon="clock-3" aria-hidden="true"></i>
+                  <i data-icon="mic" aria-hidden="true"></i>
                 </span>
-                <strong>VOSK (Lightweight)</strong>
-                <span>Quick setup, runs in browser. ~40MB download, decent accuracy, works offline immediately.</span>
+                <strong>Whisper (local)</strong>
+                <span>Records in any modern browser and transcribes locally. Requires a Whisper runtime and model.</span>
               </button>
               <button class="setup-choice" type="button" data-dictation="none" aria-pressed="false">
                 <span class="setup-choice-icon">
@@ -1127,6 +1129,7 @@
                 <span>No voice input for now. You can enable it later in Settings.</span>
               </button>
             </div>
+            <p id="setupWhisperStatus" class="setup-subtitle" hidden role="status"></p>
           </div>
           <div class="setup-actions setup-actions-split">
             <button class="setup-back" type="button" data-setup-back>Back</button>
@@ -1324,7 +1327,6 @@
     <input type="file" id="fileInput" hidden accept="image/*,text/plain,text/markdown,text/csv,application/json,application/pdf">    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/line-numbers/prism-line-numbers.min.js"></script>
-    <script src="/node_modules/vosk-browser/dist/vosk.js"></script>
     <script src="./icons.js" defer></script>
     <script src="./sounds.js" defer></script>
     <script src="./ambience.js" defer></script>

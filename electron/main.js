@@ -239,7 +239,7 @@ async function createWindow(url, useLoadFile = false) {
     minWidth: 800,
     minHeight: 500,
     title: 'Vanilla',
-    titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'hidden',
+    titleBarStyle: process.platform === 'darwin' ? 'hidden' : 'hidden',
     ...(process.platform === 'darwin' ? {
       trafficLightPosition: { x: 16, y: 18 },
     } : {

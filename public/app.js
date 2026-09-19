@@ -196,11 +196,11 @@ const state = {
   streamComplete: false,
   pendingAttachment: null,
   themes: [],
-  voskModel: null,
-  voskRecognizer: null,
-  audioContext: null,
-  mediaStream: null,
-  audioProcessor: null,
+  mediaRecorder: null,
+  mediaRecorderStream: null,
+  recordedAudio: [],
+  dictationBaseText: '',
+  dictationPartialText: '',
   isRecording: false,
   scrollLocked: true, // Track if auto-scroll is enabled
   settings: {
@@ -234,7 +234,7 @@ const state = {
     searchBackend: localStorage.getItem("vanilla-search-backend") || "duckduckgo",
     braveApiKey: localStorage.getItem("vanilla-brave-key") || "",
     workspaceTools: localStorage.getItem("vanilla-workspace-tools") !== "false",
-    dictationEngine: localStorage.getItem("vanilla-dictation-engine") || "vosk",
+    dictationEngine: "whisper",
     deletedRetentionDays: Number(localStorage.getItem("vanilla-deleted-retention-days")) || 30,
     customIcon: localStorage.getItem("vanilla-custom-icon") || "",
     desktopNotifications: localStorage.getItem("vanilla-desktop-notifications") !== "false",
@@ -1133,6 +1133,36 @@ function prewarmTitleModel() {
   api("/api/names/prewarm", { method: "POST" }).catch(() => {});
 }
 
+async function prepareNamingModel(statusEl) {
+  if (!statusEl) return;
+  statusEl.hidden = false;
+  statusEl.textContent = "Checking Ollama for the naming model…";
+  let polling = true;
+  const poll = async () => {
+    try {
+      const status = await api("/api/names/status");
+      if (status.ready) statusEl.textContent = `Naming model ready (${formatFileSize(status.size)}).`;
+      else if (polling) statusEl.textContent = "Downloading the naming model from Ollama…";
+    } catch {
+      if (polling) statusEl.textContent = "Waiting for Ollama…";
+    }
+  };
+  await poll();
+  const timer = setInterval(poll, 1000);
+  try {
+    const result = await api("/api/names/prewarm", { method: "POST" });
+    polling = false;
+    clearInterval(timer);
+    statusEl.textContent = result.ok
+      ? "Naming model ready."
+      : "Could not download the naming model. You can name chats manually.";
+  } catch {
+    polling = false;
+    clearInterval(timer);
+    statusEl.textContent = "Could not reach Ollama. You can name chats manually.";
+  }
+}
+
 function renderMessages(conv) {
   els.messages.innerHTML = "";
   const messages = conv?.messages || [];
@@ -1343,43 +1373,12 @@ function resizePrompt() {
 
 // Speech Recognition / Dictation
 async function initDictation() {
-  const engine = state.settings.dictationEngine || 'vosk';
-  
-  // Hide button if dictation is disabled
-  if (engine === 'none') {
-    if (els.dictationButton) {
-      els.dictationButton.style.display = 'none';
-    }
-    return;
-  }
-  
-  // Show button for VOSK
   if (els.dictationButton) {
     els.dictationButton.style.display = '';
-  }
-  
-  // VOSK needs to check if library is loaded
-  if (engine === 'vosk' && !window.Vosk) {
-    if (els.dictationButton) {
-      els.dictationButton.style.display = 'none';
-    }
-    return;
   }
 }
 
 async function toggleDictation() {
-  const engine = state.settings.dictationEngine || 'vosk';
-  
-  if (engine === 'none') {
-    showNotification("Voice dictation is disabled in settings", "warning");
-    return;
-  }
-  
-  if (engine === 'vosk' && !window.Vosk) {
-    showNotification("VOSK library is not loaded", "warning");
-    return;
-  }
-
   if (state.isRecording) {
     stopDictation();
   } else {
@@ -1388,38 +1387,16 @@ async function toggleDictation() {
 }
 
 async function startDictation() {
-  const engine = state.settings.dictationEngine || 'vosk';
-  
-  // Check if dictation is disabled
-  if (engine === 'none') {
-    showNotification("Voice dictation is disabled", "warning");
-    return;
-  }
-  
   try {
     state.isRecording = true;
     Sounds.recordStart();
     Ambience.setDucked(true);
     
     els.dictationButton.dataset.active = 'true';
-    els.dictationLabel.textContent = 'loading...';
-
-    // Request microphone access
-    state.mediaStream = await navigator.mediaDevices.getUserMedia({
-      audio: {
-        echoCancellation: true,
-        noiseSuppression: true,
-        sampleRate: 16000,
-      }
-    });
-
-    // VOSK: Real-time browser-based recognition
-    await startVoskDictation();
+    await startWhisperRecording();
 
   } catch (error) {
-    state.isRecording = false;
-    els.dictationButton.dataset.active = 'false';
-    els.dictationLabel.textContent = 'dictate';
+    stopDictation();
     
     let message = "Speech recognition failed";
     let action = "Try again or type your message instead.";
@@ -1430,9 +1407,6 @@ async function startDictation() {
     } else if (error.name === 'NotFoundError') {
       message = "No microphone detected";
       action = "Connect a microphone and refresh the page, or check your audio input settings.";
-    } else if (error.message?.includes('model') || error.message?.includes('download')) {
-      message = "Failed to load speech model";
-      action = "Check your internet connection. The first use requires downloading a model file.";
     }
     
     showNotification(message, "error", 4000);
@@ -1442,92 +1416,59 @@ async function startDictation() {
   }
 }
 
-async function startVoskDictation() {
-  // Create audio context
-  state.audioContext = new AudioContext({ sampleRate: 16000 });
-  const source = state.audioContext.createMediaStreamSource(state.mediaStream);
-
-  // Load model if not loaded
-  if (!state.voskModel) {
-    els.dictationLabel.textContent = 'downloading model...';
-    
-    // Use our server as proxy to bypass CORS
-    const model = await Vosk.createModel('/api/vosk-model');
-    state.voskModel = model;
+async function startWhisperRecording() {
+  const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  const mimeType = ['audio/webm;codecs=opus', 'audio/mp4', 'audio/webm', 'audio/ogg;codecs=opus']
+    .find((type) => MediaRecorder.isTypeSupported(type));
+  if (!mimeType) {
+    stream.getTracks().forEach((track) => track.stop());
+    throw new Error('This browser cannot record microphone audio');
   }
+  const recorder = new MediaRecorder(stream, { mimeType });
+  state.mediaRecorder = recorder;
+  state.mediaRecorderStream = stream;
+  state.recordedAudio = [];
+  recorder.ondataavailable = (event) => {
+    if (event.data.size) state.recordedAudio.push(event.data);
+  };
+  recorder.onstop = () => transcribeRecording(mimeType);
+  recorder.start();
+  els.dictationLabel.textContent = 'stop';
+}
 
-  // Create recognizer with sample rate (must match AudioContext)
-  state.voskRecognizer = new state.voskModel.KaldiRecognizer(16000);
-  
-  // Set up event handlers for results
-  state.voskRecognizer.on("result", (message) => {
-    if (message.result && message.result.text && message.result.text.trim()) {
-      els.promptInput.value += message.result.text + ' ';
+async function transcribeRecording(mimeType) {
+  const recorder = state.mediaRecorder;
+  const blob = new Blob(state.recordedAudio, { type: mimeType });
+  state.mediaRecorder = null;
+  state.recordedAudio = [];
+  els.dictationLabel.textContent = 'transcribing...';
+  try {
+    const form = new FormData();
+    form.append('audio', blob, `dictation.${mimeType.includes('mp4') ? 'mp4' : 'webm'}`);
+    const response = await fetch('/api/transcribe', { method: 'POST', body: form });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.action || result.error || 'Transcription failed');
+    if (result.text?.trim()) {
+      els.promptInput.value += `${els.promptInput.value.trim() ? ' ' : ''}${result.text.trim()}`;
       resizePrompt();
     }
-  });
-  
-  state.voskRecognizer.on("partialresult", (message) => {
-    if (message.result && message.result.partial) {
-      // Show partial results in button label for feedback
-      const partial = message.result.partial.split(' ').slice(-3).join(' ');
-      if (partial) els.dictationLabel.textContent = partial;
-    }
-  });
-  
-  els.dictationLabel.textContent = 'listening...';
-
-  // Create audio processor
-  const recognizerNode = state.audioContext.createScriptProcessor(4096, 1, 1);
-  
-  recognizerNode.onaudioprocess = (event) => {
-    if (!state.isRecording) return;
-    
-    try {
-      // Pass the AudioBuffer directly to Vosk
-      state.voskRecognizer.acceptWaveform(event.inputBuffer);
-    } catch (error) {
-      // Silently ignore audio processing errors
-    }
-  };
-
-  source.connect(recognizerNode);
-  recognizerNode.connect(state.audioContext.destination);
-  
-  state.audioProcessor = recognizerNode;
+  } catch (error) {
+    showNotification(error.message || 'Transcription failed', 'error', 5000);
+  } finally {
+    els.dictationLabel.textContent = 'dictate';
+  }
 }
 
 function stopDictation() {
   state.isRecording = false;
   Sounds.recordStop();
   Ambience.setDucked(false);
-  
-  // Remove the VOSK recognizer
-  if (state.voskRecognizer) {
-    try {
-      state.voskRecognizer.remove();
-    } catch (e) {
-      // Silently handle cleanup errors
-    }
-    state.voskRecognizer = null;
-  }
 
-  // Cleanup audio
-  if (state.audioProcessor) {
-    state.audioProcessor.disconnect();
-    state.audioProcessor = null;
+  if (state.mediaRecorder && state.mediaRecorder.state !== 'inactive') {
+    state.mediaRecorder.stop();
   }
-  
-  if (state.audioContext) {
-    state.audioContext.close();
-    state.audioContext = null;
-  }
-  
-  if (state.mediaStream) {
-    state.mediaStream.getTracks().forEach(track => track.stop());
-    state.mediaStream = null;
-  }
-
+  state.mediaRecorderStream?.getTracks().forEach((track) => track.stop());
+  state.mediaRecorderStream = null;
   els.dictationButton.dataset.active = 'false';
   els.dictationLabel.textContent = 'dictate';
 }
@@ -2559,7 +2500,7 @@ function bindSettingsDropdowns() {
     updateDictationNote();
   });
   dropdowns.dictationEngine.setOptions([
-    { value: "vosk", label: "VOSK (Browser, ~40MB)" },
+    { value: "whisper", label: "Whisper (local)" },
     { value: "none", label: "Disabled" },
   ]);
 
@@ -2577,8 +2518,8 @@ function bindSettingsDropdowns() {
 
 function updateDictationNote() {
   const engine = state.settings.dictationEngine;
-  if (engine === "vosk") {
-    els.dictationEngineNote.textContent = "VOSK runs in your browser, downloads ~40MB on first use. Decent accuracy, works offline.";
+  if (engine === "whisper") {
+    els.dictationEngineNote.textContent = "Records in the browser, then transcribes locally with Whisper. Works across Safari, Chromium, and Firefox.";
     if (els.dictationButton) els.dictationButton.style.display = '';
   } else {
     els.dictationEngineNote.textContent = "Voice dictation is off. Turn it on above to use voice input.";
@@ -2835,7 +2776,7 @@ function applySettings() {
   localStorage.setItem("vanilla-workspace-tools", String(settings.workspaceTools));
   localStorage.setItem("vanilla-search-backend", settings.searchBackend);
   localStorage.setItem("vanilla-brave-key", settings.braveApiKey || "");
-  localStorage.setItem("vanilla-dictation-engine", settings.dictationEngine || "vosk");
+  localStorage.setItem("vanilla-dictation-engine", settings.dictationEngine || "browser");
   localStorage.setItem("vanilla-deleted-retention-days", String(settings.deletedRetentionDays || 30));
   localStorage.setItem("vanilla-custom-icon", settings.customIcon || "");
   localStorage.setItem("vanilla-desktop-notifications", String(settings.desktopNotifications));
@@ -5144,6 +5085,7 @@ function bindSetupFlow() {
   const aiNext = els.setupModal.querySelector("#setupAiNext");
   const namingButtons = els.setupModal.querySelectorAll(".setup-choice[data-naming]");
   const namingNext = els.setupModal.querySelector("#setupNamingNext");
+  const namingStatus = els.setupModal.querySelector("#setupNamingStatus");
   const ollamaHost = els.setupModal.querySelector("#setupOllamaHost");
   const localDone = els.setupModal.querySelector("#setupLocalDone");
   const providerSelect = els.setupModal.querySelector("#setupProviderSelect");
@@ -5220,6 +5162,14 @@ function bindSetupFlow() {
       btn.setAttribute("aria-pressed", "true");
       namingNext.disabled = false;
       namingNext.dataset.naming = btn.dataset.naming;
+      if (btn.dataset.naming === "yes") {
+        if (!namingNext.dataset.prewarmStarted) {
+          namingNext.dataset.prewarmStarted = "true";
+          prepareNamingModel(namingStatus);
+        }
+      } else if (namingStatus) {
+        namingStatus.hidden = true;
+      }
     });
   });
 
@@ -5311,21 +5261,23 @@ function bindSetupFlow() {
       dictationNext.disabled = false;
       dictationNext.dataset.dictation = btn.dataset.dictation;
 
-      // If Whisper is selected, check/install it
+      // Check the local Whisper runtime and model before continuing.
       if (btn.dataset.dictation === "whisper") {
         if (whisperStatus) {
           whisperStatus.hidden = false;
-          whisperStatus.textContent = "Checking Whisper installation...";
+          whisperStatus.textContent = "Checking Whisper runtime and model…";
         }
         try {
           const status = await api("/api/whisper/status");
-          if (status.installed) {
-            if (whisperStatus) whisperStatus.textContent = "Whisper is installed and ready.";
+          if (status.ready) {
+            if (whisperStatus) whisperStatus.textContent = `Whisper is ready (${formatFileSize(status.modelSize)} model).`;
+          } else if (!status.runtime) {
+            if (whisperStatus) whisperStatus.textContent = "Whisper runtime not found. Install whisper.cpp, then return here.";
           } else {
-            if (whisperStatus) whisperStatus.textContent = "Whisper will be downloaded (~1.5GB) when you continue.";
+            if (whisperStatus) whisperStatus.textContent = "Whisper runtime found, but its model is missing.";
           }
         } catch (error) {
-          if (whisperStatus) whisperStatus.textContent = "Could not check Whisper status.";
+          if (whisperStatus) whisperStatus.textContent = "Could not check Whisper setup.";
         }
       } else {
         if (whisperStatus) whisperStatus.hidden = true;
@@ -5335,35 +5287,12 @@ function bindSetupFlow() {
 
   dictationNext.addEventListener("click", async () => {
     const dictation = dictationNext.dataset.dictation;
-    if (dictation === "vosk" || dictation === "none") {
+    if (dictation === "whisper" || dictation === "none") {
       state.settings.dictationEngine = dictation;
       applySettings();
       const choice = aiNext.dataset.choice;
       if (choice === "local") showSetupStep("7a");
       else if (choice === "cloud") showSetupStep("7b");
-    } else if (dictation === "whisper") {
-      // Install Whisper
-      dictationNext.disabled = true;
-      whisperStatus.textContent = "Installing Whisper model (this may take a few minutes)...";
-      try {
-        const result = await api("/api/whisper/install", { method: "POST" });
-        if (result.success) {
-          state.settings.dictationEngine = "whisper";
-          applySettings();
-          whisperStatus.textContent = "Whisper installed successfully.";
-          setTimeout(() => {
-            const choice = aiNext.dataset.choice;
-            if (choice === "local") showSetupStep("7a");
-            else if (choice === "cloud") showSetupStep("7b");
-          }, 1000);
-        } else {
-          whisperStatus.textContent = "Installation failed. You can try again later in Settings.";
-          dictationNext.disabled = false;
-        }
-      } catch (error) {
-        whisperStatus.textContent = error.action || error.message || "Installation failed.";
-        dictationNext.disabled = false;
-      }
     }
   });
 

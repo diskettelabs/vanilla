@@ -521,6 +521,27 @@ const Ambience = (() => {
     audioEl.volume = enabled ? (ducked ? 0.12 : 0.5) : 0;
   }
 
+  function startGeneratedAudio() {
+    if (!ctx) build();
+    if (!ctx) return;
+    if (ctx.state === "suspended") ctx.resume().catch(() => {});
+    startTime = ctx.currentTime + 1;
+    nextBeat = 0;
+    nextPianoTime = startTime + 2;
+    if (scheduler) clearInterval(scheduler);
+    scheduler = setInterval(scheduleChunk, 1000);
+    applyTrack();
+    setMaster();
+  }
+
+  function waitForAudioGesture() {
+    const unlock = () => {
+      if (enabled && !ctx) startGeneratedAudio();
+    };
+    document.addEventListener("pointerdown", unlock, { once: true });
+    document.addEventListener("keydown", unlock, { once: true });
+  }
+
   function tryPlayAudio() {
     if (!audioSrc) return;
     if (!audioEl) {
@@ -552,17 +573,9 @@ const Ambience = (() => {
         setAudioVolume();
         return;
       }
-      if (!ctx) build();
-      if (!ctx) return;
       if (enabled) {
-        if (ctx.state === "suspended") ctx.resume().catch(() => {});
-        startTime = ctx.currentTime + 1;
-        nextBeat = 0;
-        nextPianoTime = startTime + 2;
-        if (scheduler) clearInterval(scheduler);
-        scheduler = setInterval(scheduleChunk, 1000);
-        applyTrack();
-        setMaster();
+        if (ctx) startGeneratedAudio();
+        else waitForAudioGesture();
       } else {
         if (scheduler) clearInterval(scheduler);
         scheduler = null;

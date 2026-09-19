@@ -9,7 +9,7 @@ class GeminiProvider extends OpenAIProvider {
       ...config,
       // Include trailing slash so relative paths append correctly
       baseUrl: (config?.baseUrl || 'https://generativelanguage.googleapis.com/v1beta/openai/').replace(/\/+$/, '') + '/',
-      defaultModel: config?.defaultModel || 'gemini-2.5-flash',
+      defaultModel: config?.defaultModel || 'gemini-3.6-flash',
       requestTimeout: config?.requestTimeout || 120000,
     });
     this.apiKey = config?.apiKey || process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || '';
@@ -23,7 +23,7 @@ class GeminiProvider extends OpenAIProvider {
     if (!this.apiKey) return [];
     const data = await this._request('models', { method: 'GET' });
     return (data.data || [])
-      .filter((m) => m.id.includes('gemini'))
+      .filter((m) => m.id.includes('gemini') && !m.id.includes('gemini-2.5-flash'))
       .map((m) => ({ 
         // Strip 'models/' prefix if present
         name: m.id.replace(/^models\//, ''), 
@@ -37,7 +37,7 @@ class GeminiProvider extends OpenAIProvider {
       const data = await this._request('models', { method: 'GET' });
       console.log('[Gemini] API response:', JSON.stringify(data).slice(0, 500));
       const models = (data.data || [])
-        .filter((m) => m.id.includes('gemini'))
+        .filter((m) => m.id.includes('gemini') && !m.id.includes('gemini-2.5-flash'))
         .map((m) => m.id.replace(/^models\//, '')); // Strip 'models/' prefix
       console.log('[Gemini] Filtered models:', models);
       if (models.length === 0) {

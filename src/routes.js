@@ -12,15 +12,29 @@ const settings = require('./settings');
 const { TOOL_DEFINITIONS, executeTool, runToolLoop } = require('./tools');
 const { AGENT_SYSTEM_PROMPT, buildTools } = require('./agent');
 const { updater } = require('./updater');
-const https = require('https');
 const fs = require('fs');
 const path = require('path');
 const { formatErrorForClient, formatErrorForLog, parseError } = require('./errors');
+const multer = require('multer');
+const { execFile } = require('node:child_process');
+const { promisify } = require('node:util');
 
 const CONFIG = require('../config/default.json');
 
 const activeStreams = new Map();
 const THEMES_DIR = path.join(__dirname, '..', 'themes');
+const execFileAsync = promisify(execFile);
+const transcribeUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 25 * 1024 * 1024 } });
+
+async function findWhisper() {
+  for (const command of ['whisper-cli', 'whisper-cpp']) {
+    try {
+      const { stdout } = await execFileAsync('which', [command]);
+      if (stdout.trim()) return stdout.trim();
+    } catch {}
+  }
+  return null;
+}
 
 function prepareVisionMessages(messages, providerName) {
   const mimeByExtension = { '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.gif': 'image/gif', '.webp': 'image/webp', '.avif': 'image/avif' };
@@ -63,6 +77,48 @@ function mergeConfig(providerName, apiKey) {
 }
 
 function register(app) {
+  app.post('/api/transcribe', transcribeUpload.single('audio'), async (req, res) => {
+    if (!req.file) return res.status(400).json({ error: 'No audio provided', action: 'Record something and try again.' });
+    const whisper = await findWhisper();
+    const model = process.env.WHISPER_MODEL || path.resolve('data/models/ggml-base.en.bin');
+    if (!whisper || !fs.existsSync(model)) {
+      return res.status(503).json({
+        error: 'Whisper is not configured',
+        action: `Install whisper.cpp and place a model at ${model}, or set WHISPER_MODEL.`,
+      });
+    }
+    const workDir = await fs.promises.mkdtemp(path.join(require('node:os').tmpdir(), 'vanilla-whisper-'));
+    const input = path.join(workDir, 'input.webm');
+    const wav = path.join(workDir, 'input.wav');
+    const output = path.join(workDir, 'result');
+    try {
+      await fs.promises.writeFile(input, req.file.buffer);
+      await execFileAsync('ffmpeg', ['-y', '-i', input, '-ar', '16000', '-ac', '1', '-c:a', 'pcm_s16le', wav]);
+      await execFileAsync(whisper, ['-m', model, '-f', wav, '-otxt', '-of', output, '-nt', '-np'], { maxBuffer: 1024 * 1024 });
+      const text = await fs.promises.readFile(`${output}.txt`, 'utf8');
+      res.json({ text: text.trim() });
+    } catch (error) {
+      console.error('[Transcription Error]', formatErrorForLog(error, { endpoint: '/api/transcribe' }));
+      res.status(500).json({ error: 'Transcription failed', action: 'Check the Whisper installation and model, then try again.' });
+    } finally {
+      await fs.promises.rm(workDir, { recursive: true, force: true });
+    }
+  });
+
+  app.get('/api/whisper/status', async (_req, res) => {
+    const command = await findWhisper();
+    const model = process.env.WHISPER_MODEL || path.resolve('data/models/ggml-base.en.bin');
+    let modelSize = 0;
+    try { modelSize = (await fs.promises.stat(model)).size; } catch {}
+    res.json({
+      ready: Boolean(command && modelSize),
+      runtime: Boolean(command),
+      model: Boolean(modelSize),
+      modelSize,
+      modelPath: model,
+    });
+  });
+
   // File upload
   app.post('/api/upload', (req, res, next) => {
     uploads.upload.single('file')(req, res, (err) => {
@@ -456,6 +512,14 @@ function register(app) {
     }
   });
 
+  app.get('/api/names/status', async (_req, res) => {
+    const host = CONFIG.providers?.ollama?.host;
+    const model = 'qwen2.5:0.5b';
+    const models = await titles.listModels(host);
+    const found = models.find((entry) => entry.name === model);
+    res.json({ model, ready: Boolean(found), size: found?.size || 0 });
+  });
+
   // Auto-generate a short title for a conversation using a tiny local model
   app.post('/api/conversations/:id/name', async (req, res) => {
     try {
@@ -765,33 +829,6 @@ function register(app) {
     res.json({ ok: true });
   });
 
-  // Vosk model proxy (to bypass CORS)
-  app.get('/api/vosk-model', (req, res) => {
-    const modelUrl = 'https://alphacephei.com/vosk/models/vosk-model-small-en-us-0.15.zip';
-    
-    https.get(modelUrl, (proxyRes) => {
-      // Set headers
-      res.writeHead(proxyRes.statusCode, {
-        'Content-Type': 'application/zip',
-        'Content-Length': proxyRes.headers['content-length'],
-        'Access-Control-Allow-Origin': '*',
-        'Cache-Control': 'public, max-age=31536000', // Cache for 1 year
-      });
-      
-      // Stream the response
-      proxyRes.pipe(res);
-      
-    }).on('error', (err) => {
-      console.error('[Vosk Model Download Error]', formatErrorForLog(err, { endpoint: '/api/vosk-model' }));
-      if (!res.headersSent) {
-        res.status(500).json({
-          error: 'Failed to download speech recognition model',
-          action: 'Check your internet connection. The speech recognition feature requires downloading a 40MB model file on first use.',
-          recoverable: true,
-        });
-      }
-    });
-  });
 
   // Streaming chat
   app.post('/api/chat/stream', async (req, res) => {
@@ -815,7 +852,10 @@ function register(app) {
     }
 
     const effectiveProvider = providerName || conv.provider || CONFIG.defaultProvider || 'ollama';
-    const effectiveModel = model || conv.model || 'llama2';
+    let effectiveModel = model || conv.model || 'llama2';
+    if (effectiveProvider === 'gemini' && effectiveModel === 'gemini-2.5-flash') {
+      effectiveModel = 'gemini-3.6-flash';
+    }
 
     let provider;
     try {

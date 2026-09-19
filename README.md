@@ -48,7 +48,7 @@ Pick a provider in Settings → AI Model and paste your API key.
 - **Themes** — 15 ice cream color schemes (vanilla, strawberry, mint, lemon, lime, peach, raspberry, lavender, dragonfruit, dreamsicle, blue-moon, chocolate, monochrome, aurora, plum) plus custom JSON themes that can replace colors, accent, logo, mascot, app name, and CSS. Authoring guide: `/themes/themes.html`
 - **Settings UI** — organized tabs (General, AI Model, Chat, Appearance, Shortcuts, Data & Privacy) with pickers for theme, density, text size, accent, and more
 - **Persistent customization** — device-wide settings API plus a theme-independent custom browser/desktop icon
-- **Voice input** — browser-based dictation (VOSK, on-device)
+- **Voice input** — browser-native dictation
 - **File uploads** — attach images and files with OCR/image understanding
 - **Native vision messages** — uploaded images are translated into Ollama, Anthropic, and OpenAI-compatible multimodal formats
 - **Privacy** — all data stays local, nothing leaves your machine unless you use a cloud provider
@@ -161,7 +161,6 @@ vanilla-sh/
 | `GET /api/search` | Search conversations |
 | `GET /api/websearch?q=&backend=&key=` | Web search (duckduckgo or brave) — test endpoint |
 | `GET /api/themes` | List available JSON themes |
-| `GET /api/vosk-model` | VOSK dictation model download |
 | `GET /api/names/prewarm` | Preload the auto-naming model |
 | `GET /api/hf/search` | Search HuggingFace GGUF models |
 | `GET /api/hf/repo` | Inspect a HuggingFace repo |

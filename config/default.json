@@ -28,7 +28,7 @@
       "apiKey": "",
       "baseUrl": "https://generativelanguage.googleapis.com/v1beta/openai",
       "requestTimeout": 120000,
-      "defaultModel": "gemini-2.5-flash"
+      "defaultModel": "gemini-3.6-flash"
     },
     "lmstudio": {
       "baseUrl": "http://localhost:1234/v1",
