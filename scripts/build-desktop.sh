@@ -69,9 +69,11 @@ EOF
 echo
 echo "2/4 Installing runtime dependencies..."
 mkdir -p "$STAGING/node_modules"
-ditto --norsrc --noqtn "$ROOT/node_modules" "$STAGING/node_modules"
+DITTONORSRC=1 ditto --norsrc --noqtn "$ROOT/node_modules" "$STAGING/node_modules"
 rm -f "$STAGING/node_modules/gelectron-ollama"
 rm -rf "$STAGING/node_modules/.bin" "$STAGING/node_modules/.cache"
+rm -rf "$STAGING/node_modules/electron"
+rm -rf "$STAGING/node_modules/gelectron-core"
 mkdir -p "$STAGING/node_modules/gelectron-ollama"
 ditto --norsrc --noqtn "$OLLAMA_REPO/dist" "$STAGING/node_modules/gelectron-ollama/dist"
 cp "$OLLAMA_REPO/package.json" "$OLLAMA_REPO/package-lock.json" "$STAGING/node_modules/gelectron-ollama/"
@@ -90,8 +92,10 @@ node "$PACKAGER" --dir "$STAGING" \
 
 APP="$DIST/$APP_BUNDLE"
 rm -rf "$APP/Contents/MacOS/node_modules"
-cp -R "$STAGING/node_modules" "$APP/Contents/Resources/app/node_modules"
+DITTONORSRC=1 ditto --norsrc --noqtn "$STAGING/node_modules" "$APP/Contents/Resources/app/node_modules"
 rm -rf "$APP/Contents/Resources/app/data"
+# Clean all extended attributes
+xattr -cr "$APP"
 
 ENTITLEMENTS="$APP/Contents/entitlements.plist"
 if [ -f "$ENTITLEMENTS" ]; then

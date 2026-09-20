@@ -6,3 +6,5 @@ data/uploads/
 build/
 dist/
 data/
+icon.icns
+icon.iconset/

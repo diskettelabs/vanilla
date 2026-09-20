@@ -80,6 +80,16 @@ EOF
 echo
 echo "3/4 Packaging app bundle..."
 mkdir -p "$DIST"
+
+ICON_ARG=""
+if [ -f "$ROOT/icon.icns" ]; then
+  ICON_ARG="--icon=$ROOT/icon.icns"
+elif [ -f "$ROOT/logo.png" ]; then
+  ICON_ARG="--icon=$ROOT/logo.png"
+elif [ -f "$ROOT/electron/icon.png" ]; then
+  ICON_ARG="--icon=$ROOT/electron/icon.png"
+fi
+
 npx --yes electron-packager@17.1.2 "$STAGING" "$APP_NAME" \
   --platform=darwin \
   --arch=arm64 \
@@ -87,7 +97,8 @@ npx --yes electron-packager@17.1.2 "$STAGING" "$APP_NAME" \
   --electron-version="$ELECTRON_VERSION" \
   --out="$DIST" \
   --overwrite \
-  --no-prune
+  --no-prune \
+  $ICON_ARG
 
 APP="$DIST/$APP_NAME.app"
 if command -v codesign >/dev/null 2>&1; then
