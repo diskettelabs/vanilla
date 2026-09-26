@@ -224,18 +224,16 @@ button img,
 .beta-badge {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  padding: 3px 8px 3px 7px;
+  gap: 8px;
+  padding: 6px 12px;
   border-radius: 999px;
-  border: 1px solid color-mix(in srgb, var(--accent) 32%, transparent);
-  background: color-mix(in srgb, var(--accent) 10%, var(--panel-strong));
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.55);
-  color: color-mix(in srgb, var(--accent) 72%, var(--text));
+  border: 1px solid color-mix(in srgb, var(--accent) 22%, transparent);
+  background: color-mix(in srgb, var(--accent) 8%, var(--panel-strong));
+  color: color-mix(in srgb, var(--accent) 68%, var(--text));
   font-family: inherit;
-  font-size: 9px;
-  font-weight: 800;
-  letter-spacing: 1.1px;
-  text-transform: uppercase;
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.4px;
   line-height: 1;
   white-space: nowrap;
   transform: translateY(-1px);
@@ -244,12 +242,22 @@ button img,
 
 .beta-badge::before {
   content: "";
-  width: 5px;
-  height: 5px;
+  width: 6px;
+  height: 6px;
   border-radius: 999px;
   background: var(--accent);
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 16%, transparent);
+  box-shadow: 0 0 0 0 rgba(0, 0, 0, 0);
   flex: 0 0 auto;
+  animation: beta-pulse 2.6s ease-in-out infinite;
+}
+
+@keyframes beta-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 30%, transparent);
+  }
+  50% {
+    box-shadow: 0 0 0 5px color-mix(in srgb, var(--accent) 0%, transparent);
+  }
 }
 
 .setup-beta {
@@ -1037,6 +1045,7 @@ button img,
   left: 0;
   display: grid;
   width: min(450px, 72vw);
+  max-width: calc(100vw - 48px);
   max-height: 420px;
   overflow: hidden;
   border: 1px solid var(--line, #dbdbda);
@@ -5936,6 +5945,55 @@ button:disabled { cursor: not-allowed; }
 
 body[data-mode="agent"] .pill-tool[data-tool="attach"],
 body[data-mode="agent"] .pill-tool[data-tool="compare"] { display: none; }
+
+/* Closed beta status tag */
+.beta-badge {
+  position: relative;
+  gap: 7px;
+  min-height: 22px;
+  padding: 4px 8px 4px 7px;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--text) 12%, var(--line));
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--text) 4%, var(--surface));
+  box-shadow: inset 0 1px 0 color-mix(in srgb, white 45%, transparent);
+  color: color-mix(in srgb, var(--text) 62%, var(--muted));
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  line-height: 1;
+  text-transform: uppercase;
+  transform: none;
+}
+
+.beta-badge::after {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(108deg, transparent 18%, color-mix(in srgb, white 20%, transparent) 48%, transparent 76%);
+  content: "";
+  pointer-events: none;
+  transform: translateX(-125%);
+  animation: beta-shimmer 5s ease-in-out infinite;
+}
+
+.beta-badge::before {
+  position: relative;
+  z-index: 1;
+  width: 5px;
+  height: 5px;
+  background: color-mix(in srgb, var(--accent) 76%, var(--muted));
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 10%, transparent);
+}
+
+@keyframes beta-shimmer {
+  0%, 58%, 100% { transform: translateX(-125%); }
+  76% { transform: translateX(125%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .beta-badge::before,
+  .beta-badge::after { animation: none; }
+}
 
 /* Agent sidebar — replaces the chat sidebar while in Agent mode */
 .agent-sidebar {

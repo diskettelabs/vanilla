@@ -214,6 +214,25 @@ function _parseArgs(raw) {
 
 // Runs one non-streaming tool-calling round for the given provider family.
 // Returns { messages, toolCalls } where toolCalls = [{ name, args }].
+// Tools that can change state. A batch containing any of these still runs
+// strictly in order, exactly as before.
+const MUTATING_TOOLS = new Set(['write_file', 'delete_file', 'run_command']);
+
+// Run a batch of tool calls, in parallel when every call is read-only.
+// Results are always returned in the original call order because the assistant
+// message's tool_call_ids and the tool result messages must line up.
+async function runToolBatch(specs, executeOptions) {
+  const serial = specs.some((spec) => MUTATING_TOOLS.has(spec.name));
+  if (!serial && specs.length > 1) {
+    return Promise.all(specs.map((spec) => executeTool(spec.name, spec.args, executeOptions)));
+  }
+  const out = [];
+  for (const spec of specs) {
+    out.push(await executeTool(spec.name, spec.args, executeOptions));
+  }
+  return out;
+}
+
 async function runToolRound(provider, providerName, model, messages, { signal, tools = TOOL_DEFINITIONS, executeOptions } = {}) {
   let toolCalls = [];
   let results = [];
@@ -241,14 +260,17 @@ async function runToolRound(provider, providerName, model, messages, { signal, t
       tool_calls: calls,
     };
     const next = [...messages, assistant];
-    for (const call of calls) {
+    const specs = calls.map((call) => {
       const name = call.function?.name;
       const args = _parseArgs(call.function?.arguments);
-      toolCalls.push({ name, args });
-      const result = await executeTool(name, args, executeOptions);
-      results.push({ name, args, ok: result.ok, output: result.output });
-      next.push({ role: 'tool', content: result.output });
-    }
+      return { name, args };
+    });
+    for (const spec of specs) toolCalls.push({ name: spec.name, args: spec.args });
+    const executed = await runToolBatch(specs, executeOptions);
+    specs.forEach((spec, i) => {
+      results.push({ name: spec.name, args: spec.args, ok: executed[i].ok, output: executed[i].output });
+      next.push({ role: 'tool', content: executed[i].output });
+    });
     return { messages: next, toolCalls, results };
   }
 
@@ -278,15 +300,16 @@ async function runToolRound(provider, providerName, model, messages, { signal, t
     if (!toolUses.length) return { messages, toolCalls, results };
 
     const next = [...messages, { role: 'assistant', content: blocks }];
-    for (const use of toolUses) {
-      toolCalls.push({ name: use.name, args: use.input || {} });
-      const result = await executeTool(use.name, use.input, executeOptions);
-      results.push({ name: use.name, args: use.input || {}, ok: result.ok, output: result.output });
+    const specs = toolUses.map((use) => ({ name: use.name, args: use.input || {}, useId: use.id }));
+    for (const spec of specs) toolCalls.push({ name: spec.name, args: spec.args });
+    const executed = await runToolBatch(specs, executeOptions);
+    specs.forEach((spec, i) => {
+      results.push({ name: spec.name, args: spec.args, ok: executed[i].ok, output: executed[i].output });
       next.push({
         role: 'user',
-        content: [{ type: 'tool_result', tool_use_id: use.id, content: result.output }],
+        content: [{ type: 'tool_result', tool_use_id: spec.useId, content: executed[i].output }],
       });
-    }
+    });
     return { messages: next, toolCalls, results };
   }
 
@@ -309,14 +332,17 @@ async function runToolRound(provider, providerName, model, messages, { signal, t
   if (!calls.length) return { messages, toolCalls, results };
 
   const next = [...messages, { role: 'assistant', content: msg.content || null, tool_calls: calls }];
-  for (const call of calls) {
+  const specs = calls.map((call) => {
     const name = call.function?.name;
     const args = _parseArgs(call.function?.arguments);
-    toolCalls.push({ name, args });
-    const result = await executeTool(name, args, executeOptions);
-    results.push({ name, args, ok: result.ok, output: result.output });
-    next.push({ role: 'tool', tool_call_id: call.id, content: result.output });
-  }
+    return { name, args, callId: call.id };
+  });
+  for (const spec of specs) toolCalls.push({ name: spec.name, args: spec.args });
+  const executed = await runToolBatch(specs, executeOptions);
+  specs.forEach((spec, i) => {
+    results.push({ name: spec.name, args: spec.args, ok: executed[i].ok, output: executed[i].output });
+    next.push({ role: 'tool', tool_call_id: spec.callId, content: executed[i].output });
+  });
   return { messages: next, toolCalls, results };
 }
 

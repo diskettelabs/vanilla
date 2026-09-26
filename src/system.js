@@ -1,9 +1,15 @@
 const os = require('os');
-const { execSync } = require('node:child_process');
+const { execFile } = require('node:child_process');
+const { promisify } = require('node:util');
 
-function _exec(cmd) {
+const execFileAsync = promisify(execFile);
+
+// Non-blocking probe. Never execSync: this runs on the request path and would
+// stall every other connection (including in-flight SSE token streams).
+async function _exec(file, args) {
   try {
-    return execSync(cmd, { timeout: 2000, encoding: 'utf-8' });
+    const { stdout } = await execFileAsync(file, args, { timeout: 2000, maxBuffer: 4 * 1024 * 1024 });
+    return stdout;
   } catch {
     return '';
   }
@@ -29,44 +35,52 @@ function sampleCPUTimes() {
   return { idle, total };
 }
 
-function calcCPUUsage() {
-  const s1 = sampleCPUTimes();
-  const samples = [];
-  for (let i = 0; i < 3; i++) {
-    const start = process.hrtime.bigint();
-    const s = sampleCPUTimes();
-    const elapsed = Number(process.hrtime.bigint() - start) / 1e9;
-    if (elapsed > 0) {
-      const idleDelta = s.idle - s1.idle;
-      const totalDelta = s.total - s1.total;
-      if (totalDelta > 0) {
-        samples.push(+((1 - idleDelta / totalDelta) * 100).toFixed(1));
-      }
+// CPU usage from os.cpus() deltas against the previous sample. The stats
+// poller hits this every few seconds, so the delta window is wide enough to be
+// accurate — and it costs zero subprocesses and zero event-loop time.
+const MIN_CPU_WINDOW_MS = 250;
+let lastCpuSample = null; // { wall, idle, total }
+let lastCpuUsage = 0;
+let hasCpuReading = false;
+
+function getCPUUsageDelta() {
+  const now = sampleCPUTimes();
+  const wall = Date.now();
+  const prev = lastCpuSample;
+  lastCpuSample = { wall, idle: now.idle, total: now.total };
+  if (!prev) return null;
+  const wallDelta = wall - prev.wall;
+  const totalDelta = now.total - prev.total;
+  // Too short a window to trust. Reuse the previous reading rather than paying
+  // for a subprocess — unless we have never produced a reading at all, in
+  // which case the caller needs the external probe to show anything.
+  if (wallDelta < MIN_CPU_WINDOW_MS || totalDelta <= 0) return hasCpuReading ? lastCpuUsage : null;
+  const usage = (1 - (now.idle - prev.idle) / totalDelta) * 100;
+  if (!Number.isFinite(usage)) return hasCpuReading ? lastCpuUsage : null;
+  lastCpuUsage = +Math.min(100, Math.max(0, usage)).toFixed(1);
+  hasCpuReading = true;
+  return lastCpuUsage;
+}
+
+// Fallback for the very first call, where there is no previous sample to diff
+// against. Async so it never blocks the loop.
+async function getCPUUsageExternal() {
+  if (process.platform === 'darwin') {
+    const out = await _exec('/usr/bin/top', ['-l', '1', '-n', '0', '-stats', 'cpu']);
+    const m = out.match(/(\d+[.,]\d+)%\s+user.*?(\d+[.,]\d+)%\s+sys.*?(\d+[.,]\d+)%\s+idle/s);
+    if (m) {
+      lastCpuUsage = +Math.max(0, 100 - parseFloat(m[3].replace(',', '.'))).toFixed(1);
+      hasCpuReading = true;
+      return lastCpuUsage;
     }
   }
-  if (!samples.length) return 0;
-  return samples.reduce((a, b) => a + b, 0) / samples.length;
+  return lastCpuUsage;
 }
 
-function getCPUUsageDarwin() {
-  const out = _exec('/usr/bin/top -l 1 -n 0 | /usr/bin/grep "CPU usage"');
-  const m = out.match(/(\d+[.,]\d+)% user.*?(\d+[.,]\d+)% sys.*?(\d+[.,]\d+)% idle/);
-  if (m) return +((100 - parseFloat(m[3].replace(',', '.'))).toFixed(1));
-  return calcCPUUsage();
-}
-
-function getCPUUsageLinux() {
-  const s1 = _exec("grep 'cpu ' /proc/stat");
-  const idle1 = s1.match(/^\s*cpu\s+.*?\s+(\d+)\s*$/m);
-  const total1 = s1.match(/^\s*cpu\s+(\d+)/);
-  if (!idle1 || !total1) return calcCPUUsage();
-  return calcCPUUsage();
-}
-
-function getCPUUsage() {
-  if (process.platform === 'darwin') return getCPUUsageDarwin();
-  if (process.platform === 'linux') return getCPUUsageLinux();
-  return calcCPUUsage();
+async function getCPUUsage() {
+  const delta = getCPUUsageDelta();
+  if (delta !== null) return delta;
+  return getCPUUsageExternal();
 }
 
 function getMemoryInfo() {
@@ -83,8 +97,10 @@ function getMemoryInfo() {
   return { physical: { usedGB, totalGB }, pressurePercent: usagePercent, pressure };
 }
 
-function getMemoryPressureDarwin() {
-  const out = _exec('/usr/bin/memory_pressure');
+async function getMemoryPressure() {
+  if (process.platform !== 'darwin') return getMemoryInfo();
+
+  const out = await _exec('/usr/bin/memory_pressure', []);
   const pctMatch = out.match(/memory free percentage:\s+(\d+)/i);
   const pressureMatch = out.match(/pressure level:\s+(\w+)/i);
   const freePct = pctMatch ? parseInt(pctMatch[1]) : null;
@@ -104,24 +120,22 @@ function getMemoryPressureDarwin() {
   };
 }
 
-function getMemoryPressure() {
-  if (process.platform === 'darwin') return getMemoryPressureDarwin();
-  return getMemoryInfo();
-}
+// GPU model/VRAM and the NPU brand string are hardware constants — they cannot
+// change while the process is alive. system_profiler takes ~230ms to fork and
+// parse, so probe once and reuse. Reset by tests via clearHardwareCache().
+let gpuCache = null;
+let npuCache = null;
 
-function getGPUInfo() {
-  const platform = process.platform;
-  if (platform === 'darwin') return getGPUInfoDarwin();
-  return [];
-}
+async function getGPUInfo() {
+  if (gpuCache) return gpuCache;
+  if (process.platform !== 'darwin') { gpuCache = []; return gpuCache; }
 
-function getGPUInfoDarwin() {
-  const out = _exec('/usr/sbin/system_profiler SPDisplaysDataType -json');
-  if (!out) return [];
+  const out = await _exec('/usr/sbin/system_profiler', ['SPDisplaysDataType', '-json']);
+  if (!out) { gpuCache = []; return gpuCache; }
   try {
     const data = JSON.parse(out);
     const gpus = data.SPDisplaysDataType || [];
-    return gpus.map((g) => {
+    gpuCache = gpus.map((g) => {
       const vramStr = g.vram || g.vram_shared || '';
       const vramMatch = vramStr.match(/([\d.]+)\s*(\w+)/);
       let totalMB = 0;
@@ -138,41 +152,54 @@ function getGPUInfoDarwin() {
       };
     });
   } catch {
-    return [];
+    gpuCache = [];
   }
+  return gpuCache;
 }
 
-function getNPUInfo() {
-  const platform = process.platform;
-  if (platform === 'darwin') return getNPUInfoDarwin();
-  return { available: false };
-}
+async function getNPUInfo() {
+  if (npuCache) return npuCache;
+  if (process.platform !== 'darwin') { npuCache = { available: false }; return npuCache; }
 
-function getNPUInfoDarwin() {
   const cpuModel = os.cpus()[0]?.model || '';
-  const isAppleSilicon = cpuModel.includes('Apple');
-  if (!isAppleSilicon) return { available: false };
-  const out = _exec('/usr/sbin/sysctl -n machdep.cpu.brand_string 2>/dev/null || echo ""');
-  const name = out.trim() || 'Apple Neural Engine';
-  return { available: true, name };
+  if (!cpuModel.includes('Apple')) { npuCache = { available: false }; return npuCache; }
+  const out = await _exec('/usr/sbin/sysctl', ['-n', 'machdep.cpu.brand_string']);
+  npuCache = { available: true, name: out.trim() || 'Apple Neural Engine' };
+  return npuCache;
 }
 
-function getStats() {
-  const cpuUsage = getCPUUsage();
-  const memory = getMemoryPressure();
+function clearHardwareCache() {
+  gpuCache = null;
+  npuCache = null;
+  lastCpuSample = null;
+  lastCpuUsage = 0;
+  hasCpuReading = false;
+}
+
+// Warm the hardware probes in the background at startup so the first
+// /api/system/stats request is served from cache instead of forking processes.
+function prewarm() {
+  sampleCPUTimes();
+  lastCpuSample = { wall: Date.now(), ...sampleCPUTimes() };
+  Promise.all([getGPUInfo(), getNPUInfo()]).catch(() => {});
+}
+
+async function getStats() {
+  // CPU and memory are independent probes — run them concurrently so the
+  // response costs the slowest one rather than the sum of both.
+  const [cpuUsage, memory, gpus, npu] = await Promise.all([
+    getCPUUsage(),
+    getMemoryPressure(),
+    getGPUInfo(),
+    getNPUInfo(),
+  ]);
 
   let cpuPressure = 'low';
   if (cpuUsage > 90) cpuPressure = 'extreme';
   else if (cpuUsage > 80) cpuPressure = 'high';
   else if (cpuUsage > 60) cpuPressure = 'normal';
 
-  const gpus = getGPUInfo();
-  const gpuResults = gpus.map((g) => {
-    let gp = 'low';
-    return { ...g, usagePercent: null, pressure: gp };
-  });
-
-  let npuPressure = 'low';
+  const gpuResults = gpus.map((g) => ({ ...g, usagePercent: null, pressure: 'low' }));
 
   return {
     cpu: {
@@ -183,8 +210,8 @@ function getStats() {
     },
     memory,
     gpu: gpuResults,
-    npu: { ...getNPUInfo(), usagePercent: null, pressure: npuPressure },
+    npu: { ...npu, usagePercent: null, pressure: 'low' },
   };
 }
 
-module.exports = { getStats };
+module.exports = { getStats, clearHardwareCache, prewarm };

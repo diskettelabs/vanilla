@@ -105,8 +105,7 @@ class OpenAIProvider extends Provider {
               action: 'Check your API key in config/default.json. Get a valid key from platform.openai.com/api-keys',
               statusCode: 401,
             });
-            onError(err);
-            reject(err);
+            complete(err);
             return;
           }
           
@@ -117,8 +116,7 @@ class OpenAIProvider extends Provider {
               action: 'You\'ve made too many requests. Wait a minute and try again, or upgrade your OpenAI plan.',
               statusCode: 429,
             });
-            onError(err);
-            reject(err);
+            complete(err);
             return;
           }
           
@@ -130,8 +128,7 @@ class OpenAIProvider extends Provider {
               statusCode: res.statusCode,
               recoverable: false,
             });
-            onError(err);
-            reject(err);
+            complete(err);
             return;
           }
           
@@ -142,8 +139,7 @@ class OpenAIProvider extends Provider {
               action: 'This model is not available in your OpenAI account. Choose a different model from the picker.',
               statusCode: 404,
             });
-            onError(err);
-            reject(err);
+            complete(err);
             return;
           }
           
@@ -154,8 +150,7 @@ class OpenAIProvider extends Provider {
               action: 'OpenAI is experiencing issues. Wait a moment and try again.',
               statusCode: res.statusCode,
             });
-            onError(err);
-            reject(err);
+            complete(err);
             return;
           }
           
@@ -166,21 +161,32 @@ class OpenAIProvider extends Provider {
               action: 'Check your request and try again. If the problem persists, check OpenAI status.',
               statusCode: res.statusCode,
             });
-            onError(err);
-            reject(err);
+            complete(err);
             return;
           }
           
           let buffer = '';
           let hasReceivedData = false;
-          
+          let completed = false;
+
+          const complete = (err) => {
+            if (completed) return;
+            completed = true;
+            if (signal) signal.removeEventListener('abort', onAbort);
+            if (err) {
+              onError(err);
+              reject(err);
+            } else {
+              onDone();
+              resolve();
+            }
+          };
+
           const onAbort = () => {
             req.destroy();
-            const e = new Error('Stream aborted by user');
-            onError(e);
-            reject(e);
+            complete(new Error('Stream aborted by user'));
           };
-          
+
           if (signal) {
             if (signal.aborted) { onAbort(); return; }
             signal.addEventListener('abort', onAbort, { once: true });
@@ -198,8 +204,7 @@ class OpenAIProvider extends Provider {
               const payload = trimmed.slice(6);
               
               if (payload === '[DONE]') {
-                onDone();
-                resolve();
+                complete();
                 return;
               }
               
@@ -209,16 +214,15 @@ class OpenAIProvider extends Provider {
                 // Check for error in stream
                 if (parsed.error) {
                   const err = this._parseApiError(parsed.error);
-                  onError(err);
-                  reject(err);
+                  complete(err);
                   return;
                 }
                 
                 const content = parsed.choices?.[0]?.delta?.content || '';
                 if (content) onToken(content);
                 if (parsed.choices?.[0]?.finish_reason) {
-                  onDone();
-                  resolve();
+                  complete();
+                  return;
                 }
               } catch {
                 // skip malformed lines
@@ -228,39 +232,31 @@ class OpenAIProvider extends Provider {
           
           res.on('end', () => {
             if (!hasReceivedData) {
-              const err = new OpenAIError('No response', {
+              complete(new OpenAIError('No response', {
                 userMessage: 'No response from OpenAI',
                 action: 'Check your internet connection and try again.',
-              });
-              onError(err);
-              reject(err);
+              }));
               return;
             }
-            resolve();
+            complete();
           });
           
           res.on('error', (e) => {
-            const enhanced = this._enhanceError(e, 'stream');
-            onError(enhanced);
-            reject(enhanced);
+            complete(this._enhanceError(e, 'stream'));
           });
         }
       );
       
       req.on('error', (e) => {
-        const enhanced = this._enhanceError(e, 'connect');
-        onError(enhanced);
-        reject(enhanced);
+        complete(this._enhanceError(e, 'connect'));
       });
       
       req.on('timeout', () => {
         req.destroy();
-        const err = new OpenAIError('Request timeout', {
+        complete(new OpenAIError('Request timeout', {
           userMessage: 'OpenAI took too long to respond',
           action: 'Check your internet connection and try again.',
-        });
-        onError(err);
-        reject(err);
+        }));
       });
       
       req.write(body);

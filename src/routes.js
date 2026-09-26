@@ -16,6 +16,7 @@ const fs = require('fs');
 const path = require('path');
 const { formatErrorForClient, formatErrorForLog, parseError } = require('./errors');
 const multer = require('multer');
+const express = require('express');
 const { execFile } = require('node:child_process');
 const { promisify } = require('node:util');
 
@@ -26,35 +27,87 @@ const THEMES_DIR = path.join(__dirname, '..', 'themes');
 const execFileAsync = promisify(execFile);
 const transcribeUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 25 * 1024 * 1024 } });
 
+// A few endpoints legitimately carry multi-megabyte payloads (a custom icon, a
+// pasted conversation, a written file). They get their own parser instead of
+// forcing the whole API to accept a 10MB body on every request.
+const LARGE_BODY = express.json({ limit: '8mb' });
+
+// Theme catalog cache, keyed on the themes/ directory mtime.
+let themeCache = null;
+let themeCacheStamp = 0;
+
+const MODEL_CACHE_TTL_MS = 30_000;
+const modelCache = new Map();
+
+let whisperPath;
 async function findWhisper() {
+  if (whisperPath !== undefined) return whisperPath;
   for (const command of ['whisper-cli', 'whisper-cpp']) {
     try {
       const { stdout } = await execFileAsync('which', [command]);
-      if (stdout.trim()) return stdout.trim();
+      if (stdout.trim()) { whisperPath = stdout.trim(); return whisperPath; }
     } catch {}
   }
-  return null;
+  whisperPath = null;
+  return whisperPath;
 }
 
-function prepareVisionMessages(messages, providerName) {
-  const mimeByExtension = { '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.gif': 'image/gif', '.webp': 'image/webp', '.avif': 'image/avif' };
-  return messages.map((message) => {
+const MIME_BY_EXTENSION = { '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.gif': 'image/gif', '.webp': 'image/webp', '.avif': 'image/avif' };
+const IMAGE_MARKER_RE = /\[Image:\s*(\/uploads\/[^\]\s]+)\]/g;
+const IMAGE_MARKER_STRIP_RE = /\n*\[Image:\s*\/uploads\/[^\]\s]+\]/g;
+
+// Images are read asynchronously and base64 encoded once per (path, mtime,
+// size). A 5MB photo used to be read and encoded synchronously on every chat
+// turn that included it.
+const imageCache = new Map(); // filepath -> { mtimeMs, size, b64 }
+const IMAGE_CACHE_MAX = 16;
+
+async function loadImageBase64(file) {
+  let st;
+  try {
+    st = await fs.promises.stat(file);
+  } catch {
+    imageCache.delete(file);
+    return null;
+  }
+  const hit = imageCache.get(file);
+  if (hit && hit.mtimeMs === st.mtimeMs && hit.size === st.size) return hit.b64;
+  let buf;
+  try {
+    buf = await fs.promises.readFile(file);
+  } catch {
+    return null;
+  }
+  const b64 = buf.toString('base64');
+  imageCache.set(file, { mtimeMs: st.mtimeMs, size: st.size, b64 });
+  if (imageCache.size > IMAGE_CACHE_MAX) {
+    imageCache.delete(imageCache.keys().next().value);
+  }
+  return b64;
+}
+
+async function prepareVisionMessages(messages, providerName) {
+  return Promise.all(messages.map(async (message) => {
     if (message.role !== 'user' || typeof message.content !== 'string') return message;
-    const markers = [...message.content.matchAll(/\[Image:\s*(\/uploads\/[^\]\s]+)\]/g)];
+    IMAGE_MARKER_RE.lastIndex = 0;
+    const markers = [...message.content.matchAll(IMAGE_MARKER_RE)];
     if (!markers.length) return message;
-    const images = [];
-    for (const marker of markers) {
+
+    // Promise.all preserves marker order regardless of which read finishes
+    // first, so images stay in the order they appear in the message.
+    const loaded = await Promise.all(markers.map(async (marker) => {
       let filename;
       try { filename = path.basename(decodeURIComponent(marker[1].slice('/uploads/'.length))); }
-      catch { continue; }
-      const file = path.join(uploads.UPLOAD_DIR, filename);
-      if (!fs.existsSync(file)) continue;
-      const mime = mimeByExtension[path.extname(filename).toLowerCase()];
-      if (!mime) continue;
-      images.push({ mime, data: fs.readFileSync(file).toString('base64') });
-    }
+      catch { return null; }
+      const mime = MIME_BY_EXTENSION[path.extname(filename).toLowerCase()];
+      if (!mime) return null;
+      const data = await loadImageBase64(path.join(uploads.UPLOAD_DIR, filename));
+      return data ? { mime, data } : null;
+    }));
+    const images = loaded.filter(Boolean);
     if (!images.length) return message;
-    const text = message.content.replace(/\n*\[Image:\s*\/uploads\/[^\]\s]+\]/g, '').trim() || 'Describe this image.';
+
+    const text = message.content.replace(IMAGE_MARKER_STRIP_RE, '').trim() || 'Describe this image.';
     if (providerName === 'ollama') return { ...message, content: text, images: images.map((image) => image.data) };
     if (providerName === 'anthropic') {
       return { ...message, content: [
@@ -66,7 +119,7 @@ function prepareVisionMessages(messages, providerName) {
       { type: 'text', text },
       ...images.map((image) => ({ type: 'image_url', image_url: { url: `data:${image.mime};base64,${image.data}` } })),
     ] };
-  });
+  }));
 }
 
 function mergeConfig(providerName, apiKey) {
@@ -164,7 +217,7 @@ function register(app) {
 
   // Persistent, device-wide UI preferences. Secrets remain browser-local.
   app.get('/api/settings', (_req, res) => res.json({ settings: settings.read() }));
-  app.put('/api/settings', (req, res) => {
+  app.put('/api/settings', LARGE_BODY, (req, res) => {
     try {
       res.json({ settings: settings.write(req.body?.settings || req.body || {}) });
     } catch (e) {
@@ -176,7 +229,7 @@ function register(app) {
   });
 
   app.get('/api/icon', (_req, res) => res.json({ icon: settings.read().customIcon || null }));
-  app.put('/api/icon', (req, res) => {
+  app.put('/api/icon', LARGE_BODY, (req, res) => {
     const icon = req.body?.icon || '';
     const clean = settings.sanitize({ customIcon: icon });
     if (icon && !clean.customIcon) {
@@ -187,7 +240,7 @@ function register(app) {
 
   // Public tool discovery/execution API for clients and provider integrations.
   app.get('/api/tools', (_req, res) => res.json({ tools: TOOL_DEFINITIONS }));
-  app.post('/api/tools/execute', async (req, res) => {
+  app.post('/api/tools/execute', LARGE_BODY, async (req, res) => {
     const { name, arguments: args, args: alternateArgs } = req.body || {};
     if (!name || typeof name !== 'string') {
       return res.status(400).json({ error: 'Tool name is required', recoverable: true });
@@ -203,40 +256,46 @@ function register(app) {
     }
   });
 
-  // Theme catalog: list available theme JSON files in themes/
+  // Theme catalog: list available theme JSON files in themes/. These are static
+  // on disk, so read them once and re-read only when the directory changes.
   app.get('/api/themes', (_req, res) => {
     try {
-      const themes = fs
-        .readdirSync(THEMES_DIR)
-        .filter((file) => file.endsWith('.json'))
-        .map((file) => file.replace(/\.json$/, ''))
-        .map((name) => {
-          try {
-            const data = JSON.parse(fs.readFileSync(path.join(THEMES_DIR, `${name}.json`), 'utf8'));
-            return {
-              name,
-              displayName: data.displayName || name,
-              description: data.description || '',
-              version: data.version || '1.0.0',
-              author: data.author || '',
-              accent: data.accent || '',
-              hasLogo: Boolean(data.logo),
-              hasMascot: Boolean(data.mascot),
-            };
-          } catch {
-            return { name, displayName: name, description: '' };
-          }
-        });
-      res.json({ themes });
+      const stamp = fs.statSync(THEMES_DIR).mtimeMs;
+      if (themeCacheStamp !== stamp) {
+        themeCache = fs
+          .readdirSync(THEMES_DIR)
+          .filter((file) => file.endsWith('.json'))
+          .map((file) => file.replace(/\.json$/, ''))
+          .map((name) => {
+            try {
+              const data = JSON.parse(fs.readFileSync(path.join(THEMES_DIR, `${name}.json`), 'utf8'));
+              return {
+                name,
+                displayName: data.displayName || name,
+                description: data.description || '',
+                version: data.version || '1.0.0',
+                author: data.author || '',
+                accent: data.accent || '',
+                hasLogo: Boolean(data.logo),
+                hasMascot: Boolean(data.mascot),
+              };
+            } catch {
+              return { name, displayName: name, description: '' };
+            }
+          });
+        themeCacheStamp = stamp;
+      }
+      res.set('Cache-Control', 'public, max-age=300');
+      res.json({ themes: themeCache });
     } catch (e) {
       res.status(500).json({ error: 'Failed to read the themes directory', details: e.message });
     }
   });
 
   // System stats
-  app.get('/api/system/stats', (_req, res) => {
+  app.get('/api/system/stats', async (_req, res) => {
     try {
-      res.json(system.getStats());
+      res.json(await system.getStats());
     } catch (e) {
       console.error('[System Stats Error]', formatErrorForLog(e, { endpoint: '/api/system/stats' }));
       res.status(500).json(formatErrorForClient(e, {
@@ -248,15 +307,27 @@ function register(app) {
 
   // Providers
   app.get('/api/providers', (_req, res) => {
+    res.set('Cache-Control', 'public, max-age=300');
     res.json(providers.getProviderNamesWithLabels(CONFIG.providers));
   });
 
-  // Models
+  // Models. Listing models can be a real network round trip for the cloud
+  // providers, and the UI hits this every time the model picker opens, so
+  // cache per (provider, key) for a short TTL.
   app.get('/api/models', async (_req, res) => {
     const providerName = _req.query.provider || CONFIG.defaultProvider || 'ollama';
+    const cacheKey = `${providerName}:${_req.query.apiKey || ''}`;
+    const hit = modelCache.get(cacheKey);
+    if (hit && Date.now() - hit.at < MODEL_CACHE_TTL_MS) {
+      res.set('Cache-Control', 'private, max-age=30');
+      return res.json(hit.models);
+    }
     try {
       const provider = providers.create(providerName, mergeConfig(providerName, _req.query.apiKey));
       const models = await provider.listChatModels();
+      modelCache.set(cacheKey, { at: Date.now(), models });
+      if (modelCache.size > 64) modelCache.delete(modelCache.keys().next().value);
+      res.set('Cache-Control', 'private, max-age=30');
       res.json(models);
     } catch (e) {
       console.error('[Model List Error]', formatErrorForLog(e, { 
@@ -428,7 +499,7 @@ function register(app) {
   });
 
   // Import conversations from exported markdown/JSON files
-  app.post('/api/conversations/import', (req, res) => {
+  app.post('/api/conversations/import', LARGE_BODY, (req, res) => {
     const { files } = req.body || {};
     if (!Array.isArray(files) || !files.length) {
       return res.status(400).json({
@@ -739,7 +810,7 @@ function register(app) {
 
   // Multi-model comparison: stream the same prompt from several models in parallel.
   // Events are tagged with an `id` so the client can route tokens to each column.
-  app.post('/api/chat/compare', async (req, res) => {
+  app.post('/api/chat/compare', LARGE_BODY, async (req, res) => {
     const { id, message, customPrompt, models } = req.body || {};
     if (!id || !message || !Array.isArray(models) || models.length < 2) {
       return res.status(400).json({
@@ -831,7 +902,7 @@ function register(app) {
 
 
   // Streaming chat
-  app.post('/api/chat/stream', async (req, res) => {
+  app.post('/api/chat/stream', LARGE_BODY, async (req, res) => {
     const { conversationId, message, model, provider: providerName, customPrompt, apiKey } = req.body || {};
 
     if (!conversationId || !message) {
@@ -902,7 +973,7 @@ function register(app) {
     // model decides it needs current information — never injected up front.
 
     // Turn uploaded image markers into each provider's native vision message format.
-    chatMessages = prepareVisionMessages(chatMessages, effectiveProvider);
+    chatMessages = await prepareVisionMessages(chatMessages, effectiveProvider);
 
     // Set up SSE
     res.writeHead(200, {
@@ -918,6 +989,15 @@ function register(app) {
     const cleanup = () => {
       activeStreams.delete(conversationId);
     };
+
+    // Abort upstream when the client goes away, so a closed tab doesn't leave the
+    // provider request (and its socket) running to completion.
+    let clientGone = false;
+    res.on('close', () => {
+      if (res.writableEnded) return;
+      clientGone = true;
+      abortController.abort();
+    });
 
     // Tool calling: chat sandbox (files + optional web_search, no shell) or the
     // coding-agent loop (files + shell + optional web_search) on a project dir.
@@ -964,19 +1044,26 @@ function register(app) {
 
     let fullContent = '';
 
+    // Persist to the conversation regardless of whether the client is still there,
+    // but never write to a socket that has already gone away.
+    const write = (event) => {
+      if (clientGone || res.writableEnded) return;
+      res.write(`data: ${JSON.stringify(event)}\n\n`);
+    };
+
     try {
       await provider.chatStream(
         chatMessages,
         effectiveModel,
         (token) => {
           fullContent += token;
-          res.write(`data: ${JSON.stringify({ type: 'token', content: token })}\n\n`);
+          write({ type: 'token', content: token });
         },
         () => {
           cleanup();
           storage.addMessage(conversationId, 'assistant', fullContent, effectiveModel);
-          res.write(`data: ${JSON.stringify({ type: 'done' })}\n\n`);
-          res.end();
+          write({ type: 'done' });
+          if (!clientGone) res.end();
         },
         (err) => {
           cleanup();
@@ -984,8 +1071,7 @@ function register(app) {
             if (fullContent) {
               storage.addMessage(conversationId, 'assistant', fullContent + '\n[interrupted]', effectiveModel);
             }
-            res.write(`data: ${JSON.stringify({ type: 'done', interrupted: true })}\n\n`);
-            res.end();
+            write({ type: 'done', interrupted: true });
           } else {
             console.error('[Stream Error]', formatErrorForLog(err, { 
               endpoint: '/api/chat/stream',
@@ -995,13 +1081,13 @@ function register(app) {
             
             const parsed = parseError(err, { provider: effectiveProvider });
             const errorResponse = formatErrorForClient(parsed);
-            res.write(`data: ${JSON.stringify({ type: 'error', ...errorResponse })}\n\n`);
+            write({ type: 'error', ...errorResponse });
             
             if (fullContent) {
               storage.addMessage(conversationId, 'assistant', fullContent + '\n[error: ' + errorResponse.error + ']', effectiveModel);
             }
-            res.end();
           }
+          if (!clientGone) res.end();
         },
         { signal: abortController.signal }
       );
@@ -1050,11 +1136,11 @@ function register(app) {
     }
   });
 
-  app.post('/api/workspace/write', (req, res) => {
+  app.post('/api/workspace/write', LARGE_BODY, (req, res) => {
     try {
-      const { path: filePath, content } = req.body || {};
-      if (!filePath) return res.status(400).json({ error: 'Missing file path' });
-      res.json(workspace.writeFile(filePath, content));
+      const { path: relPath, content } = req.body || {};
+      if (!relPath) return res.status(400).json({ error: 'Missing file path' });
+      res.json(workspace.writeFile(relPath, content));
     } catch (e) {
       res.status(500).json({ error: e.message || 'Failed to write file' });
     }

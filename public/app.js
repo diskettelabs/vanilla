@@ -2268,6 +2268,13 @@ function renderModelOptions() {
     }
   }
   
+  if (els.modelOptions.childElementCount === 0) {
+    const empty = document.createElement("p");
+    empty.className = "model-options-empty";
+    empty.textContent = "No models available — check provider API keys in Settings.";
+    els.modelOptions.append(empty);
+  }
+  
   syncSettingsSelects();
 }
 

@@ -7,17 +7,34 @@ const { execFile } = require('node:child_process');
 // instead of the read-only app bundle.
 const WORKSPACE_DIR = path.resolve('data', 'workspace');
 
+// Directories skipped when browsing a project, so giant dependency trees
+// (node_modules, .git, build output...) never flood the agent sidebar.
+const HEAVY_DIRS = new Set([
+  'node_modules', '.git', '.hg', '.svn', 'dist', 'build', 'out', 'target',
+  '.next', '.nuxt', '.output', '.venv', 'venv', 'env', '.env', '.cache',
+  '__pycache__', '.pytest_cache', '.mypy_cache', '.ruff_cache', '.turbo',
+]);
+const SKIP_FILES = new Set(['.DS_Store', 'Thumbs.db', 'package-lock.json', 'pnpm-lock.yaml', 'yarn.lock']);
+
 function resolveRoot(root) {
   if (!root || typeof root !== 'string' || !root.trim()) return WORKSPACE_DIR;
   const resolved = path.resolve(root.trim());
-  if (!fs.existsSync(resolved) || !fs.statSync(resolved).isDirectory()) {
+  let st;
+  try {
+    st = fs.statSync(resolved);
+  } catch {
     throw new Error(`Directory not found: ${resolved}`);
   }
+  if (!st.isDirectory()) throw new Error(`Directory not found: ${resolved}`);
   return resolved;
 }
 
+const ensuredDirs = new Set();
+
 function ensureDir(root = WORKSPACE_DIR) {
+  if (ensuredDirs.has(root)) return;
   fs.mkdirSync(root, { recursive: true });
+  ensuredDirs.add(root);
 }
 
 function resolveSafe(rel, root = WORKSPACE_DIR) {
@@ -38,20 +55,37 @@ function isEnabled() {
   return fs.existsSync(WORKSPACE_DIR);
 }
 
-function listFiles(root = WORKSPACE_DIR) {
+// Recursive listing used by the list_workspace_files tool and GET /api/workspace.
+// Skips dependency/build directories and caps the result — walking node_modules
+// used to mean tens of thousands of synchronous stat calls per request.
+function listFiles(root = WORKSPACE_DIR, { skipHeavy = true, maxFiles = 600 } = {}) {
   root = resolveRoot(root);
   ensureDir(root);
   const out = [];
   const walk = (dir) => {
-    const entries = fs.readdirSync(dir, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name));
+    let entries;
+    try {
+      entries = fs.readdirSync(dir, { withFileTypes: true });
+    } catch {
+      return;
+    }
+    entries.sort((a, b) => a.name.localeCompare(b.name));
     for (const entry of entries) {
       if (entry.name === '.git') continue;
+      if (skipHeavy && entry.isDirectory() && HEAVY_DIRS.has(entry.name)) continue;
+      if (SKIP_FILES.has(entry.name)) continue;
       const abs = path.join(dir, entry.name);
       if (entry.isDirectory()) {
         walk(abs);
       } else {
-        const st = fs.statSync(abs);
+        let st;
+        try {
+          st = fs.statSync(abs);
+        } catch {
+          continue;
+        }
         out.push({ path: toRel(abs, root), size: st.size, mtime: st.mtimeMs });
+        if (out.length >= maxFiles) return;
       }
     }
   };
@@ -68,12 +102,23 @@ function writeFile(rel, content, root = WORKSPACE_DIR) {
   return { path: toRel(abs, root), size: Buffer.byteLength(data) };
 }
 
+// Single stat() instead of existsSync() + statSync(), which both halves the
+// syscalls and closes the check-then-act race.
+function statFile(abs) {
+  let st;
+  try {
+    st = fs.statSync(abs);
+  } catch {
+    throw new Error('File not found');
+  }
+  if (st.isDirectory()) throw new Error('Is a directory');
+  return st;
+}
+
 function deleteFile(rel, root = WORKSPACE_DIR) {
   root = resolveRoot(root);
   const abs = resolveSafe(rel, root);
-  if (!fs.existsSync(abs)) throw new Error('File not found');
-  const st = fs.statSync(abs);
-  if (st.isDirectory()) throw new Error('Is a directory');
+  statFile(abs);
   fs.rmSync(abs);
   return { path: toRel(abs, root) };
 }
@@ -81,9 +126,7 @@ function deleteFile(rel, root = WORKSPACE_DIR) {
 function readFile(rel, maxBytes = 200000, root = WORKSPACE_DIR) {
   root = resolveRoot(root);
   const abs = resolveSafe(rel, root);
-  if (!fs.existsSync(abs)) throw new Error('File not found');
-  const st = fs.statSync(abs);
-  if (st.isDirectory()) throw new Error('Is a directory');
+  statFile(abs);
   const buf = fs.readFileSync(abs);
   if (buf.length > maxBytes) {
     return { path: toRel(abs, root), size: buf.length, truncated: true, content: buf.slice(0, maxBytes).toString('utf8') };
@@ -102,15 +145,6 @@ function openFolder() {
     });
   });
 }
-
-// Directories skipped when browsing a project, so giant dependency trees
-// (node_modules, .git, build output...) never flood the agent sidebar.
-const HEAVY_DIRS = new Set([
-  'node_modules', '.git', '.hg', '.svn', 'dist', 'build', 'out', 'target',
-  '.next', '.nuxt', '.output', '.venv', 'venv', 'env', '.env', '.cache',
-  '__pycache__', '.pytest_cache', '.mypy_cache', '.ruff_cache', '.turbo',
-]);
-const SKIP_FILES = new Set(['.DS_Store', 'Thumbs.db', 'package-lock.json', 'pnpm-lock.yaml', 'yarn.lock']);
 
 function listDirEntries(dir, { skipHeavy = true } = {}) {
   const abs = path.resolve(dir);

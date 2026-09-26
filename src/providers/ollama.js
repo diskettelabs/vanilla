@@ -96,15 +96,26 @@ class OllamaProvider extends Provider {
             reject(err);
             return;
           }
-          
           let buffer = '';
           let hasReceivedData = false;
-          
+          let completed = false;
+
+          const complete = (err, done) => {
+            if (completed) return;
+            completed = true;
+            if (signal) signal.removeEventListener('abort', onAbort);
+            if (err) {
+              onError(err);
+              reject(err);
+            } else {
+              onDone(done);
+              resolve();
+            }
+          };
+
           const onAbort = () => {
             req.destroy();
-            const e = new Error('Stream aborted by user');
-            onError(e);
-            reject(e);
+            complete(new Error('Stream aborted by user'));
           };
           
           if (signal) {
@@ -131,14 +142,13 @@ class OllamaProvider extends Provider {
                       ? 'The model ran out of memory. Try a smaller model or restart Ollama.'
                       : 'Try restarting Ollama or selecting a different model.',
                   });
-                  onError(err);
-                  reject(err);
+                  complete(err);
                   return;
                 }
                 
                 if (parsed.done) {
-                  onDone(parsed);
-                  resolve();
+                  complete(null, parsed);
+                  return;
                 } else if (parsed.message?.content) {
                   onToken(parsed.message.content);
                 }
@@ -150,36 +160,30 @@ class OllamaProvider extends Provider {
           
           res.on('end', () => {
             if (!hasReceivedData) {
-              const err = new OllamaError('No response from model', {
+              complete(new OllamaError('No response from model', {
                 userMessage: 'No response from Ollama',
                 action: 'The model may be loading. Wait a moment and try again. For large models, the first response can take 30-60 seconds.',
-              });
-              onError(err);
-              reject(err);
+              }));
               return;
             }
             
             if (buffer.trim()) {
               try {
                 const parsed = JSON.parse(buffer);
-                if (parsed.done) onDone(parsed);
+                if (parsed.done) { complete(null, parsed); return; }
               } catch { /* ignore */ }
             }
-            resolve();
+            complete();
           });
           
           res.on('error', (e) => {
-            const enhanced = this._enhanceError(e, 'stream response');
-            onError(enhanced);
-            reject(enhanced);
+            complete(this._enhanceError(e, 'stream response'));
           });
         }
       );
       
       req.on('error', (e) => {
-        const enhanced = this._enhanceError(e, 'connect');
-        onError(enhanced);
-        reject(enhanced);
+        complete(this._enhanceError(e, 'connect'));
       });
       
       req.write(body);
@@ -247,11 +251,20 @@ class OllamaProvider extends Provider {
   }
   
   _enhanceError(error, operation) {
-    const message = error.message || String(error);
+    // Node ≥17 wraps ECONNREFUSED/etc. connection failures into an
+    // AggregateError whose .message is just "AggregateError"; the real
+    // cause (with .code) lives in .errors[0]. Unwrap it so the friendly
+    // branches below actually catch ECONNREFUSED / ENOTFOUND / ECONNRESET.
+    let cause = error;
+    if (error instanceof AggregateError && Array.isArray(error.errors) && error.errors.length) {
+      cause = error.errors[0];
+    }
+    const message = cause.message || String(cause);
     const lowerMessage = message.toLowerCase();
+    const lowerCode = String(cause.code || '').toLowerCase();
     
     // Connection errors
-    if (lowerMessage.includes('econnrefused') || lowerMessage.includes('connect')) {
+    if (lowerMessage.includes('econnrefused') || lowerCode.includes('econnrefused') || lowerMessage.includes('connect')) {
       return new OllamaError('Connection refused', {
         userMessage: 'Cannot connect to Ollama',
         action: 'Make sure Ollama is running on your machine. Run "ollama serve" in your terminal, or start the Ollama app if installed.',

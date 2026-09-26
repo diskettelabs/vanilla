@@ -18,6 +18,7 @@
   },
   "dependencies": {
     "cjs": "^0.0.11",
+    "compression": "^1.8.2",
     "electron": "^43.2.0",
     "express": "^4.21.0",
     "gelectron-core": "^0.1.1",

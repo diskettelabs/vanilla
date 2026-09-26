@@ -6,12 +6,6 @@
       "host": "http://localhost:11434",
       "requestTimeout": 120000
     },
-    "openai": {
-      "apiKey": "",
-      "baseUrl": "https://api.openai.com/v1",
-      "requestTimeout": 60000,
-      "defaultModel": "gpt-4o-mini"
-    },
     "anthropic": {
       "apiKey": "",
       "baseUrl": "https://api.anthropic.com/v1",

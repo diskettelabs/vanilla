@@ -56,11 +56,24 @@ class AnthropicProvider extends Provider {
         },
         (res) => {
           let buffer = '';
+          let completed = false;
+
+          const complete = (err) => {
+            if (completed) return;
+            completed = true;
+            if (signal) signal.removeEventListener('abort', onAbort);
+            if (err) {
+              onError(err);
+              reject(err);
+            } else {
+              onDone();
+              resolve();
+            }
+          };
+
           const onAbort = () => {
             req.destroy();
-            const e = new Error('Stream aborted by user');
-            onError(e);
-            reject(e);
+            complete(new Error('Stream aborted by user'));
           };
           if (signal) {
             if (signal.aborted) { onAbort(); return; }
@@ -80,8 +93,8 @@ class AnthropicProvider extends Provider {
                   onToken(parsed.delta.text);
                 }
                 if (parsed.type === 'message_stop') {
-                  onDone();
-                  resolve();
+                  complete();
+                  return;
                 }
               } catch {
                 // skip malformed lines
@@ -89,17 +102,15 @@ class AnthropicProvider extends Provider {
             }
           });
           res.on('end', () => {
-            resolve();
+            complete();
           });
-          res.on('error', (e) => { onError(e); reject(e); });
+          res.on('error', (e) => { complete(e); });
         }
       );
-      req.on('error', (e) => { onError(e); reject(e); });
+      req.on('error', (e) => { complete(e); });
       req.on('timeout', () => {
         req.destroy();
-        const e = new Error('Stream timed out');
-        onError(e);
-        reject(e);
+        complete(new Error('Stream timed out'));
       });
       req.write(body);
       req.end();

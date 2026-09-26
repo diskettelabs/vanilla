@@ -26,9 +26,21 @@ function sanitize(input) {
   return clean;
 }
 
+// settings.json can hold a multi-megabyte custom icon, and it only changes on
+// an explicit user action. Re-reading and re-parsing it on every request meant
+// every /api/settings and /api/icon call paid a full blocking read. Key the
+// cache on (mtime, size) so a stat() replaces the read whenever it changed.
+let cache = null;
+
 function read() {
   try {
-    return sanitize(JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf8')));
+    const stat = fs.statSync(SETTINGS_FILE);
+    if (cache && cache.mtimeMs === stat.mtimeMs && cache.size === stat.size) {
+      return cache.value;
+    }
+    const value = sanitize(JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf8')));
+    cache = { mtimeMs: stat.mtimeMs, size: stat.size, value };
+    return value;
   } catch {
     return {};
   }
@@ -40,6 +52,8 @@ function write(input) {
   const temporary = `${SETTINGS_FILE}.${process.pid}.tmp`;
   fs.writeFileSync(temporary, `${JSON.stringify(settings, null, 2)}\n`, { mode: 0o600 });
   fs.renameSync(temporary, SETTINGS_FILE);
+  // Invalidate so the next read picks up the file we just replaced.
+  cache = null;
   return settings;
 }
 
