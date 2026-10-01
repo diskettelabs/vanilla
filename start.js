@@ -11,16 +11,16 @@
  * never have to remember the sub-package names.
  */
 
-const { execSync, spawnSync } = require("node:child_process");
+const { spawnSync } = require("node:child_process");
 const args = process.argv.slice(2);
 
 const flag = args.find((a) => a === "-g" || a === "-e");
 
 if (flag === "-g") {
-  console.log("Launching Vanilla with Gelectron…");
+  console.log("Launching Vanilla Chat with Gelectron…");
   spawnSync("npm", ["--prefix", "gelectron", "start"], { stdio: "inherit" });
 } else if (flag === "-e") {
-  console.log("Launching Vanilla with Electron…");
+  console.log("Launching Vanilla Chat with Electron…");
   spawnSync("npm", ["--prefix", "electron", "start"], { stdio: "inherit" });
 } else {
   // Default: run the Express web server

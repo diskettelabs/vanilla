@@ -1,8 +1,8 @@
 {
   "name": "vanilla-chat",
-  "productName": "Vanilla",
-  "version": "0.1.1",
-  "description": "Simple web chat UI for Ollama",
+  "productName": "Vanilla Chat",
+  "version": "2.0.0",
+  "description": "Privacy-first multi-provider AI chat interface",
   "main": "server.js",
   "scripts": {
     "start": "node start.js",

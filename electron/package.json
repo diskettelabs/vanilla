@@ -1,8 +1,8 @@
 {
   "name": "vanilla-chat-electron",
-  "productName": "Vanilla",
+  "productName": "Vanilla Chat",
   "version": "2.0.0",
-  "description": "Vanilla desktop app (Electron)",
+  "description": "Vanilla Chat desktop app (Electron)",
   "main": "main.js",
   "scripts": {
     "start": "electron ."
