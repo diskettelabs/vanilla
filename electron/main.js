@@ -22,7 +22,7 @@ process.env.VANILLA_WHISPER_DIR = path.join(app.getPath('userData'), 'vanilla-ch
 if (IS_PACKAGED) {
   process.env.VANILLA_APP_PATH = path.resolve(APP_ROOT, '..', '..', '..');
 }
-app.setName('Vanilla');
+app.setName('Vanilla Chat');
 
 lifecycle.setUninstallHandler(async () => {
   if (ollamaServer) {
@@ -56,7 +56,7 @@ function sendCommand(command) {
 }
 
 ipcMain.on('show-notification', (_event, { title, body } = {}) => {
-  if (Notification.isSupported()) new Notification({ title: title || 'Vanilla', body: body || 'Your response is ready.' }).show();
+  if (Notification.isSupported()) new Notification({ title: title || 'Vanilla Chat', body: body || 'Your response is ready.' }).show();
 });
 
 ipcMain.on('set-app-icon', (_event, dataUrl) => {
@@ -243,8 +243,8 @@ async function createWindow(url, useLoadFile = false) {
     height: 800,
     minWidth: 800,
     minHeight: 500,
-    title: 'Vanilla',
-    titleBarStyle: process.platform === 'darwin' ? 'hidden' : 'hidden',
+    title: 'Vanilla Chat',
+    titleBarStyle: 'hidden',
     ...(process.platform === 'darwin' ? {
       trafficLightPosition: { x: 16, y: 18 },
     } : {
@@ -274,7 +274,7 @@ async function createWindow(url, useLoadFile = false) {
   mainWindow.webContents.once('did-finish-load', showWhenReady);
   mainWindow.webContents.on('page-title-updated', (event) => {
     event.preventDefault();
-    mainWindow?.setTitle('Vanilla');
+    mainWindow?.setTitle('Vanilla Chat');
   });
 
   mainWindow.on('closed', () => {
@@ -310,11 +310,11 @@ app.whenReady().then(async () => {
     if (error && error.code === 'EADDRINUSE') {
       const isOurs = await probePort(CONFIG.port);
       if (isOurs) {
-        console.log(`Port ${CONFIG.port} is already serving Vanilla — opening the running instance.`);
+        console.log(`Port ${CONFIG.port} is already serving Vanilla Chat — opening the running instance.`);
       } else {
         console.error(`Port ${CONFIG.port} is in use by another application.`);
         showSplashError(
-          `Port ${CONFIG.port} is already in use by another application (not Vanilla). ` +
+          `Port ${CONFIG.port} is already in use by another application (not Vanilla Chat). ` +
           `Close the other app or free the port, then press Retry.`
         );
         startRetryLoop();

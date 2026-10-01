@@ -1,8 +1,8 @@
 {
   "name": "vanilla-chat-gelectron",
-  "productName": "Vanilla",
-  "version": "1.0.0",
-  "description": "Vanilla desktop app (Gelectron)",
+  "productName": "Vanilla Chat",
+  "version": "2.0.0",
+  "description": "Vanilla Chat desktop app (Gelectron)",
   "main": "main.js",
   "scripts": {
     "start": "gelectron-core ."
